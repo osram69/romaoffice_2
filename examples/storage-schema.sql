@@ -1,0 +1,4 @@
+-- Minimal portable reference. The production Next.js schema is in src/db/schema.ts.
+CREATE TYPE order_status AS ENUM ('pending','paid','filled','signed','cancelled');
+CREATE TABLE orders(id bigserial PRIMARY KEY,public_id uuid UNIQUE NOT NULL,email text NOT NULL,phone text,service text NOT NULL,duration_months int NOT NULL,amount_cents int NOT NULL,currency char(3) DEFAULT 'eur',provider text,provider_reference text,status order_status DEFAULT 'pending',form_data jsonb,signature_path text,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());
+CREATE TABLE otp_verifications(id bigserial PRIMARY KEY,order_public_id text NOT NULL,phone text NOT NULL,code_hash text NOT NULL,attempts int DEFAULT 0,expires_at timestamptz NOT NULL,verified_at timestamptz,created_at timestamptz DEFAULT now());

@@ -1,0 +1,18 @@
+import Link from "next/link";
+import { ArrowRight, Building2, Mail } from "lucide-react";
+import { copyFor, quote, offerActive, formatEur, activationHref, validity, type ProductOffer, type Lang } from "@/lib/pricing";
+import { additionalNote } from "@/lib/offer-terms";
+import { OfferTermsBody } from "./OfferTerms";
+import { StandardOfferModal } from "./StandardOfferModal";
+
+export function PricingOffer({ product, lang }: { product: ProductOffer; lang: Lang }) {
+  const it = lang === "it"; const copy = copyFor(product.code, lang); const active = offerActive(product); const postal = product.code === "postal";
+  const example = quote(product, { months: 12, newActivation: true });
+  return <article className={`offer-card ${postal ? "postal-offer" : "legal-offer"}`} id={`offer-${product.code}`}>
+    <div className="offer-head"><div><span className="offer-badge">{postal ? <Mail /> : <Building2 />}{it ? "ATTIVABILE ONLINE" : "AVAILABLE ONLINE"}</span><h3>{copy.name}</h3><p>{copy.description}</p></div><div className="offer-actions"><Link className="button primary" href={activationHref(product.code, lang)}>{it ? "Attiva subito" : "Activate now"}<ArrowRight /></Link><StandardOfferModal service={product.code} lang={lang} /></div></div>
+    <div className="table-wrap"><table className="price-table"><caption className="sr-only">{copy.name} — {it ? "prezzi IVA esclusa" : "prices excluding VAT"}</caption><thead><tr><th scope="col">{copy.duration}</th><th scope="col">{copy.rate}</th><th scope="col">{postal ? (it ? "Attuale offerta" : "Current offer") : copy.offer}</th></tr></thead><tbody>{product.tiers.map(tier => <tr key={tier.months} className={active && tier.offerCents !== null ? "highlight" : ""}><th scope="row">{copy.months(tier.months)}</th><td>{formatEur(tier.listCents, lang)} <small>{it ? "+ IVA" : "+ VAT"}</small></td><td>{tier.offerCents !== null ? <><b>{formatEur(tier.offerCents, lang)} <small>{it ? "+ IVA" : "+ VAT"}</small></b>{tier.newActivation && active && <span className="offer-flag"> (*)</span>}</> : <span>—</span>}</td></tr>)}</tbody></table></div>
+    <p className="offer-validity">{validity(product, lang)}{!active && (it ? " — offerte scadute: si applica il listino." : " — expired: standard rates apply.")}</p>
+    <div className="offer-notes">{!postal && <><p>{it ? `(*) SCONTO NUOVE ATTIVAZIONI: sulle tariffe evidenziate (6 e 12 mesi), entro la validità dell’offerta, è previsto uno sconto ulteriore una-tantum del ${product.newActivationDiscountBps / 100}% per i nuovi clienti/società.` : `(*) NEW ACTIVATION DISCOUNT: an additional one-off ${product.newActivationDiscountBps / 100}% discount applies to the highlighted 6- and 12-month rates for new clients/companies during the offer period.`}</p>{example && example.newActivationDiscountCents > 0 && <p>{it ? `ESEMPIO: Contratto 12 mesi, attivazione al costo di ${formatEur(example.netCents, lang)} + IVA e rinnovi successivi al costo di ${formatEur(example.renewalBaseCents, lang)} + IVA.` : `EXAMPLE: 12-month agreement, activation at ${formatEur(example.netCents, lang)} + VAT; subsequent renewals at ${formatEur(example.renewalBaseCents, lang)} + VAT.`}</p>}</>}<p>{additionalNote(product, lang)}</p><p className="muted">{it ? `Tutti i prezzi sono IVA ${product.vatBps / 100}% esclusa.` : `All prices exclude ${product.vatBps / 100}% VAT.`}</p></div>
+    {postal && <details className="postal-terms-preview"><summary>{it ? "Leggi cosa comprende l’offerta postale e le condizioni complete" : "Read what the mailing offer includes and the full terms"}</summary><OfferTermsBody product={product} lang={lang} /></details>}
+  </article>;
+}

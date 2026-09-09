@@ -1,0 +1,7 @@
+import type { Metadata } from "next";
+import { PageView } from "@/components/PageView";
+import { BASE_URL, pages, resolvePath, routeMap } from "@/lib/site";
+type Props={params:Promise<{slug:string}>;searchParams:Promise<{service?:string}>};
+export function generateStaticParams(){return Object.keys(pages).filter(k=>!k.startsWith("en/")&&k!=="index.html").map(slug=>({slug}))}
+export async function generateMetadata({params}:Props):Promise<Metadata>{const {slug}=await params;const {key}=resolvePath([slug]);const p=pages[key];const canonical=`/${key}`;const en=`/${routeMap[key]||"en/404.html"}`;return{title:`${p.title} | Roma Office Sharing`,description:p.description,robots:p.noIndex?{index:false,follow:false}:undefined,keywords:["Domiciliazione Sede Legale Roma","Sede Legale Roma","Domiciliazione Postale Roma","Ufficio Virtuale Roma","Uffici Arredati Roma"],alternates:{canonical,languages:{"it-IT":canonical,"en-GB":en,"x-default":canonical}},openGraph:{title:p.title,description:p.description,url:`${BASE_URL}${canonical}`,siteName:"Roma Office Sharing",locale:"it_IT",type:"website",images:[{url:"/images/office-hero.jpg",width:1200,height:627}]},twitter:{card:"summary_large_image",title:p.title,description:p.description,images:["/images/office-hero.jpg"]}}}
+export default async function ItalianPage({params,searchParams}:Props){const{slug}=await params;const{key}=resolvePath([slug]);const query=await searchParams;return <PageView pageKey={key} lang="it" initialService={query.service==="postal"?"postal":"legal_unit"}/>}

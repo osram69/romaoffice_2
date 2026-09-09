@@ -1,0 +1,7 @@
+import type { Metadata } from "next";
+import { PageView } from "@/components/PageView";
+import { BASE_URL, pages, resolvePath, reverseRouteMap } from "@/lib/site";
+type Props={params:Promise<{slug:string}>;searchParams:Promise<{service?:string}>};
+export function generateStaticParams(){return Object.keys(pages).filter(k=>k.startsWith("en/")).map(k=>({slug:k.slice(3)}))}
+export async function generateMetadata({params}:Props):Promise<Metadata>{const{slug}=await params;const{key}=resolvePath(["en",slug]);const p=pages[key];const canonical=`/${key}`;const itKey=reverseRouteMap[key]||"404.html";const it=itKey==="index.html"?"/":`/${itKey}`;return{title:`${p.title} | Roma Office Sharing`,description:p.description,robots:p.noIndex?{index:false,follow:false}:undefined,keywords:["Legal Address Rome","Registered Office Rome","Business Mailing Address Rome","Virtual Office Rome","Furnished Offices Rome"],alternates:{canonical,languages:{"it-IT":it,"en-GB":canonical,"x-default":it}},openGraph:{title:p.title,description:p.description,url:`${BASE_URL}${canonical}`,siteName:"Roma Office Sharing",locale:"en_GB",type:"website",images:[{url:"/images/office-hero.jpg",width:1200,height:627}]},twitter:{card:"summary_large_image",title:p.title,description:p.description,images:["/images/office-hero.jpg"]}}}
+export default async function EnglishPage({params,searchParams}:Props){const{slug}=await params;const{key}=resolvePath(["en",slug]);const query=await searchParams;return <PageView pageKey={key} lang="en" initialService={query.service==="postal"?"postal":"legal_unit"}/>}
