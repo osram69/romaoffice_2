@@ -92,7 +92,10 @@ SMTP_PORT=465
 SMTP_USER=REPLACE
 SMTP_PASS=REPLACE
 GOOGLE_MAPS_API_KEY=OPTIONAL_REPLACE
+ADMIN_DASHBOARD_PASSWORD=REPLACE
 ```
+
+`ADMIN_DASHBOARD_PASSWORD` protects the pricing dashboard at `/gestione-tariffe-x9k2m7` (not linked from the site) — pick a strong password, it is the only thing standing between that URL and editing live prices. The dashboard session cookie is signed with `ADMIN_DASHBOARD_SECRET` if set, otherwise it reuses `AUTH_SECRET`.
 
 Generate `AUTH_SECRET` with `openssl rand -hex 32` — it must be at least 32 characters or every authenticated/rate-limited request (including `/api/domiciliation-request`) fails closed with a 503. Never prefix server secrets with `NEXT_PUBLIC_`. Rotate any accidentally exposed secret immediately.
 
