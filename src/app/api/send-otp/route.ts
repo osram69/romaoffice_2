@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     return result === "sent" ? json({ ok: true, resendAfter: 60 }) : json({ error: result }, 429);
   } catch (error) {
     if (error instanceof CustomerError) { console.error("Send OTP rejected", error.code, error.status); return json({ error: error.code }, error.status); }
-    console.error("Send OTP failed", error instanceof Error ? `${error.name}: ${error.message}` : error);
+    console.error("Send OTP failed", error instanceof Error ? `${error.name}: ${error.message}` : error, error instanceof Error && error.cause ? `cause: ${error.cause}` : "");
     return json({ error: "smsUnavailable" }, 503);
   }
 }

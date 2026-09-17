@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     return response;
   } catch (error) {
     if (error instanceof CustomerError) { console.error("Request creation rejected", error.code, error.status); return json({ error: error.code }, error.status); }
-    console.error("Request creation failed", error instanceof Error ? `${error.name}: ${error.message}` : error);
+    console.error("Request creation failed", error instanceof Error ? `${error.name}: ${error.message}` : error, error instanceof Error && error.cause ? `cause: ${error.cause}` : "");
     return json({ error: "request-failed" }, 400);
   }
 }
