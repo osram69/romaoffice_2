@@ -85,18 +85,50 @@ export async function getCustomer(req: NextRequest) {
   return row.customer;
 }
 export function maskPhone(phone: string) { return `${phone.slice(0, 3)} ••• ••• ${phone.slice(-3)}`; }
-export async function sendLoginSms(phone: string, code: string, lang: Lang, purpose: "login" | "request" = "login") {
-  if (!/^\+[1-9]\d{7,14}$/.test(phone)) throw new CustomerError("unavailable", 503);
+async function sendViaTwilio(phone: string, body: string) {
   const account = process.env.TWILIO_ACCOUNT_SID;
   const user = process.env.TWILIO_API_KEY || account;
   const password = process.env.TWILIO_API_KEY_SECRET || process.env.TWILIO_AUTH_TOKEN;
   const from = process.env.TWILIO_FROM;
-  // No fixed code, logging of OTPs, or production fallback.
   if (!account || !user || !password || !from) throw new CustomerError("smsUnavailable", 503);
   const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${account}/Messages.json`, {
     method: "POST", headers: { Authorization: `Basic ${Buffer.from(`${user}:${password}`).toString("base64")}`, "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ To: phone, From: from, Body: purpose === "request" ? (lang === "it" ? `Roma Office Sharing: codice di verifica richiesta ${code}. Valido 10 minuti. Non condividerlo.` : `Roma Office Sharing: request verification code ${code}. Valid for 10 minutes. Do not share it.`) : (lang === "it" ? `Roma Office Sharing: codice di accesso ${code}. Valido 5 minuti. Non condividerlo con nessuno.` : `Roma Office Sharing: your sign-in code is ${code}. Valid for 5 minutes. Never share this code.`) }),
+    body: new URLSearchParams({ To: phone, From: from, Body: body }),
     signal: AbortSignal.timeout(12000),
   });
   if (!response.ok) throw new CustomerError("smsUnavailable", 503);
+}
+
+// Aruba SMS REST API (https://smsdevelopers.aruba.it/). The sender must be an
+// Alias SMS already activated in the Aruba SMS panel before it can be used here.
+async function sendViaAruba(phone: string, body: string) {
+  const email = process.env.ARUBA_SMS_EMAIL; const password = process.env.ARUBA_SMS_PASSWORD; const sender = process.env.ARUBA_SMS_SENDER;
+  if (!email || !password || !sender) throw new CustomerError("smsUnavailable", 503);
+  const base = "https://smspanel.aruba.it/API/v1.0/REST";
+  const tokenResponse = await fetch(`${base}/token`, {
+    headers: { Authorization: `Basic ${Buffer.from(`${email}:${password}`).toString("base64")}` },
+    signal: AbortSignal.timeout(12000),
+  });
+  if (!tokenResponse.ok) throw new CustomerError("smsUnavailable", 503);
+  const [userKey, accessToken] = (await tokenResponse.text()).trim().split(";");
+  if (!userKey || !accessToken) throw new CustomerError("smsUnavailable", 503);
+  const smsResponse = await fetch(`${base}/sms`, {
+    method: "POST",
+    headers: { user_key: userKey, Access_token: accessToken, "Content-Type": "application/json" },
+    body: JSON.stringify({ message: body, message_type: "N", recipient: [phone], sender, returnCredits: false }),
+    signal: AbortSignal.timeout(12000),
+  });
+  if (smsResponse.status !== 201) throw new CustomerError("smsUnavailable", 503);
+  const result = await smsResponse.json().catch(() => null);
+  if (result?.result !== "OK") throw new CustomerError("smsUnavailable", 503);
+}
+
+export async function sendLoginSms(phone: string, code: string, lang: Lang, purpose: "login" | "request" = "login") {
+  if (!/^\+[1-9]\d{7,14}$/.test(phone)) throw new CustomerError("unavailable", 503);
+  // No fixed code, logging of OTPs, or production fallback.
+  const body = purpose === "request"
+    ? (lang === "it" ? `Roma Office Sharing: codice di verifica richiesta ${code}. Valido 10 minuti. Non condividerlo.` : `Roma Office Sharing: request verification code ${code}. Valid for 10 minutes. Do not share it.`)
+    : (lang === "it" ? `Roma Office Sharing: codice di accesso ${code}. Valido 5 minuti. Non condividerlo con nessuno.` : `Roma Office Sharing: your sign-in code is ${code}. Valid for 5 minutes. Never share this code.`);
+  if (process.env.SMS_PROVIDER === "aruba") await sendViaAruba(phone, body);
+  else await sendViaTwilio(phone, body);
 }

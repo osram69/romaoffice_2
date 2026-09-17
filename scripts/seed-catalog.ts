@@ -19,6 +19,11 @@ async function seed() {
       { service: "postal", months: 12, listCents: 54000, offerCents: 50000, newActivation: false },
     ]).onConflictDoNothing();
     await tx.insert(serviceAddons).values([
+      { code: "legal_office_hours", service: "legal_unit", titleIt: "Affitto ufficio temporaneo attrezzato", titleEn: "Temporary equipped office rental", priceCents: 2500, billing: "per_hour", sortOrder: 1 },
+      { code: "legal_secretary", service: "legal_unit", titleIt: "Segreteria Virtuale con numero dedicato", titleEn: "Virtual secretary with a dedicated number", priceCents: 4000, annualCents: 5000, billing: "monthly", selectable: true, sortOrder: 2 },
+      { code: "legal_extra_opening", service: "legal_unit", titleIt: "Apertura corrispondenza extra", titleEn: "Additional mail opening", priceCents: 150, billing: "per_envelope", sortOrder: 3 },
+      { code: "legal_archive", service: "legal_unit", titleIt: "Archivio documentazione", titleEn: "Document archive", priceCents: 800, billing: "monthly", maxQuantity: 5, selectable: true, sortOrder: 4 },
+      { code: "legal_forwarding", service: "legal_unit", titleIt: "Inoltro corrispondenza", titleEn: "Mail forwarding", priceCents: 1000, billing: "per_shipment", sortOrder: 5 },
       { code: "virtual_secretary", service: "postal", titleIt: "Segreteria Virtuale con numero dedicato", titleEn: "Virtual secretary with a dedicated number", priceCents: 4000, annualCents: 5000, billing: "monthly", selectable: true, sortOrder: 1 },
       { code: "extra_opening", service: "postal", titleIt: "Apertura corrispondenza extra", titleEn: "Additional mail opening", priceCents: 100, billing: "per_envelope", sortOrder: 2 },
       { code: "archive", service: "postal", titleIt: "Archivio documentazione", titleEn: "Document archive", priceCents: 600, billing: "monthly", maxQuantity: 5, selectable: true, sortOrder: 3 },
@@ -28,6 +33,6 @@ async function seed() {
       { code: "mail_forwarding", service: "postal", titleIt: "Inoltro corrispondenza", titleEn: "Mail forwarding", priceCents: 700, billing: "per_shipment", sortOrder: 7 },
     ]).onConflictDoNothing();
   });
-  console.log("Catalog seeded: 8 durations, 2 services and 7 postal extras. Existing prices were NOT overwritten.");
+  console.log("Catalog seeded: 8 durations, 2 services, 5 legal_unit extras and 7 postal extras. Existing prices were NOT overwritten.");
 }
 seed().catch(error => { console.error(error.message); process.exitCode = 1; }).finally(() => pool.end());

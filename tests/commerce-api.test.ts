@@ -78,7 +78,7 @@ test("database offers, immutable attachments and postal checkout", async t => {
         await writeFile(attachmentPath, original, { flag: "wx" }); createdFixture = true;
       }
       const requestId = randomUUID(); offerIds.push(requestId);
-      const data = { requestId, service: "postal" as const, lang: "it" as const, title: "Mr" as const, firstName: "Mario", lastName: "Rossi", email, consent: true as const };
+      const data = { requestId, service: "postal" as const, lang: "it" as const, title: "Mr" as const, firstName: "Mario", lastName: "Rossi", email, notes: "", consent: true as const };
       const mail = buildStandardOfferEmail(data, product, original); assert.strictEqual(mail.attachments![0].content, original); assert.equal(mail.attachments![0].filename, MODULE_FILENAME); assert.ok(mail.text.includes("280,00"));
       const first = await offerApi(makeRequest("/api/standard-offer", data)); assert.equal(first.status, 200); assert.equal((await first.json()).sent, true);
       const count = smtp.messages.length; assert.equal((await offerApi(makeRequest("/api/standard-offer", data))).status, 200); assert.equal(smtp.messages.length, count);

@@ -36,6 +36,13 @@ export function quote(product: ProductOffer, input: { months: number; newActivat
   return { service: product.code, catalogVersion: product.version, months: tier.months, listCents: tier.listCents, baseCents, offerApplied, newActivationDiscountCents, additionalDomiciliationDiscountCents, serviceNetCents, addonLines, addonsCents, netCents, vatBps: product.vatBps, vatCents, totalCents: netCents + vatCents, renewalBaseCents: baseCents, newActivationEligible };
 }
 export function formatEur(cents: number, lang: Lang = "it") { return new Intl.NumberFormat(lang === "it" ? "it-IT" : "en-GB", { style: "currency", currency: "EUR" }).format(cents / 100); }
+export function monthlyEquivalent(cents: number, months: number, lang: Lang = "it") { return formatEur(Math.round(cents / months), lang); }
+export function renewalNote(product: ProductOffer, lang: Lang) {
+  const it = lang === "it";
+  return offerActive(product)
+    ? (it ? "Il canone di rinnovo resta quello mostrato in tabella (colonna “Offerta”, dove presente): non si torna al listino barrato. Lo sconto nuove attivazioni si applica una sola volta, alla prima sottoscrizione." : "The renewal fee stays the amount shown in the table (the “Offer” column, where present): it never reverts to the struck-through standard rate. The new-activation discount applies once only, at first sign-up.")
+    : (it ? "Le offerte promozionali sono scadute: il canone applicato, anche ai rinnovi, è quello di listino." : "Promotional offers have expired: the standard rate applies, including at renewal.");
+}
 export function validity(product: ProductOffer, lang: Lang) {
   if (!product.offerValidUntil) return lang === "it" ? "Attuale offerta" : "Current offer";
   return `${lang === "it" ? "Offerte valide fino al" : "Offers valid until"} ${new Date(product.offerValidUntil).toLocaleDateString(lang === "it" ? "it-IT" : "en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Rome" })}`;

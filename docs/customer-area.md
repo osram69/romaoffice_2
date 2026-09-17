@@ -21,10 +21,13 @@ Set through your Node application's protected environment settings in hPanel. Th
 | `AUTH_SECRET` | Random secret, at least 32 characters, for authentication HMACs and rate-limit identifiers. Generate using `openssl rand -hex 32`. |
 | `CUSTOMER_DOCUMENT_KEY` | 32-byte encryption key expressed as 64 hex characters, generated independently. Keep a backed-up copy in a secrets manager. |
 | `CUSTOMER_STORAGE_PATH` | Absolute or app-relative private directory; defaults to `private/customer-contracts`. Never set this under `public_html`, `public`, or another publicly served directory. |
+| `SMS_PROVIDER` | `twilio` (default) or `aruba`. Selects which block below is used — see `docs/../README.md#sms-provider-twilio-or-aruba`. |
 | `TWILIO_ACCOUNT_SID` | Twilio account. |
 | `TWILIO_API_KEY`, `TWILIO_API_KEY_SECRET` | Recommended production SMS authentication. |
 | `TWILIO_AUTH_TOKEN` | Alternative to API key authentication. |
 | `TWILIO_FROM` | SMS-capable sender in E.164 format, with the required destination permissions. |
+| `ARUBA_SMS_EMAIL`, `ARUBA_SMS_PASSWORD` | Aruba SMS panel account, used only server-side to obtain an API token. |
+| `ARUBA_SMS_SENDER` | An Alias SMS already activated in the Aruba SMS panel. Aruba rejects sends from any sender that is not pre-activated there. |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Transactional password-setup/recovery emails. |
 | `NEXT_PUBLIC_SITE_URL` | Canonical HTTPS origin used for email links. |
 | `TRUSTED_CLIENT_IP_HEADER` | Optional header set and overwritten by your trusted reverse proxy (for example `x-real-ip`). Do not trust client-supplied headers. Without this setting, the global IP limiter uses a shared bucket in addition to per-account limits. |

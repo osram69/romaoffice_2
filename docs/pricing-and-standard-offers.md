@@ -1,12 +1,21 @@
-# Tariffe: due servizi, attivazione o offerta standard
+# Tariffe: due servizi, quattro modi per attivarli
 
 ## Comportamento richiesto
 
-1. **Domiciliazione Sede Legale / Unità Locale**: tabella 3, 6, 12, 24, 36, 48 mesi; pulsanti **Attiva subito** e **Ricevi offerta standard**.
-2. **Domiciliazione Postale / Commerciale**, immediatamente sotto: tabella 6 e 12 mesi; pulsanti **Attiva subito** e **Richiedi preventivo standard**.
+1. **Domiciliazione Sede Legale / Unità Locale**: tabella 3, 6, 12, 24, 36, 48 mesi; pulsanti **Attiva subito**, **Compila il modulo online**, **Ricevi offerta standard** e **Scarica il modulo**.
+2. **Domiciliazione Postale / Commerciale**, immediatamente sotto: tabella 6 e 12 mesi; stessi quattro pulsanti (con etichetta **Richiedi preventivo standard** al posto di "Ricevi offerta standard").
 3. Altri servizi: solo Uffici arredati, Sale corsi e riunioni, Segreteria virtuale.
 
 Tutto è disponibile anche in inglese. I collegamenti di attivazione usano `/attiva.html?service=legal_unit` e `/attiva.html?service=postal` (oppure `/en/activate.html`). Il selettore IT/EN conserva il servizio.
+
+## Quattro percorsi di attivazione per offerta
+
+Ogni scheda tariffa (`PricingOffer` in `src/components/PricingOffers.tsx`) espone quattro CTA indipendenti, sul modello di siti concorrenti come businesscenterroma.it:
+
+1. **Attiva subito** → flusso completo online descritto nel README (`ActivationFlow.tsx`): dati, OTP SMS, pagamento Stripe/PayPal/SumUp/bonifico. Nessuna modifica in questa iterazione.
+2. **Compila il modulo online** (`ManualRequestModal.tsx`, endpoint `POST /api/manual-request`) → form leggero (denominazione, P.IVA, Codice Fiscale, rappresentante, email, durata/tariffa scelta dal catalogo, note facoltative, consenso). Nessun OTP, nessun pagamento: invia una sola email al cliente con copia nascosta (bcc) all'amministrazione, che poi prepara manualmente contratto e fattura. Nessun record viene salvato su database: la richiesta esiste solo come email, protetta da rate limiting IP/email (stesso meccanismo di `standard-offer`).
+3. **Ricevi offerta standard / Richiedi preventivo standard** (`StandardOfferModal.tsx`, invariato) → invia via email listino, condizioni e il modulo PDF originale in allegato.
+4. **Scarica il modulo** → link di download diretto verso `public/Modulo_Richiesta_Domiciliazione_ns.pdf` (stesso file usato come allegato dal percorso 3), da stampare/compilare/firmare e inviare via email a `info@romaofficesharing.it`. **Il file non è presente in `public/` in questo repository** (stesso limite di asset già segnalato più sotto): il bottone genererà un 404 finché il PDF autentico non viene caricato in quel percorso.
 
 ## Prezzi solo dal database
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircle2, LoaderCircle, RefreshCw, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 import { FormEvent, PointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { Lang } from "@/lib/site";
 
@@ -34,12 +35,11 @@ export function ContactForm({ lang }: { lang: Lang }) {
       <label>{labels.email}<input name="email" type="email" autoComplete="email" aria-invalid={!!errors.email} aria-describedby={errors.email ? "err-email" : undefined} />{err("email")}</label>
       <label>{labels.email2}<input name="emailConfirm" type="email" autoComplete="email" aria-invalid={!!errors.emailConfirm} aria-describedby={errors.emailConfirm ? "err-emailConfirm" : undefined} />{err("emailConfirm")}</label>
       <label>{labels.phone}<input name="phone" type="tel" autoComplete="tel" /></label>
-      <label>{labels.subject}<select name="subject"><option>{it ? "Informazioni Generali" : "General Information"}</option><option>{it ? "Uffici Arredati" : "Furnished Offices"}</option><option>{it ? "Domiciliazioni" : "Business addresses"}</option><option>{it ? "Tariffe" : "Pricing"}</option><option>{it ? "Corsi" : "Training"}</option><option>{it ? "Altro" : "Other"}</option></select></label>
+      <label>{labels.subject}<select name="subject"><option>{it ? "Informazioni Generali" : "General Information"}</option><option>{it ? "Uffici Arredati" : "Furnished Offices"}</option><option>{it ? "Domiciliazioni" : "Business addresses"}</option><option>{it ? "Tariffe" : "Pricing"}</option><option>{it ? "Contratti Smart" : "Smart-Start agreements"}</option><option>{it ? "Corsi" : "Training"}</option><option>{it ? "Altro" : "Other"}</option></select></label>
     </div>
     <label>{labels.message}<textarea name="message" rows={6} aria-invalid={!!errors.message} aria-describedby={errors.message ? "err-message" : undefined} />{err("message")}</label>
 <div className="honeypot" aria-hidden="true"><label>Website<input name="website" tabIndex={-1} autoComplete="off" /></label></div>
-    <label className="check-label"><input name="consent" type="checkbox" value="true" /> <span>{labels.consent}*</span></label>{err("consent")}
-    <p className="form-note">{it ? "Consulta la Privacy Policy. reCAPTCHA è attivabile tramite configurazione." : "See our Privacy Policy. reCAPTCHA can be enabled in configuration."}</p>
+    <label className="check-label"><input name="consent" type="checkbox" value="true" /> <span>{labels.consent} <Link href={it ? "/privacy.html" : "/en/privacy.html"} target="_blank" rel="noopener noreferrer">{it ? "(leggi l’informativa privacy)" : "(read the privacy notice)"}</Link>*</span></label>{err("consent")}
     <button className="button primary" disabled={state === "loading"}>{state === "loading" && <LoaderCircle className="spin" />}{labels.submit}</button>
     <div aria-live="polite" className={`form-status ${state}`}>{state === "success" ? (it ? "Grazie! La richiesta è stata inviata." : "Thank you! Your enquiry has been sent.") : state === "error" ? (it ? "Invio non riuscito. Riprova o chiamaci." : "Submission failed. Please retry or call us.") : ""}</div>
   </form>;

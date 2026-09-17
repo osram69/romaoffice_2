@@ -42,7 +42,7 @@ export const ui = {
   it: {
     skip: "Vai al contenuto", nav: "Navigazione principale", menu: "Menu", close: "Chiudi", language: "Cambia lingua",
     home: "Home", offices: "Uffici", domiciliation: "Domiciliazione", pricing: "Tariffe", about: "Chi siamo", contact: "Contatti", gallery: "Gallery", customer: "Area Clienti",
-    activate: "ATTIVA ORA", activateNow: "ATTIVA SUBITO", call: "Chiama ora: 06 2111 6268", discover: "Scopri il servizio", details: "Dettagli",
+    activate: "ATTIVA ORA", activateNow: "ATTIVA ONLINE", call: "Chiama ora: 06 2111 6268", discover: "Scopri il servizio", details: "Dettagli",
     hours: "Orari", center: "Centro e Reception", weekdays: "Lun–Ven 8:30–18:00", saturday: "Sabato 8:30–13:00 (su richiesta)",
     rights: "Tutti i diritti riservati", trademark: "ROMA OFFICE SHARING è un marchio registrato di Cube Engineering s.r.l.",
     revoke: "Puoi revocare il consenso scrivendo a cubeng@pec.it o chiamando +39 06 21116268.",
@@ -52,7 +52,7 @@ export const ui = {
   en: {
     skip: "Skip to content", nav: "Main navigation", menu: "Menu", close: "Close", language: "Change language",
     home: "Home", offices: "Offices", domiciliation: "Business addresses", pricing: "Pricing", about: "About", contact: "Contact", gallery: "Gallery", customer: "Customer Area",
-    activate: "ACTIVATE NOW", activateNow: "ACTIVATE NOW", call: "Call now: +39 06 21.11.6268", discover: "Discover the service", details: "Details",
+    activate: "ACTIVATE NOW", activateNow: "ACTIVATE ONLINE", call: "Call now: +39 06 21.11.6268", discover: "Discover the service", details: "Details",
     hours: "Opening hours", center: "Business Centre & Reception", weekdays: "Mon–Fri 8:30–18:00", saturday: "Saturday 8:30–13:00 (on request)",
     rights: "All rights reserved", trademark: "ROMA OFFICE SHARING is a registered trademark of Cube Engineering s.r.l.",
     revoke: "You can withdraw consent by emailing cubeng@pec.it or calling +39 06 21116268.",

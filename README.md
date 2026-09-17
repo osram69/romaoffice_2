@@ -61,6 +61,7 @@ Requirements: Node.js 20+, npm and PostgreSQL.
 ```dotenv
 DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE
 NEXT_PUBLIC_SITE_URL=https://www.romaofficesharing.it
+NEXT_PUBLIC_GTM_ID=GTM-K9GGQ2WV
 STRIPE_SECRET=sk_test_REPLACE
 STRIPE_WEBHOOK_SECRET=whsec_REPLACE
 NEXT_PUBLIC_STRIPE_PUBLISHABLE=pk_test_REPLACE
@@ -77,9 +78,13 @@ BANK_NAME=REPLACE
 ADMIN_EMAIL=info@romaofficesharing.it
 MAIL_FROM=no-reply@romaofficesharing.it
 OTP_SECRET=GENERATE_A_LONG_RANDOM_SECRET
+SMS_PROVIDER=twilio
 TWILIO_ACCOUNT_SID=REPLACE
 TWILIO_AUTH_TOKEN=REPLACE
 TWILIO_FROM=+39_REPLACE
+ARUBA_SMS_EMAIL=REPLACE
+ARUBA_SMS_PASSWORD=REPLACE
+ARUBA_SMS_SENDER=REPLACE
 ESIGN_PROVIDER_KEY=REPLACE
 ESIGN_WEBHOOK_SECRET=REPLACE
 SMTP_HOST=smtp.hostinger.com
@@ -161,7 +166,7 @@ The purchasable offer is **Domiciliazione Sede Legale / Unità Locale** with dur
 
 1. The customer fills the request form: company data (only if the company already exists), mandatory legal representative/administrator data, contract duration (3/6/12/24/36/48 months), contract start date and a valid phone number, plus the mandatory GDPR consent.
 2. `POST /api/domiciliation-request` validates the data with Zod, recomputes the price server-side and stores a `pending` order.
-3. `POST /api/send-otp` sends a 10-minute code to the declared mobile (Twilio when configured; `123456` only without credentials for local demonstration). `POST /api/verify-otp` compares an HMAC of the code in constant time and limits attempts. Submission is blocked until the code is verified.
+3. `POST /api/send-otp` sends a 10-minute code to the declared mobile through the configured SMS provider (Twilio or Aruba — see "SMS provider" below; sending fails closed if neither is configured). `POST /api/verify-otp` compares an HMAC of the code in constant time and limits attempts. Submission is blocked until the code is verified.
 4. `POST /api/domiciliation-request/finalize` checks that the OTP was verified, marks the order `filled`, generates the request PDF and emails it to the administration address; the customer also receives an email.
 5. Payment method is chosen by the customer:
    - **PayPal / Stripe / SumUp**: the endpoint creates the provider session and returns the hosted-payment URL (Stripe Checkout, PayPal Orders approve link, SumUp Hosted Checkout). Amounts are always recalculated server-side.
@@ -190,7 +195,16 @@ Consent can be changed via **Cookie settings** in every footer. Privacy and foot
 
 ## Email and SMS
 
-Use Hostinger SMTP, SendGrid or Mailgun with Nodemailer in Node or PHPMailer in PHP. Queue transactional delivery and record provider message IDs, not full message content. Twilio is implemented through its REST API; MessageBird, Vonage or an Italian provider can replace it. Rate-limit by IP, phone and order; use CAPTCHA after suspicious retries. Twilio test credentials do not deliver real SMS—use test magic numbers to validate API errors, and a controlled real number only in a documented staging test.
+Use Hostinger SMTP, SendGrid or Mailgun with Nodemailer in Node or PHPMailer in PHP. Queue transactional delivery and record provider message IDs, not full message content. Rate-limit by IP, phone and order; use CAPTCHA after suspicious retries.
+
+### SMS provider: Twilio or Aruba
+
+`sendLoginSms` in `src/lib/customer-auth.ts` sends every OTP used by the site — both the customer-area login and the domiciliation request/purchase flow (`POST /api/send-otp`) go through this single function, so switching provider never requires touching the calling code. Set `SMS_PROVIDER=twilio` (default) or `SMS_PROVIDER=aruba`, then configure only that provider's variables.
+
+- **Twilio**: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` (or `TWILIO_API_KEY`/`TWILIO_API_KEY_SECRET`), `TWILIO_FROM`. Test credentials do not deliver real SMS—use test magic numbers to validate API errors, and a controlled real number only in a documented staging test.
+- **Aruba SMS** ([smsdevelopers.aruba.it](https://smsdevelopers.aruba.it/)): `ARUBA_SMS_EMAIL`, `ARUBA_SMS_PASSWORD` (the Aruba SMS panel account), `ARUBA_SMS_SENDER` (an **Alias SMS you must first activate in the Aruba SMS panel** — Guide → Hosting e domini → SMS → Invio/statistiche → Attiva alias; the API rejects any sender that is not already active). The integration calls `GET /API/v1.0/REST/token` with HTTP Basic auth to obtain a non-expiring `user_key`/`access_token` pair, then `POST /API/v1.0/REST/sms` with those as `user_key`/`Access_token` headers for every message — there is nothing to renew or cache. Buy an SMS credit bundle in the Aruba panel before going live; sending fails once credits run out.
+
+MessageBird, Vonage or another provider can be added the same way: one more `sendVia...` function in `customer-auth.ts` and one more branch in `sendLoginSms`.
 
 ## Deployment alternatives
 
@@ -205,6 +219,10 @@ When splitting frontend/backend, set a strict allowed origin, use HTTPS, CSRF pr
 The site includes semantic landmarks/headings, a skip link, visible focus, keyboard mobile menu, live validation status, explicit labels, reduced-motion handling, sufficient color contrast, local optimized imagery, responsive image generation, lazy map loading, unique localized metadata, canonical/hreflang, localized LocalBusiness JSON-LD, `sitemap.xml` and `robots.txt`.
 
 Image: Pexels photo 8082224 by Max Vakhtbovych, downloaded in compressed form. Verify the Pexels licence/attribution policy at launch.
+
+### Analytics and Search Console migration from the Joomla site
+
+`src/components/Analytics.tsx` loads Google Tag Manager (container `NEXT_PUBLIC_GTM_ID`, copied from the live Joomla site's `GTM-K9GGQ2WV`) only after the visitor accepts the "Analytics" cookie category — never unconditionally, and with no `<noscript>` fallback (that would bypass consent for no-JS visitors). Re-check inside that GTM container which tags are configured (the old site also loaded a **Universal Analytics** property, `UA-47165981-1`, which stopped processing data in 2023–2024 and was not carried over): create a GA4 property if one does not already exist and configure it inside the same GTM container, so no further code changes are needed here. The `google-site-verification` meta tag in `src/app/layout.tsx` reuses the Joomla site's Search Console verification token, so the existing property keeps working once this domain replaces it — verify in Search Console after launch that it is still recognised.
 
 ## Pre-launch QA checklist
 

@@ -6,7 +6,6 @@ import { ActivationFlow } from "./ActivationFlow";
 import { Gallery, GalleryPreview } from "./Gallery";
 import { CustomerArea } from "./CustomerArea";
 import { AddressServiceDetails, hasAddressDetail } from "./AddressServices";
-import { BrandWords } from "./BrandWords";
 import { type ServiceCode } from "@/lib/pricing";
 import { getCatalog } from "@/lib/catalog";
 import { PricingOffer } from "./PricingOffers";
@@ -19,39 +18,50 @@ export function PageView({ pageKey, lang, initialService = "legal_unit" }: { pag
     {page.kind === "home" ? <>
       <section className="hero home-hero">
         <Image src="/images/office-hero.jpg" alt={it ? "Ufficio arredato moderno e luminoso" : "Bright modern furnished office"} fill priority sizes="100vw" />
-        <div className="hero-shade" /><div className="hero-content shell"><span className="eyebrow light"><BrandWords /></span><h1>{page.title}</h1><p>{page.description}</p><div className="hero-actions"><Link href={it ? "/attiva.html" : "/en/activate.html"} className="button accent">{t.activateNow}<ArrowRight /></Link><Link href={it ? "/tariffe.html" : "/en/pricing.html"} className="hero-secondary">{it ? "VEDI TARIFFE E OFFERTE" : "SEE PRICING & OFFERS"}</Link><a href={`tel:${contact.phoneHref}`} className="call-link"><Phone />{t.call}</a></div></div>
-        <div className="hero-facts shell"><div><b>2014</b><span>{it ? "al fianco delle imprese" : "supporting businesses"}</span></div><div><b>Roma</b><span>{it ? "centro, a due passi da Termini" : "centre, steps from Termini"}</span></div><div><b>8:30–18:00</b><span>{it ? "reception dedicata" : "dedicated reception"}</span></div></div>
+        <div className="hero-shade" /><div className="hero-content shell"><h1>{page.title}</h1><p>{page.description}</p><div className="hero-actions"><Link href={it ? "/attiva.html" : "/en/activate.html"} className="button accent">{t.activateNow}<ArrowRight /></Link><Link href={it ? "/tariffe.html" : "/en/pricing.html"} className="hero-secondary">{it ? "VEDI TARIFFE E OFFERTE" : "SEE PRICING & OFFERS"}</Link><a href={`tel:${contact.phoneHref}`} className="call-link"><Phone />{t.call}</a></div></div>
+        <div className="hero-facts shell"><div><b>{it ? "Dal 2014" : "Since 2014"}</b><span>{it ? "al fianco delle imprese" : "supporting businesses"}</span></div><div><b>Roma</b><span>{it ? "centro, a due passi da Termini" : "centre, steps from Termini"}</span></div><div><b>{it ? "Online" : "Online"}</b><span>{it ? "attivazione e pagamento in pochi minuti" : "activation and payment in minutes"}</span></div></div>
       </section>
       <section className="section shell"><div className="section-heading"><div><span className="eyebrow">{it ? "SOLUZIONI" : "SOLUTIONS"}</span><h2>{it ? "Tutto ciò che serve al tuo business" : "Everything your business needs"}</h2></div><p>{it ? "Spazi, indirizzo e servizi professionali in un unico luogo, con la flessibilità di scegliere solo ciò che serve." : "Workspace, business address and professional services in one place—with the flexibility to choose only what you need."}</p></div><ServiceGrid lang={lang} /></section>
       <section className="split-section"><div className="split-image"><Image src="/images/office-hero.jpg" alt="" fill sizes="50vw" /></div><div className="split-copy"><span className="eyebrow">PALAZZO GENTILONI</span><h2>{it ? "Il prestigio della storia, l’efficienza del presente" : "Historic prestige, modern efficiency"}</h2><p>{it ? "Al primo piano di Palazzo Gentiloni, ambienti curati e tecnologie all’avanguardia accolgono il tuo lavoro e i tuoi clienti." : "On the first floor of Palazzo Gentiloni, refined spaces and up-to-date technology welcome you, your work and your clients."}</p><ul className="check-list"><li><Check />{it ? "Posizione centrale e rappresentativa" : "Central, prestigious location"}</li><li><Check />{it ? "Spazi pronti e connessi" : "Connected, ready-to-use spaces"}</li><li><Check />{it ? "Assistenza professionale" : "Professional support"}</li></ul><Link className="arrow-link" href={it ? "/chi-siamo.html" : "/en/about.html"}>{it ? "CONOSCI ROMA OFFICE SHARING" : "MEET ROMA OFFICE SHARING"}<ArrowRight /></Link></div></section>
+      <TrustBar lang={lang} />
       <GalleryPreview lang={lang} />
       <Cta lang={lang} />
     </> : <>
-      <section className={page.kind === "customer" ? "page-hero customer-page-hero" : "page-hero"}><div className="shell"><span className="eyebrow">{page.eyebrow}</span><h1>{page.title}</h1><p>{page.description}</p></div></section>
-      <Breadcrumb lang={lang} title={page.title} home={home} />
+      {!hasAddressDetail(pageKey) && <section className={page.kind === "customer" ? "page-hero customer-page-hero" : "page-hero"}><div className="shell"><span className="eyebrow">{page.eyebrow}</span><h1>{page.title}</h1><p>{page.description}</p></div></section>}
+      <Breadcrumb lang={lang} title={page.title} home={home} bare={hasAddressDetail(pageKey)} />
       <PageBody kind={page.kind} lang={lang} pageKey={pageKey} initialService={initialService} />
     </>}
   </main>;
 }
 
-function Breadcrumb({ lang, title, home }: {lang:Lang;title:string;home:string}) { return <nav className="breadcrumb shell" aria-label="Breadcrumb"><Link href={home}>{ui[lang].home}</Link><span>/</span><span aria-current="page">{title}</span></nav>; }
+function TrustBar({ lang }: { lang: Lang }) {
+  const it = lang === "it";
+  const stats: [string, string][] = [
+    ["2014", it ? "anno di fondazione, Palazzo Gentiloni" : "founded in, Palazzo Gentiloni"],
+    ["●", it ? "aziende domiciliate ad oggi — DA COMPLETARE con il dato reale" : "companies hosted to date — TO BE FILLED with the real figure"],
+    ["0 €", it ? "deposito cauzionale richiesto, sempre" : "security deposit ever required"],
+    ["3", it ? "modi per pagare online: Stripe, PayPal, SumUp" : "ways to pay online: Stripe, PayPal, SumUp"],
+  ];
+  return <section className="trust-bar"><div className="shell">{stats.map(([n, l]) => <div key={l}><b className={n === "●" ? "placeholder" : undefined}>{n}</b><span>{l}</span></div>)}</div></section>;
+}
+function Breadcrumb({ lang, title, home, bare }: {lang:Lang;title:string;home:string;bare?:boolean}) { return <nav className={`breadcrumb shell${bare ? " breadcrumb-bare" : ""}`} aria-label="Breadcrumb"><Link href={home}>{ui[lang].home}</Link><span>/</span><span aria-current="page">{title}</span></nav>; }
 function ServiceGrid({lang}:{lang:Lang}) { return <div className="service-grid">{services[lang].map(s=>{const Icon=icons[s.icon as keyof typeof icons];return <article className="service-card" key={s.title}><div className="service-icon"><Icon /></div><h3>{s.title}</h3><p>{s.text}</p><Link href={s.href}>{ui[lang].discover}<ArrowRight/><span className="sr-only">: {s.title}</span></Link></article>})}</div>; }
-function Cta({lang}:{lang:Lang}) {const it=lang==="it";return <section className="cta-band"><div className="shell"><div><span className="eyebrow light">{it?"PARLIAMONE":"LET’S TALK"}</span><h2>{it?"Pronto a dare spazio alla tua attività?":"Ready to give your business room to grow?"}</h2></div><div><Link className="button accent" href={it?"/attiva.html":"/en/activate.html"}>{it?"ATTIVA SUBITO":"ACTIVATE NOW"}<ArrowRight/></Link><Link className="button secondary" href={it?"/contatti.html":"/en/contact.html"}>{it?"RICHIEDI INFORMAZIONI":"REQUEST INFORMATION"}</Link><a href={`tel:${contact.phoneHref}`}>{ui[lang].call}</a></div></div></section>}
+function Cta({lang}:{lang:Lang}) {const it=lang==="it";return <section className="cta-band"><div className="shell"><div><span className="eyebrow light">{it?"PARLIAMONE":"LET’S TALK"}</span><h2>{it?"Pronto a dare spazio alla tua attività?":"Ready to give your business room to grow?"}</h2></div><div><Link className="button accent" href={it?"/attiva.html":"/en/activate.html"}>{it?"ATTIVA ONLINE":"ACTIVATE ONLINE"}<ArrowRight/></Link><Link className="button secondary" href={it?"/contatti.html":"/en/contact.html"}>{it?"RICHIEDI INFORMAZIONI":"REQUEST INFORMATION"}</Link><a href={`tel:${contact.phoneHref}`}>{ui[lang].call}</a></div></div></section>}
 
 async function PageBody({kind,lang,pageKey,initialService}:{kind:string;lang:Lang;pageKey:string;initialService:ServiceCode}) {
  const it=lang==="it"; const p=pages[pageKey]; const t=ui[lang];
- const catalog = kind === "pricing" || kind === "activation" ? await getCatalog() : null;
+ const catalog = kind === "pricing" || kind === "activation" || hasAddressDetail(pageKey) ? await getCatalog() : null;
  if(kind==="gallery") return <Gallery lang={lang}/>;
  if(kind==="customer") return <section className="customer-shell shell"><CustomerArea lang={lang}/></section>;
- if(hasAddressDetail(pageKey)) return <><AddressServiceDetails pageKey={pageKey} lang={lang}/><Cta lang={lang}/></>;
+ if(hasAddressDetail(pageKey)) return <><AddressServiceDetails pageKey={pageKey} lang={lang} catalog={catalog!}/><Cta lang={lang}/></>;
  if(pageKey==="servizi-domiciliazione.html" || pageKey==="en/domiliation-services.html") return <>
    <section className="section shell address-overview"><div className="section-heading"><div><span className="eyebrow">{it?"DUE ESIGENZE, DUE SOLUZIONI":"TWO NEEDS, TWO SOLUTIONS"}</span><h2>{it?"Sede legale o recapito postale?":"Registered office or mailing address?"}</h2></div><p>{it?"Scegli il servizio in base all’uso dell’indirizzo. Il recapito postale non equivale alla sede legale di una società.":"Choose the service based on how you need to use the address. A mailing address is not the same as a company’s registered office."}</p></div>
-   <div className="address-comparison">{services[lang].slice(1,3).map((service,index)=><article key={service.href}><span className="eyebrow">0{index+1} — {it?"LA TUA PRESENZA A ROMA":"YOUR PRESENCE IN ROME"}</span><h3>{service.title}</h3><p>{service.text}</p><p className="comparison-note">{index===0?(it?"Per indicare l’indirizzo negli atti della società, dopo verifica e conferma di attivazione.":"For use in your company’s official records, following checks and activation confirmation."):(it?"Per ricevere corrispondenza professionale senza trasferire la sede della tua attività.":"For receiving business correspondence without relocating your registered office.")}</p><Link className="button secondary" href={service.href}>{it?"Scopri cosa include":"See what’s included"}<ArrowRight/></Link></article>)}</div></section><Cta lang={lang}/></>;
+   <div className="address-comparison">{services[lang].slice(1,3).map((service,index)=><article key={service.href}><span className="eyebrow">0{index+1} — {index===0?(it?"SEDE UFFICIALE DELLA SOCIETÀ":"YOUR COMPANY’S OFFICIAL ADDRESS"):(it?"SOLO RECAPITO, SENZA TRASFERIRE LA SEDE":"MAILING ONLY, NO RELOCATION NEEDED")}</span><h3>{service.title}</h3><p>{service.text}</p><p className="comparison-note">{index===0?(it?"Per indicare l’indirizzo negli atti della società, dopo verifica e conferma di attivazione.":"For use in your company’s official records, following checks and activation confirmation."):(it?"Per ricevere corrispondenza professionale senza trasferire la sede della tua attività.":"For receiving business correspondence without relocating your registered office.")}</p><Link className="button secondary" href={service.href}>{it?"Scopri cosa include":"See what’s included"}<ArrowRight/></Link></article>)}</div></section><Cta lang={lang}/></>;
 
  if(kind==="contact") return <section className="section shell contact-layout"><div><span className="eyebrow">{it?"SCRIVICI":"WRITE TO US"}</span><h2>{it?"Come possiamo aiutarti?":"How can we help?"}</h2><ContactForm lang={lang}/></div><aside className="contact-aside"><div className="contact-detail"><MapPin/><div><b>{it?"Indirizzo":"Address"}</b><p>{contact.address}</p></div></div><div className="contact-detail"><Phone/><div><b>{it?"Telefono":"Phone"}</b><p><a href={`tel:${contact.phoneHref}`}>{contact.phone}</a><br/>Fax {contact.fax}</p></div></div><div className="contact-detail"><Mail/><div><b>Email</b><p><a href={`mailto:${contact.email}`}>{contact.email}</a></p></div></div><div className="contact-detail"><Clock3/><div><b>{ui[lang].hours}</b><p>{ui[lang].weekdays}<br/>{ui[lang].saturday}</p></div></div><Map lang={lang}/></aside></section>;
   if(kind==="pricing") return <>
   <section className="section shell">
-    <div className="section-heading"><div><span className="eyebrow">{it?"OFFERTE E TARIFFE":"OFFERS & PRICING"}</span><h2>{it?"Tutte le offerte":"All our offers"}</h2></div><p>{it?"Qui trovi le tariffe dei servizi attivabili online. Completa la richiesta nella pagina di attivazione: nessun addebito avviene prima della conferma dei dati.":"Here you find the rates of the services you can activate online. Complete the request on the activation page: no charge is made before your details are confirmed."}</p></div>
+    <p className="pricing-intro">{it?"Completa la richiesta nella pagina di attivazione: nessun addebito avviene prima della conferma dei dati.":"Complete the request on the activation page: no charge is made before your details are confirmed."}</p>
     <PricingOffer product={catalog!.legal_unit} lang={lang}/>
     <PricingOffer product={catalog!.postal} lang={lang}/>
     <OtherOffers lang={lang}/>
@@ -70,7 +80,7 @@ async function PageBody({kind,lang,pageKey,initialService}:{kind:string;lang:Lan
   </>;
   if(kind==="activation") return <>
   <section className="section shell">
-    <div className="section-heading"><div><span className="eyebrow">{it?"MODULO DI RICHIESTA":"REQUEST FORM"}</span><h2>{it?"Compila e attiva la domiciliazione":"Apply for your business address service"}</h2></div><p>{it?"I campi contrassegnati con * sono obbligatori. Il numero di cellulare viene verificato con un codice SMS prima dell’invio.":"Fields marked * are mandatory. Your mobile number is verified with an SMS code before submission."}</p></div>
+    <div className="section-heading"><div><span className="eyebrow">{it?"MODULO DI RICHIESTA":"REQUEST FORM"}</span><h2>{it?"I tuoi dati":"Your details"}</h2></div><p>{it?"I campi contrassegnati con * sono obbligatori. Il numero di cellulare viene verificato con un codice SMS prima dell’invio.":"Fields marked * are mandatory. Your mobile number is verified with an SMS code before submission."}</p></div>
     <ActivationFlow key={`${lang}-${initialService}`} lang={lang} catalog={catalog!} initialService={initialService}/>
   </section>
   <Cta lang={lang}/>
@@ -83,7 +93,7 @@ async function PageBody({kind,lang,pageKey,initialService}:{kind:string;lang:Lan
  return <><section className="section shell service-detail"><div><span className="eyebrow">{it?"IL SERVIZIO":"THE SERVICE"}</span><h2>{p.intro || (it?"Una soluzione professionale, semplice e flessibile":"A professional, simple and flexible solution")}</h2><p>{it?"Costruiamo il servizio intorno alle esigenze della tua attività, con assistenza dedicata e condizioni trasparenti.":"We shape the service around your organisation, with dedicated support and transparent terms."}</p>{p.bullets&&<Feature title={it?"Cosa include":"What’s included"} items={p.bullets}/>}<Link href={it?"/contatti.html":"/en/contact.html"} className="button primary">{t.activate}<ArrowRight/></Link></div><aside className="service-side"><div><b>{it?"Hai bisogno di aiuto?":"Need help?"}</b><p>{it?"Parla con il nostro team per configurare la soluzione giusta.":"Speak to our team to configure the right solution."}</p><a href={`tel:${contact.phoneHref}`} className="arrow-link"><Phone/>{t.call}</a></div></aside></section><Cta lang={lang}/></>;
 }
 function Feature({title,items}:{title:string;items:string[]}){return <div><h3>{title}</h3><ul className="check-list">{items.map(i=><li key={i}><Check/>{i}</li>)}</ul></div>}
-function Map({lang}:{lang:Lang}){return <iframe className="map" title={lang==="it"?"Mappa di Via Venti Settembre 118, Roma":"Map of Via Venti Settembre 118, Rome"} loading="lazy" src="https://www.openstreetmap.org/export/embed.html?bbox=12.4935%2C41.9018%2C12.5005%2C41.9072&layer=mapnik&marker=41.9045%2C12.4970"/>}
+function Map({lang}:{lang:Lang}){return <iframe className="map" title={lang==="it"?"Mappa di Via Venti Settembre 118, Roma":"Map of Via Venti Settembre 118, Rome"} loading="lazy" src="https://www.openstreetmap.org/export/embed.html?bbox=12.4894%2C41.9010%2C12.4975%2C41.9065&layer=mapnik&marker=41.9037423%2C12.4934357"/>}
 
 function OtherOffers({lang}:{lang:Lang}){
   const it=lang==="it";
