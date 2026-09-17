@@ -27,5 +27,9 @@ export async function POST(req: NextRequest) {
       return "sent";
     });
     return result === "sent" ? json({ ok: true, resendAfter: 60 }) : json({ error: result }, 429);
-  } catch (error) { return error instanceof CustomerError ? json({ error: error.code }, error.status) : json({ error: "smsUnavailable" }, 503); }
+  } catch (error) {
+    if (error instanceof CustomerError) { console.error("Send OTP rejected", error.code, error.status); return json({ error: error.code }, error.status); }
+    console.error("Send OTP failed", error instanceof Error ? error.name : "UnknownError");
+    return json({ error: "smsUnavailable" }, 503);
+  }
 }

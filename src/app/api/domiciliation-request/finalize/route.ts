@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     return json({ paymentMethod, orderRef: orderId, emailSent: sent.customerSent, adminMailSent: sent.adminSent, totalCents: priced.totalCents, pdfBase64: pdf.toString("base64"), bankTransferDetails: paymentMethod === "bank_transfer" ? bankLines : undefined,
       message: sent.customerSent ? (it ? "La richiesta è registrata e l’email è stata inviata. Controlla la tua casella di posta." : "Your application is recorded and the email has been sent. Please check your inbox.") : (it ? "La richiesta è registrata, ma l’email non è stata inviata. Scarica il riepilogo e contatta la reception." : "Your application is recorded, but the email was not sent. Download the summary and contact reception."), ...checkout });
   } catch (error) {
-    if (error instanceof CustomerError) return json({ error: error.code }, error.status);
+    if (error instanceof CustomerError) { console.error("Request finalization rejected", error.code, error.status); return json({ error: error.code }, error.status); }
     console.error("Request finalization failed", error instanceof Error ? error.name : "UnknownError");
     return json({ error: "finalize-failed" }, 400);
   }

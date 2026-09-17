@@ -77,7 +77,7 @@ BANK_BIC=REPLACE
 BANK_NAME=REPLACE
 ADMIN_EMAIL=info@romaofficesharing.it
 MAIL_FROM=no-reply@romaofficesharing.it
-OTP_SECRET=GENERATE_A_LONG_RANDOM_SECRET
+AUTH_SECRET=GENERATE_WITH_openssl_rand_-hex_32
 SMS_PROVIDER=twilio
 TWILIO_ACCOUNT_SID=REPLACE
 TWILIO_AUTH_TOKEN=REPLACE
@@ -94,7 +94,7 @@ SMTP_PASS=REPLACE
 GOOGLE_MAPS_API_KEY=OPTIONAL_REPLACE
 ```
 
-Generate `OTP_SECRET` with `openssl rand -hex 32`. Never prefix server secrets with `NEXT_PUBLIC_`. Rotate any accidentally exposed secret immediately.
+Generate `AUTH_SECRET` with `openssl rand -hex 32` — it must be at least 32 characters or every authenticated/rate-limited request (including `/api/domiciliation-request`) fails closed with a 503. Never prefix server secrets with `NEXT_PUBLIC_`. Rotate any accidentally exposed secret immediately.
 
 ## Hostinger deployment
 

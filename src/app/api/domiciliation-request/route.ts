@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     response.cookies.set(ORDER_COOKIE, raw, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 8 * 3600 });
     return response;
   } catch (error) {
-    if (error instanceof CustomerError) return json({ error: error.code }, error.status);
+    if (error instanceof CustomerError) { console.error("Request creation rejected", error.code, error.status); return json({ error: error.code }, error.status); }
     console.error("Request creation failed", error instanceof Error ? error.name : "UnknownError");
     return json({ error: "request-failed" }, 400);
   }
