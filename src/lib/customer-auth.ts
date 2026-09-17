@@ -90,13 +90,13 @@ async function sendViaTwilio(phone: string, body: string) {
   const user = process.env.TWILIO_API_KEY || account;
   const password = process.env.TWILIO_API_KEY_SECRET || process.env.TWILIO_AUTH_TOKEN;
   const from = process.env.TWILIO_FROM;
-  if (!account || !user || !password || !from) throw new CustomerError("smsUnavailable", 503);
+  if (!account || !user || !password || !from) { console.error("Twilio SMS not configured: missing env vars", { account: !!account, user: !!user, password: !!password, from: !!from }); throw new CustomerError("smsUnavailable", 503); }
   const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${account}/Messages.json`, {
     method: "POST", headers: { Authorization: `Basic ${Buffer.from(`${user}:${password}`).toString("base64")}`, "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ To: phone, From: from, Body: body }),
     signal: AbortSignal.timeout(12000),
   });
-  if (!response.ok) throw new CustomerError("smsUnavailable", 503);
+  if (!response.ok) { console.error("Twilio SMS rejected", response.status, await response.text().catch(() => "")); throw new CustomerError("smsUnavailable", 503); }
 }
 
 // Aruba SMS REST API (https://smsdevelopers.aruba.it/). The sender must be an
