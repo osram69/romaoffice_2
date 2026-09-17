@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     return valid ? json({ ok: true }) : json({ error: "invalid-or-expired-code" }, 400);
   } catch (error) {
     if (error instanceof CustomerError) { console.error("Verify OTP rejected", error.code, error.status); return json({ error: error.code }, error.status); }
-    console.error("Verify OTP failed", error instanceof Error ? error.name : "UnknownError");
+    console.error("Verify OTP failed", error instanceof Error ? `${error.name}: ${error.message}` : error);
     return json({ error: "verification-failed" }, 400);
   }
 }
