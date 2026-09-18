@@ -14,8 +14,15 @@
 .gestione-btn-primary:hover { background: #0069d9; }
 .gestione-btn-primary:disabled { opacity: .65; cursor: wait; }
 
-.gestione-sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 260px; background: rgba(35,47,62,.96); color: #fff; z-index: 50; padding-top: 20px; overflow-y: auto; }
-.gestione-sidebar .sidebar-header { font-size: 1.3em; font-weight: bold; padding: 12px 20px 14px; color: #ff7900; border-bottom: 1px solid #444; letter-spacing: 1px; }
+.gestione-sidebar-toggle { position: fixed; left: 14px; top: 14px; z-index: 110; background: #232f3e; color: #ff7900; border: none; border-radius: 6px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.gestione-sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 90; }
+.gestione-sidebar {
+  position: fixed; left: 0; top: 0; bottom: 0; width: 270px; background: rgba(35,47,62,.97); color: #fff; z-index: 100;
+  padding-top: 64px; overflow-y: auto; transform: translateX(-100%); opacity: 0; pointer-events: none;
+  transition: transform .25s, opacity .2s; box-shadow: 4px 0 20px rgba(0,0,0,.2);
+}
+.gestione-sidebar.active { transform: translateX(0); opacity: 1; pointer-events: auto; }
+.gestione-sidebar .sidebar-header { padding: 12px 20px 16px; border-bottom: 1px solid #444; font-size: 1.05rem; }
 .gestione-sidebar .sidebar-user { padding: 10px 20px; font-size: 12px; color: #b7c0cc; border-bottom: 1px solid #243043; }
 .gestione-sidebar ul { list-style: none; padding: 0; margin: 0; }
 .gestione-sidebar li { border-bottom: 1px solid #243043; }
@@ -23,12 +30,8 @@
 .gestione-sidebar a:hover, .gestione-sidebar button.sidebar-link:hover, .gestione-sidebar li.active > a { background: rgba(26,34,48,.85); color: #ff7900; }
 .gestione-badge { display: inline-block; background: #ff7900; color: #232f3e; font-size: 10px; font-weight: 700; border-radius: 10px; padding: 2px 7px; margin-left: 6px; }
 
-.gestione-main { margin-left: 260px; padding: 32px; max-width: 1600px; }
-@media (max-width: 900px) { .gestione-sidebar { width: 210px; } .gestione-main { margin-left: 210px; padding: 20px; } }
-@media (max-width: 640px) {
-  .gestione-sidebar { position: static; width: auto; padding-top: 0; }
-  .gestione-main { margin-left: 0; padding: 16px; }
-}
+.gestione-main { padding: 32px 32px 32px 84px; max-width: 1700px; }
+@media (max-width: 640px) { .gestione-main { padding: 20px 16px 20px 70px; } .gestione-sidebar { width: 85vw; } }
 
 .gestione-h1 { font-size: 1.4rem; font-weight: 700; color: #232f3e; margin: 0; }
 .gestione-card { background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
@@ -53,3 +56,28 @@
 .gestione-field label { display: block; font-size: 12px; font-weight: 600; color: #232f3e; margin-bottom: 4px; }
 .gestione-field input, .gestione-field select, .gestione-field textarea { width: 100%; font-size: 13px; padding: 6px 10px; border-radius: 4px; border: 1px solid #c8c8c8; background: #f8f8f8; color: #232f3e; }
 .gestione-field textarea { min-height: 70px; }
+
+.gestione-letter-row td { background: #eaeaea; font-weight: bold; font-size: 1.3em; letter-spacing: 2px; color: #232f3e; padding: 6px 12px; }
+.gestione-ragione-link { color: #007bff; font-weight: 600; text-decoration: none; }
+.gestione-ragione-link:hover { text-decoration: underline; }
+.gestione-doc-dot { display: inline-block; width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,.15); }
+.gestione-doc-dot.red { background: #ff5757; }
+.gestione-doc-dot.yellow { background: #ffe066; }
+.gestione-doc-dot.green { background: #4cae4c; }
+.gestione-doc-dot.empty { background: #fff; }
+.gestione-row-actions { display: flex; gap: 6px; align-items: center; }
+.gestione-icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 4px; border: none; cursor: pointer; text-decoration: none; }
+.gestione-icon-btn.edit { background: #fff; color: #232f3e; border: 1px solid #ced4da; }
+.gestione-icon-btn.edit:hover { background: #f1f3f5; }
+.gestione-icon-btn.delete { background: #f8d7da; color: #dc3545; }
+.gestione-icon-btn.delete:hover { background: #f1b0b7; }
+
+.gestione-scheda-table { width: 100%; max-width: 900px; border-collapse: collapse; background: #fff; }
+.gestione-scheda-table th { background: #ff7900; color: #232f3e; text-align: right; font-size: 13px; padding: 8px 14px; border-bottom: 1px solid #eee; width: 220px; white-space: nowrap; vertical-align: top; }
+.gestione-scheda-table td { background: #f8f8f8; color: #222; font-weight: 500; font-size: 13px; padding: 8px 14px; border-bottom: 1px solid #eee; }
+.gestione-scheda-table-paired { max-width: 1100px; }
+.gestione-scheda-table-paired th { width: 180px; }
+.gestione-scheda-table-paired td { width: 40%; }
+@media (max-width: 800px) {
+  .gestione-scheda-table-paired, .gestione-scheda-table-paired tbody, .gestione-scheda-table-paired tr, .gestione-scheda-table-paired th, .gestione-scheda-table-paired td { display: block; width: auto !important; text-align: left !important; }
+}

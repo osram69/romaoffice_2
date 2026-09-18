@@ -2,6 +2,7 @@
 import { useActionState } from "react";
 import { useSearchParams } from "next/navigation";
 import { staffLoginAction } from "@/lib/staff-actions";
+import { BrandWords } from "@/components/BrandWords";
 
 export default function StaffLoginPage() {
   const [state, action, pending] = useActionState(staffLoginAction, { error: false });
@@ -10,7 +11,8 @@ export default function StaffLoginPage() {
   return (
     <div className="gestione-login-page">
       <form action={action} className="gestione-login-box">
-        <h1>Accesso Gestione</h1>
+        <h1>Accesso Dashboard</h1>
+        <p style={{ textAlign: "center", marginTop: -16, marginBottom: 24, fontSize: 14 }}><BrandWords /></p>
         {state.error && <div className="gestione-login-error">Username o password errati</div>}
         <input type="hidden" name="next" value={next} />
         <div className="form-group">

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import type { InferSelectModel } from "drizzle-orm";
 import type { domClients } from "@/db/schema";
+import { cleanText } from "@/lib/dom-status";
 
 type DomClient = InferSelectModel<typeof domClients>;
 
@@ -32,11 +33,11 @@ export function DomForm({ client, action, deleteAction }: { client?: DomClient; 
           </div>
           <div className="gestione-field"><label>Email</label><input name="emailPosta" type="text" defaultValue={client?.emailPosta ?? ""} /></div>
           <div className="gestione-field"><label>Email PEC</label><input name="emailPec" type="text" defaultValue={client?.emailPec ?? ""} /></div>
-          <div className="gestione-field"><label>Amministratore</label><input name="amministratore" defaultValue={client?.amministratore ?? ""} /></div>
-          <div className="gestione-field"><label>Telefono amministratore</label><input name="telefonoAmm" defaultValue={client?.telefonoAmm ?? ""} /></div>
-          <div className="gestione-field"><label>Persona di riferimento</label><input name="personaRif" defaultValue={client?.personaRif ?? ""} /></div>
-          <div className="gestione-field"><label>Telefono</label><input name="telefono" defaultValue={client?.telefono ?? ""} /></div>
-          <div className="gestione-field"><label>Telefono urgenze</label><input name="telefonoUrg" defaultValue={client?.telefonoUrg ?? ""} /></div>
+          <div className="gestione-field"><label>Amministratore</label><input name="amministratore" defaultValue={cleanText(client?.amministratore)} /></div>
+          <div className="gestione-field"><label>Telefono amministratore</label><input name="telefonoAmm" defaultValue={cleanText(client?.telefonoAmm)} /></div>
+          <div className="gestione-field"><label>Persona di riferimento</label><input name="personaRif" defaultValue={cleanText(client?.personaRif)} /></div>
+          <div className="gestione-field"><label>Telefono</label><input name="telefono" defaultValue={cleanText(client?.telefono)} /></div>
+          <div className="gestione-field"><label>Telefono urgenze</label><input name="telefonoUrg" defaultValue={cleanText(client?.telefonoUrg)} /></div>
           <div className="gestione-field">
             <label>Stato</label>
             <select name="stato" defaultValue={client?.stato ?? 1}>
@@ -54,8 +55,8 @@ export function DomForm({ client, action, deleteAction }: { client?: DomClient; 
           <div className="gestione-field"><label>Scadenza pagamento</label><input name="scadenzaPagamento" type="date" defaultValue={client?.scadenzaPagamento ?? ""} /></div>
           <div className="gestione-field"><label>Prezzo rinnovo (€)</label><input name="prezzoRinnovo" type="number" step="1" defaultValue={client?.prezzoRinnovo ?? ""} /></div>
           <div className="gestione-field"><label>Raccoglitore</label><input name="raccoglitore" type="number" defaultValue={client?.raccoglitore ?? 0} /></div>
-          <div className="gestione-field" style={{ gridColumn: "1 / -1" }}><label>Indirizzo spedizione posta</label><input name="indSpedPosta" defaultValue={client?.indSpedPosta ?? ""} /></div>
-          <div className="gestione-field" style={{ gridColumn: "1 / -1" }}><label>Note</label><textarea name="note" rows={3} defaultValue={client?.note ?? ""} /></div>
+          <div className="gestione-field" style={{ gridColumn: "1 / -1" }}><label>Indirizzo spedizione posta</label><input name="indSpedPosta" defaultValue={cleanText(client?.indSpedPosta)} /></div>
+          <div className="gestione-field" style={{ gridColumn: "1 / -1" }}><label>Note</label><textarea name="note" rows={3} defaultValue={cleanText(client?.note)} /></div>
         </div>
 
         <div>

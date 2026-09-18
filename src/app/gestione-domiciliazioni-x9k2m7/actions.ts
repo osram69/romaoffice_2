@@ -57,7 +57,7 @@ export async function createDomiciliazioneAction(formData: FormData) {
   await requireStaff();
   const [row] = await db.insert(domClients).values(fields(formData)).returning({ id: domClients.id });
   revalidatePath(BASE_PATH);
-  redirect(`${BASE_PATH}/${row.id}`);
+  redirect(`${BASE_PATH}/${row.id}/modifica`);
 }
 
 export async function updateDomiciliazioneAction(formData: FormData) {
@@ -67,6 +67,7 @@ export async function updateDomiciliazioneAction(formData: FormData) {
   await db.update(domClients).set(fields(formData)).where(eq(domClients.id, id));
   revalidatePath(BASE_PATH);
   revalidatePath(`${BASE_PATH}/${id}`);
+  revalidatePath(`${BASE_PATH}/${id}/modifica`);
 }
 
 export async function deleteDomiciliazioneAction(formData: FormData) {
