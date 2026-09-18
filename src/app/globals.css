@@ -22,7 +22,7 @@
 .price-table th,.price-table td{padding:1rem;border:1px solid var(--line);font-size:.95rem}
 .price-table thead th{background:var(--ink);color:#fff;font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;text-align:left}
 .price-table thead th:last-child,.price-table thead th:nth-child(2){text-align:right}
-@media(min-width:701px){.price-table{max-width:640px}}
+@media(min-width:701px){.price-table{max-width:640px;margin-inline:auto}}
 .price-table tbody th{text-align:left;background:var(--paper);color:var(--ink)}
 .price-table td{text-align:right}
 .price-table b{color:var(--ink)}
