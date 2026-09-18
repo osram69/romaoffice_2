@@ -42,7 +42,7 @@ export function DomForm({ client, action, deleteAction, onClose }: { client?: Do
   );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <form action={action}>
         {client && <input type="hidden" name="id" value={client.id} />}
         <table className="gestione-scheda-table gestione-scheda-table-paired gestione-scheda-table-edit">
@@ -108,6 +108,8 @@ export function DomForm({ client, action, deleteAction, onClose }: { client?: Do
           </tbody>
         </table>
 
+        {client && <DomDocumentUploads id={client.id} presenzaFile={client.presenzaFile} />}
+
         <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
           <button type="submit" className="gestione-btn gestione-btn-blue" style={{ padding: "9px 20px" }}>
             {client ? "Salva modifiche" : "Crea domiciliazione"}
@@ -115,8 +117,6 @@ export function DomForm({ client, action, deleteAction, onClose }: { client?: Do
           {onClose && <button type="button" onClick={onClose} className="gestione-btn gestione-btn-outline" style={{ padding: "9px 20px" }}>Chiudi</button>}
         </div>
       </form>
-
-      {client && <DomDocumentUploads id={client.id} presenzaFile={client.presenzaFile} />}
 
       {client && deleteAction && (
         <form action={deleteAction} className="gestione-card" style={{ padding: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>

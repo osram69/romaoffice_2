@@ -129,7 +129,7 @@ export function DomiciliazioniTable({ rows, stato }: { rows: DomClient[]; stato:
                     <tr className={index % 2 === 0 ? "row-even" : "row-odd"}>
                       <td style={{ color: "#999" }}>{index + 1}</td>
                       <td style={{ maxWidth: 220 }}>
-                        <button type="button" className="gestione-ragione-link gestione-ragione-name" title={row.ragioneSociale} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, font: "inherit", textAlign: "left" }} onClick={() => setViewing(row)}>
+                        <button type="button" className="gestione-ragione-link gestione-ragione-name" title={row.ragioneSociale} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit", textAlign: "left" }} onClick={() => setViewing(row)}>
                           {row.ragioneSociale}
                         </button>
                       </td>
@@ -157,7 +157,7 @@ export function DomiciliazioniTable({ rows, stato }: { rows: DomClient[]; stato:
                       <td><span className={`gestione-doc-dot ${docStatus(row)}`} title="Stato documenti" /></td>
                       <td>{row.raccoglitore}</td>
                       <td style={{ maxWidth: 220 }}>
-                        <button type="button" className="gestione-ragione-link gestione-ragione-name" title={row.ragioneSociale} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, font: "inherit", textAlign: "left" }} onClick={() => setViewing(row)}>
+                        <button type="button" className="gestione-ragione-link gestione-ragione-name" title={row.ragioneSociale} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit", textAlign: "left" }} onClick={() => setViewing(row)}>
                           {row.ragioneSociale}
                         </button>
                       </td>
