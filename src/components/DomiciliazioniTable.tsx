@@ -51,7 +51,7 @@ export function DomiciliazioniTable({ rows }: { rows: DomClient[] }) {
   return (
     <>
       <div className="gestione-card" style={{ overflowX: "auto" }}>
-        <table className="gestione-table">
+        <table className="gestione-table dom-list-table">
           <thead>
             <tr>
               <th>N°</th><th>Doc</th><th>Racc.</th><th>Ragione Sociale</th><th>Email</th><th>Email PEC</th><th>Telefono</th><th>Persona Rif.</th><th>Scadenza</th><th>Azioni</th>
@@ -65,12 +65,12 @@ export function DomiciliazioniTable({ rows }: { rows: DomClient[] }) {
               return (
                 <Fragment key={row.id}>
                   {showDivider && <tr className="gestione-letter-row"><td colSpan={10}>{letter}</td></tr>}
-                  <tr>
+                  <tr className={index % 2 === 0 ? "row-even" : "row-odd"}>
                     <td style={{ color: "#999" }}>{index + 1}</td>
                     <td><span className={`gestione-doc-dot ${docStatus(row)}`} title="Stato documenti" /></td>
                     <td>{row.raccoglitore}</td>
-                    <td>
-                      <button type="button" className="gestione-ragione-link" style={{ background: "none", border: "none", cursor: "pointer", padding: 0, font: "inherit" }} onClick={() => setViewing(row)}>
+                    <td style={{ maxWidth: 220 }}>
+                      <button type="button" className="gestione-ragione-link gestione-ragione-name" title={row.ragioneSociale} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, font: "inherit", textAlign: "left" }} onClick={() => setViewing(row)}>
                         {row.ragioneSociale}
                       </button>
                     </td>
@@ -104,7 +104,7 @@ export function DomiciliazioniTable({ rows }: { rows: DomClient[] }) {
         <div className="gestione-modal-overlay" onClick={() => setViewing(null)}>
           <div className="gestione-modal-box" onClick={e => e.stopPropagation()}>
             <div className="gestione-modal-header">
-              <h2>Scheda Società — {viewing.ragioneSociale}</h2>
+              <h2>Scheda Società {viewing.ragioneSociale}</h2>
               <button type="button" className="gestione-modal-close" aria-label="Chiudi" onClick={() => setViewing(null)}>×</button>
             </div>
             <div className="gestione-modal-body">
@@ -151,7 +151,7 @@ export function DomiciliazioniTable({ rows }: { rows: DomClient[] }) {
         <div className="gestione-modal-overlay" onClick={() => setEditing(null)}>
           <div className="gestione-modal-box" onClick={e => e.stopPropagation()}>
             <div className="gestione-modal-header">
-              <h2>Modifica — {editing.ragioneSociale}</h2>
+              <h2>Modifica dati Società {editing.ragioneSociale}</h2>
               <button type="button" className="gestione-modal-close" aria-label="Chiudi" onClick={() => setEditing(null)}>×</button>
             </div>
             <div className="gestione-modal-body">

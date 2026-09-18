@@ -6,13 +6,6 @@ import { cleanText } from "@/lib/dom-status";
 
 type DomClient = InferSelectModel<typeof domClients>;
 
-const STATI = [
-  { value: 0, label: "In Attivazione" },
-  { value: 1, label: "Attiva" },
-  { value: 2, label: "Decaduta" },
-  { value: 3, label: "Sospesa" },
-  { value: -1, label: "Vuota" },
-];
 const SEDI = [
   { value: 0, label: "San Martino" },
   { value: 1, label: "XX Settembre" },
@@ -23,65 +16,98 @@ const TIPOLOGIE = [
   { value: 2, label: "Professionale" },
   { value: 3, label: "Avvocato" },
 ];
+const STATI = [
+  { value: 0, label: "In Attivazione" },
+  { value: 1, label: "Attiva" },
+  { value: 2, label: "Decaduta" },
+  { value: 3, label: "Sospesa" },
+  { value: -1, label: "Vuota" },
+];
 
 export function DomForm({ client, action, deleteAction, onClose }: { client?: DomClient; action: (formData: FormData) => void; deleteAction?: (formData: FormData) => void; onClose?: () => void }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const row = (left: React.ReactNode, right?: React.ReactNode) => (
+    <tr>{left}{right ?? <><th /><td /></>}</tr>
+  );
+  const field = (label: string, input: React.ReactNode) => (
+    <>
+      <th>{label}</th>
+      <td>{input}</td>
+    </>
+  );
+  const text = (name: string, defaultValue?: string | null) => (
+    <input name={name} defaultValue={cleanText(defaultValue)} />
+  );
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <form action={action} className="gestione-card" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 18 }}>
+      <form action={action}>
         {client && <input type="hidden" name="id" value={client.id} />}
-        <div className="dom-form-grid">
-          <div className="gestione-field" style={{ gridColumn: "1 / -1" }}>
-            <label>Ragione Sociale *</label>
-            <input name="ragioneSociale" required defaultValue={client?.ragioneSociale ?? ""} />
-          </div>
-          <div className="gestione-field"><label>Email</label><input name="emailPosta" type="text" defaultValue={client?.emailPosta ?? ""} /></div>
-          <div className="gestione-field"><label>Email PEC</label><input name="emailPec" type="text" defaultValue={client?.emailPec ?? ""} /></div>
-          <div className="gestione-field"><label>Amministratore</label><input name="amministratore" defaultValue={cleanText(client?.amministratore)} /></div>
-          <div className="gestione-field"><label>Telefono amministratore</label><input name="telefonoAmm" defaultValue={cleanText(client?.telefonoAmm)} /></div>
-          <div className="gestione-field"><label>Persona di riferimento</label><input name="personaRif" defaultValue={cleanText(client?.personaRif)} /></div>
-          <div className="gestione-field"><label>Telefono</label><input name="telefono" defaultValue={cleanText(client?.telefono)} /></div>
-          <div className="gestione-field"><label>Telefono urgenze</label><input name="telefonoUrg" defaultValue={cleanText(client?.telefonoUrg)} /></div>
-          <div className="gestione-field">
-            <label>Stato</label>
-            <select name="stato" defaultValue={client?.stato ?? 1}>
-              {STATI.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-            </select>
-          </div>
-          <div className="gestione-field">
-            <label>Tipologia</label>
-            <select name="tipologia" defaultValue={client?.tipologia ?? 0}>
-              {TIPOLOGIE.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </select>
-          </div>
-          <div className="gestione-field">
-            <label>Sede</label>
-            <select name="sede" defaultValue={client?.sede ?? 1}>
-              {SEDI.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-            </select>
-          </div>
-          <div className="gestione-field"><label>Inizio domiciliazione</label><input name="inizioDom" type="date" defaultValue={client?.inizioDom ?? ""} /></div>
-          <div className="gestione-field"><label>Scadenza domiciliazione</label><input name="scadenzaDom" type="date" defaultValue={client?.scadenzaDom ?? ""} /></div>
-          <div className="gestione-field"><label>Scadenza pagamento</label><input name="scadenzaPagamento" type="date" defaultValue={client?.scadenzaPagamento ?? ""} /></div>
-          <div className="gestione-field"><label>Prezzo rinnovo (€)</label><input name="prezzoRinnovo" type="number" step="1" defaultValue={client?.prezzoRinnovo ?? ""} /></div>
-          <div className="gestione-field"><label>Raccoglitore</label><input name="raccoglitore" type="number" defaultValue={client?.raccoglitore ?? 0} /></div>
-          <div className="gestione-field" style={{ gridColumn: "1 / -1" }}><label>Indirizzo spedizione posta</label><input name="indSpedPosta" defaultValue={cleanText(client?.indSpedPosta)} /></div>
-          <div className="gestione-field" style={{ gridColumn: "1 / -1" }}><label>Note</label><textarea name="note" rows={3} defaultValue={cleanText(client?.note)} /></div>
-        </div>
+        <table className="gestione-scheda-table gestione-scheda-table-paired gestione-scheda-table-edit">
+          <tbody>
+            {row(field("Ragione Sociale *", <input name="ragioneSociale" required defaultValue={client?.ragioneSociale ?? ""} />))}
+            {row(
+              field("Email", text("emailPosta", client?.emailPosta)),
+              field("Email PEC", text("emailPec", client?.emailPec))
+            )}
+            {row(
+              field("Amministratore", text("amministratore", client?.amministratore)),
+              field("Telefono amministratore", text("telefonoAmm", client?.telefonoAmm))
+            )}
+            {row(
+              field("Persona di riferimento", text("personaRif", client?.personaRif)),
+              field("Telefono", text("telefono", client?.telefono))
+            )}
+            {row(
+              field("Telefono urgenze", text("telefonoUrg", client?.telefonoUrg)),
+              field("Sede", (
+                <select name="sede" defaultValue={client?.sede ?? 1}>
+                  {SEDI.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
+              ))
+            )}
+            {row(
+              field("Tipologia", (
+                <select name="tipologia" defaultValue={client?.tipologia ?? 0}>
+                  {TIPOLOGIE.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              )),
+              field("Stato", (
+                <select name="stato" defaultValue={client?.stato ?? 1}>
+                  {STATI.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
+              ))
+            )}
+            {row(
+              field("Inizio domiciliazione", <input name="inizioDom" type="date" defaultValue={client?.inizioDom ?? ""} />),
+              field("Scadenza domiciliazione", <input name="scadenzaDom" type="date" defaultValue={client?.scadenzaDom ?? ""} />)
+            )}
+            {row(
+              field("Scadenza pagamento", <input name="scadenzaPagamento" type="date" defaultValue={client?.scadenzaPagamento ?? ""} />),
+              field("Prezzo rinnovo (€)", <input name="prezzoRinnovo" type="number" step="1" defaultValue={client?.prezzoRinnovo ?? ""} />)
+            )}
+            {row(
+              field("Raccoglitore", <input name="raccoglitore" type="number" defaultValue={client?.raccoglitore ?? 0} />),
+              field("Indirizzo spedizione posta", text("indSpedPosta", client?.indSpedPosta))
+            )}
+            {row(field("Note", <textarea name="note" rows={2} defaultValue={cleanText(client?.note)} />))}
+            {row(
+              field("Contratto firmato", <input type="checkbox" name="contrFirmato" defaultChecked={!!client?.contrFirmato} />),
+              field("Controfirmato inviato", <input type="checkbox" name="controfirmatoInviato" defaultChecked={!!client?.controfirmatoInviato} />)
+            )}
+            {row(
+              field("Modulo presente", <input type="checkbox" name="moduloCont" defaultChecked={!!client?.moduloCont} />),
+              field("Doc. amministratore presente", <input type="checkbox" name="docAmmPres" defaultChecked={!!client?.docAmmPres} />)
+            )}
+            {row(
+              field("Allegato 1 presente", <input type="checkbox" name="allegato1Pres" defaultChecked={!!client?.allegato1Pres} />),
+              field("Visura presente", <input type="checkbox" name="visuraPres" defaultChecked={!!client?.visuraPres} />)
+            )}
+          </tbody>
+        </table>
 
-        <div>
-          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#232f3e", marginBottom: 8 }}>Documenti</label>
-          <div className="dom-form-checks">
-            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}><input type="checkbox" name="contrFirmato" defaultChecked={!!client?.contrFirmato} /> Contratto firmato</label>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}><input type="checkbox" name="controfirmatoInviato" defaultChecked={!!client?.controfirmatoInviato} /> Controfirmato inviato</label>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}><input type="checkbox" name="moduloCont" defaultChecked={!!client?.moduloCont} /> Modulo</label>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}><input type="checkbox" name="docAmmPres" defaultChecked={!!client?.docAmmPres} /> Doc. amministratore</label>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}><input type="checkbox" name="allegato1Pres" defaultChecked={!!client?.allegato1Pres} /> Allegato 1</label>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}><input type="checkbox" name="visuraPres" defaultChecked={!!client?.visuraPres} /> Visura</label>
-          </div>
-        </div>
-
-        <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
           <button type="submit" className="gestione-btn gestione-btn-blue" style={{ padding: "9px 20px" }}>
             {client ? "Salva modifiche" : "Crea domiciliazione"}
           </button>
@@ -100,12 +126,6 @@ export function DomForm({ client, action, deleteAction, onClose }: { client?: Do
           )}
         </form>
       )}
-
-      <style>{`
-        .dom-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .dom-form-checks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-        @media (max-width: 640px) { .dom-form-grid, .dom-form-checks { grid-template-columns: 1fr; } }
-      `}</style>
     </div>
   );
 }
