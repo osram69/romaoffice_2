@@ -5,8 +5,6 @@ import type { domClients } from "@/db/schema";
 
 type DomClient = InferSelectModel<typeof domClients>;
 
-const inputClass = "border border-slate-300 rounded px-2 py-1.5 text-sm w-full";
-const labelClass = "block text-xs font-medium text-slate-600 mb-1";
 const STATI = [
   { value: 0, label: "In Attivazione" },
   { value: 1, label: "Attiva" },
@@ -24,70 +22,76 @@ const TIPOLOGIE = [
 export function DomForm({ client, action, deleteAction }: { client?: DomClient; action: (formData: FormData) => void; deleteAction?: (formData: FormData) => void }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   return (
-    <div className="space-y-6">
-      <form action={action} className="bg-white rounded-lg shadow p-6 space-y-5">
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <form action={action} className="gestione-card" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 18 }}>
         {client && <input type="hidden" name="id" value={client.id} />}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="md:col-span-2">
-            <label className={labelClass}>Ragione Sociale *</label>
-            <input name="ragioneSociale" required defaultValue={client?.ragioneSociale ?? ""} className={inputClass} />
+        <div className="dom-form-grid">
+          <div className="gestione-field" style={{ gridColumn: "1 / -1" }}>
+            <label>Ragione Sociale *</label>
+            <input name="ragioneSociale" required defaultValue={client?.ragioneSociale ?? ""} />
           </div>
-          <div><label className={labelClass}>Email</label><input name="emailPosta" type="text" defaultValue={client?.emailPosta ?? ""} className={inputClass} /></div>
-          <div><label className={labelClass}>Email PEC</label><input name="emailPec" type="text" defaultValue={client?.emailPec ?? ""} className={inputClass} /></div>
-          <div><label className={labelClass}>Amministratore</label><input name="amministratore" defaultValue={client?.amministratore ?? ""} className={inputClass} /></div>
-          <div><label className={labelClass}>Telefono amministratore</label><input name="telefonoAmm" defaultValue={client?.telefonoAmm ?? ""} className={inputClass} /></div>
-          <div><label className={labelClass}>Persona di riferimento</label><input name="personaRif" defaultValue={client?.personaRif ?? ""} className={inputClass} /></div>
-          <div><label className={labelClass}>Telefono</label><input name="telefono" defaultValue={client?.telefono ?? ""} className={inputClass} /></div>
-          <div><label className={labelClass}>Telefono urgenze</label><input name="telefonoUrg" defaultValue={client?.telefonoUrg ?? ""} className={inputClass} /></div>
-          <div>
-            <label className={labelClass}>Stato</label>
-            <select name="stato" defaultValue={client?.stato ?? 1} className={inputClass}>
+          <div className="gestione-field"><label>Email</label><input name="emailPosta" type="text" defaultValue={client?.emailPosta ?? ""} /></div>
+          <div className="gestione-field"><label>Email PEC</label><input name="emailPec" type="text" defaultValue={client?.emailPec ?? ""} /></div>
+          <div className="gestione-field"><label>Amministratore</label><input name="amministratore" defaultValue={client?.amministratore ?? ""} /></div>
+          <div className="gestione-field"><label>Telefono amministratore</label><input name="telefonoAmm" defaultValue={client?.telefonoAmm ?? ""} /></div>
+          <div className="gestione-field"><label>Persona di riferimento</label><input name="personaRif" defaultValue={client?.personaRif ?? ""} /></div>
+          <div className="gestione-field"><label>Telefono</label><input name="telefono" defaultValue={client?.telefono ?? ""} /></div>
+          <div className="gestione-field"><label>Telefono urgenze</label><input name="telefonoUrg" defaultValue={client?.telefonoUrg ?? ""} /></div>
+          <div className="gestione-field">
+            <label>Stato</label>
+            <select name="stato" defaultValue={client?.stato ?? 1}>
               {STATI.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
           </div>
-          <div>
-            <label className={labelClass}>Tipologia</label>
-            <select name="tipologia" defaultValue={client?.tipologia ?? 0} className={inputClass}>
+          <div className="gestione-field">
+            <label>Tipologia</label>
+            <select name="tipologia" defaultValue={client?.tipologia ?? 0}>
               {TIPOLOGIE.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
           </div>
-          <div><label className={labelClass}>Inizio domiciliazione</label><input name="inizioDom" type="date" defaultValue={client?.inizioDom ?? ""} className={inputClass} /></div>
-          <div><label className={labelClass}>Scadenza domiciliazione</label><input name="scadenzaDom" type="date" defaultValue={client?.scadenzaDom ?? ""} className={inputClass} /></div>
-          <div><label className={labelClass}>Scadenza pagamento</label><input name="scadenzaPagamento" type="date" defaultValue={client?.scadenzaPagamento ?? ""} className={inputClass} /></div>
-          <div><label className={labelClass}>Prezzo rinnovo (€)</label><input name="prezzoRinnovo" type="number" step="1" defaultValue={client?.prezzoRinnovo ?? ""} className={inputClass} /></div>
-          <div><label className={labelClass}>Raccoglitore</label><input name="raccoglitore" type="number" defaultValue={client?.raccoglitore ?? 0} className={inputClass} /></div>
-          <div className="md:col-span-2"><label className={labelClass}>Indirizzo spedizione posta</label><input name="indSpedPosta" defaultValue={client?.indSpedPosta ?? ""} className={inputClass} /></div>
-          <div className="md:col-span-2"><label className={labelClass}>Note</label><textarea name="note" rows={3} defaultValue={client?.note ?? ""} className={inputClass} /></div>
+          <div className="gestione-field"><label>Inizio domiciliazione</label><input name="inizioDom" type="date" defaultValue={client?.inizioDom ?? ""} /></div>
+          <div className="gestione-field"><label>Scadenza domiciliazione</label><input name="scadenzaDom" type="date" defaultValue={client?.scadenzaDom ?? ""} /></div>
+          <div className="gestione-field"><label>Scadenza pagamento</label><input name="scadenzaPagamento" type="date" defaultValue={client?.scadenzaPagamento ?? ""} /></div>
+          <div className="gestione-field"><label>Prezzo rinnovo (€)</label><input name="prezzoRinnovo" type="number" step="1" defaultValue={client?.prezzoRinnovo ?? ""} /></div>
+          <div className="gestione-field"><label>Raccoglitore</label><input name="raccoglitore" type="number" defaultValue={client?.raccoglitore ?? 0} /></div>
+          <div className="gestione-field" style={{ gridColumn: "1 / -1" }}><label>Indirizzo spedizione posta</label><input name="indSpedPosta" defaultValue={client?.indSpedPosta ?? ""} /></div>
+          <div className="gestione-field" style={{ gridColumn: "1 / -1" }}><label>Note</label><textarea name="note" rows={3} defaultValue={client?.note ?? ""} /></div>
         </div>
 
         <div>
-          <label className={labelClass}>Documenti</label>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-            <label className="flex items-center gap-2"><input type="checkbox" name="contrFirmato" defaultChecked={!!client?.contrFirmato} /> Contratto firmato</label>
-            <label className="flex items-center gap-2"><input type="checkbox" name="controfirmatoInviato" defaultChecked={!!client?.controfirmatoInviato} /> Controfirmato inviato</label>
-            <label className="flex items-center gap-2"><input type="checkbox" name="moduloCont" defaultChecked={!!client?.moduloCont} /> Modulo</label>
-            <label className="flex items-center gap-2"><input type="checkbox" name="docAmmPres" defaultChecked={!!client?.docAmmPres} /> Doc. amministratore</label>
-            <label className="flex items-center gap-2"><input type="checkbox" name="allegato1Pres" defaultChecked={!!client?.allegato1Pres} /> Allegato 1</label>
-            <label className="flex items-center gap-2"><input type="checkbox" name="visuraPres" defaultChecked={!!client?.visuraPres} /> Visura</label>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#232f3e", marginBottom: 8 }}>Documenti</label>
+          <div className="dom-form-checks">
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}><input type="checkbox" name="contrFirmato" defaultChecked={!!client?.contrFirmato} /> Contratto firmato</label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}><input type="checkbox" name="controfirmatoInviato" defaultChecked={!!client?.controfirmatoInviato} /> Controfirmato inviato</label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}><input type="checkbox" name="moduloCont" defaultChecked={!!client?.moduloCont} /> Modulo</label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}><input type="checkbox" name="docAmmPres" defaultChecked={!!client?.docAmmPres} /> Doc. amministratore</label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}><input type="checkbox" name="allegato1Pres" defaultChecked={!!client?.allegato1Pres} /> Allegato 1</label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}><input type="checkbox" name="visuraPres" defaultChecked={!!client?.visuraPres} /> Visura</label>
           </div>
         </div>
 
-        <button type="submit" className="bg-slate-800 text-white rounded px-4 py-2 text-sm font-semibold hover:bg-slate-700">
+        <button type="submit" className="gestione-btn gestione-btn-blue" style={{ alignSelf: "flex-start", padding: "9px 20px" }}>
           {client ? "Salva modifiche" : "Crea domiciliazione"}
         </button>
       </form>
 
       {client && deleteAction && (
-        <form action={deleteAction} className="bg-white rounded-lg shadow p-4 flex items-center justify-between">
+        <form action={deleteAction} className="gestione-card" style={{ padding: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <input type="hidden" name="id" value={client.id} />
-          <p className="text-sm text-slate-500">Eliminazione permanente del record.</p>
+          <p style={{ fontSize: 13, color: "#666", margin: 0 }}>Eliminazione permanente del record.</p>
           {confirmDelete ? (
-            <button type="submit" className="bg-red-600 text-white rounded px-3 py-1.5 text-sm font-semibold hover:bg-red-700">Conferma eliminazione</button>
+            <button type="submit" className="gestione-btn gestione-btn-red">Conferma eliminazione</button>
           ) : (
-            <button type="button" onClick={() => setConfirmDelete(true)} className="text-red-600 underline text-sm font-semibold">Elimina domiciliazione</button>
+            <button type="button" onClick={() => setConfirmDelete(true)} style={{ color: "#dc3545", textDecoration: "underline", fontSize: 13, fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}>Elimina domiciliazione</button>
           )}
         </form>
       )}
+
+      <style>{`
+        .dom-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .dom-form-checks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        @media (max-width: 640px) { .dom-form-grid, .dom-form-checks { grid-template-columns: 1fr; } }
+      `}</style>
     </div>
   );
 }

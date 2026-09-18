@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { domClients } from "@/db/schema";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
-import { GestioneNav } from "@/components/GestioneNav";
+import { GestioneShell } from "@/components/GestioneNav";
 import { DomForm } from "@/components/DomForm";
 import { updateDomiciliazioneAction, deleteDomiciliazioneAction } from "../actions";
 
@@ -18,10 +18,9 @@ export default async function EditDomiciliazionePage({ params }: { params: Promi
   if (!client) notFound();
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-6">
-      <GestioneNav role={user.role} active="domiciliazioni" username={user.username} />
-      <h1 className="text-xl font-semibold">{client.ragioneSociale}</h1>
+    <GestioneShell role={user.role} active="domiciliazioni" username={user.username}>
+      <h1 className="gestione-h1" style={{ marginBottom: 16 }}>{client.ragioneSociale}</h1>
       <DomForm client={client} action={updateDomiciliazioneAction} deleteAction={deleteDomiciliazioneAction} />
-    </div>
+    </GestioneShell>
   );
 }
