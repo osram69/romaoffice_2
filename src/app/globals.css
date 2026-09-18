@@ -26,6 +26,7 @@
 .price-table tbody th{text-align:left;background:var(--paper);color:var(--ink)}
 .price-table td{text-align:right}
 .price-table b{color:var(--ink)}
+.price-struck{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--error)}
 .price-table tr.highlight{background:#fbf5eb}
 .price-table tr.highlight th,.price-table tr.highlight td{border-color:var(--gold)}
 .offer-flag{color:var(--gold-dark);font-weight:800;margin-left:.3rem}
