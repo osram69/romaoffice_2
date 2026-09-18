@@ -52,7 +52,7 @@ export function Footer({ lang: initialLang }: { lang: Lang }) {
     <div><h2>{t.contact}</h2><address>{contact.address}<br /><a href={`tel:${contact.phoneHref}`}>{contact.phone}</a><br />Fax: {contact.fax}<br /><a href={`mailto:${contact.email}`}>{contact.email}</a></address></div>
     <div><h2>{t.hours}</h2><p>{t.center}<br />{t.weekdays}<br />{t.saturday}</p><Link href={it ? "/gallery.html" : "/en/gallery.html"}>Gallery</Link><br /><Link href={it ? "/area-clienti.html" : "/en/customer-area.html"}>{t.customer}</Link></div>
     <div><h2>{it ? "Informazioni" : "Information"}</h2><p><Link href={`${prefix}/privacy.html`}>{it ? "Privacy" : "Privacy notice"}</Link><br /><Link href={`${prefix}/cookie-policy.html`}>Cookie Policy</Link><br /><button className="text-button" data-cookie-settings>{t.settings}</button></p><p className="small">{t.revoke}</p></div>
-  </div><div className="footer-bottom shell">© 2025 Cube Engineering s.r.l. — {t.rights}</div></footer>;
+  </div><div className="footer-bottom shell">© {new Date().getFullYear()} Cube Engineering s.r.l. — {t.rights}</div></footer>;
 }
 
 type Consent = { necessary: true; analytics: boolean; marketing: boolean; savedAt?: number };

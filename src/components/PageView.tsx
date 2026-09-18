@@ -19,11 +19,10 @@ export function PageView({ pageKey, lang, initialService = "legal_unit" }: { pag
       <section className="hero home-hero">
         <Image src="/images/office-hero.jpg" alt={it ? "Ufficio arredato moderno e luminoso" : "Bright modern furnished office"} fill priority sizes="100vw" />
         <div className="hero-shade" /><div className="hero-content shell"><h1>{page.title}</h1><p>{page.description}</p><div className="hero-actions"><Link href={it ? "/attiva.html" : "/en/activate.html"} className="button accent">{t.activateNow}<ArrowRight /></Link><Link href={it ? "/tariffe.html" : "/en/pricing.html"} className="hero-secondary">{it ? "VEDI TARIFFE E OFFERTE" : "SEE PRICING & OFFERS"}</Link><a href={`tel:${contact.phoneHref}`} className="call-link"><Phone />{t.call}</a></div></div>
-        <div className="hero-facts shell"><div><b>{it ? "Dal 2014" : "Since 2014"}</b><span>{it ? "al fianco delle imprese" : "supporting businesses"}</span></div><div><b>Roma</b><span>{it ? "centro, a due passi da Termini" : "centre, steps from Termini"}</span></div><div><b>{it ? "Online" : "Online"}</b><span>{it ? "attivazione e pagamento in pochi minuti" : "activation and payment in minutes"}</span></div></div>
+        <div className="hero-facts shell"><div><b>{it ? "Dal 2014" : "Since 2014"}</b><span>{it ? "al fianco delle imprese" : "supporting businesses"}</span></div><div><b>Roma</b><span>{it ? "centro, a due passi da Termini" : "centre, steps from Termini"}</span></div><div><b>{it ? "500+" : "500+"}</b><span>{it ? "domiciliazioni gestite" : "registered addresses managed"}</span></div></div>
       </section>
       <section className="section shell"><div className="section-heading"><div><span className="eyebrow">{it ? "SOLUZIONI" : "SOLUTIONS"}</span><h2>{it ? "Tutto ciò che serve al tuo business" : "Everything your business needs"}</h2></div><p>{it ? "Spazi, indirizzo e servizi professionali in un unico luogo, con la flessibilità di scegliere solo ciò che serve." : "Workspace, business address and professional services in one place—with the flexibility to choose only what you need."}</p></div><ServiceGrid lang={lang} /></section>
       <section className="split-section"><div className="split-image"><Image src="/images/office-hero.jpg" alt="" fill sizes="50vw" /></div><div className="split-copy"><span className="eyebrow">PALAZZO GENTILONI</span><h2>{it ? "Il prestigio della storia, l’efficienza del presente" : "Historic prestige, modern efficiency"}</h2><p>{it ? "Al primo piano di Palazzo Gentiloni, ambienti curati e tecnologie all’avanguardia accolgono il tuo lavoro e i tuoi clienti." : "On the first floor of Palazzo Gentiloni, refined spaces and up-to-date technology welcome you, your work and your clients."}</p><ul className="check-list"><li><Check />{it ? "Posizione centrale e rappresentativa" : "Central, prestigious location"}</li><li><Check />{it ? "Spazi pronti e connessi" : "Connected, ready-to-use spaces"}</li><li><Check />{it ? "Assistenza professionale" : "Professional support"}</li></ul><Link className="arrow-link" href={it ? "/chi-siamo.html" : "/en/about.html"}>{it ? "CONOSCI ROMA OFFICE SHARING" : "MEET ROMA OFFICE SHARING"}<ArrowRight /></Link></div></section>
-      <TrustBar lang={lang} />
       <GalleryPreview lang={lang} />
       <Cta lang={lang} />
     </> : <>
@@ -34,16 +33,6 @@ export function PageView({ pageKey, lang, initialService = "legal_unit" }: { pag
   </main>;
 }
 
-function TrustBar({ lang }: { lang: Lang }) {
-  const it = lang === "it";
-  const stats: [string, string][] = [
-    ["2014", it ? "anno di fondazione, Palazzo Gentiloni" : "founded in, Palazzo Gentiloni"],
-    ["●", it ? "aziende domiciliate ad oggi — DA COMPLETARE con il dato reale" : "companies hosted to date — TO BE FILLED with the real figure"],
-    ["0 €", it ? "deposito cauzionale richiesto, sempre" : "security deposit ever required"],
-    ["3", it ? "modi per pagare online: Stripe, PayPal, SumUp" : "ways to pay online: Stripe, PayPal, SumUp"],
-  ];
-  return <section className="trust-bar"><div className="shell">{stats.map(([n, l]) => <div key={l}><b className={n === "●" ? "placeholder" : undefined}>{n}</b><span>{l}</span></div>)}</div></section>;
-}
 function Breadcrumb({ lang, title, home, bare }: {lang:Lang;title:string;home:string;bare?:boolean}) { return <nav className={`breadcrumb shell${bare ? " breadcrumb-bare" : ""}`} aria-label="Breadcrumb"><Link href={home}>{ui[lang].home}</Link><span>/</span><span aria-current="page">{title}</span></nav>; }
 function ServiceGrid({lang}:{lang:Lang}) { return <div className="service-grid">{services[lang].map(s=>{const Icon=icons[s.icon as keyof typeof icons];return <article className="service-card" key={s.title}><div className="service-icon"><Icon /></div><h3>{s.title}</h3><p>{s.text}</p><Link href={s.href}>{ui[lang].discover}<ArrowRight/><span className="sr-only">: {s.title}</span></Link></article>})}</div>; }
 function Cta({lang}:{lang:Lang}) {const it=lang==="it";return <section className="cta-band"><div className="shell"><div><span className="eyebrow light">{it?"PARLIAMONE":"LET’S TALK"}</span><h2>{it?"Pronto a dare spazio alla tua attività?":"Ready to give your business room to grow?"}</h2></div><div><Link className="button accent" href={it?"/attiva.html":"/en/activate.html"}>{it?"ATTIVA ONLINE":"ACTIVATE ONLINE"}<ArrowRight/></Link><Link className="button secondary" href={it?"/contatti.html":"/en/contact.html"}>{it?"RICHIEDI INFORMAZIONI":"REQUEST INFORMATION"}</Link><a href={`tel:${contact.phoneHref}`}>{ui[lang].call}</a></div></div></section>}
