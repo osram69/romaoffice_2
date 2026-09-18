@@ -50,7 +50,7 @@ function UploadRow({ id, docType, label, present, onChange }: { id: number; docT
       <th><label>{label}</label></th>
       <td>
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-          <input ref={inputRef} type="file" accept="application/pdf" disabled={present || busy} style={{ maxWidth: 150 }} onChange={e => setHasFile(!!e.target.files?.length)} />
+          <input ref={inputRef} type="file" accept="application/pdf" className="gestione-upload-input" disabled={present || busy} onChange={e => setHasFile(!!e.target.files?.length)} />
           <button type="button" className="gestione-upload-btn" title="Carica" disabled={present || busy || !hasFile} onClick={upload}>💾</button>
           {present && <button type="button" className="gestione-btn gestione-btn-outline" style={{ fontSize: 11, padding: "3px 8px" }} disabled={busy} onClick={remove}>Rimuovi</button>}
           {status && <span style={{ fontSize: 11, color: status.color }}>{status.text}</span>}
@@ -64,8 +64,8 @@ export function DomDocumentUploads({ id, presenzaFile: initialPresenzaFile }: { 
   const [presenzaFile, setPresenzaFile] = useState(initialPresenzaFile);
 
   return (
-    <div style={{ marginTop: 20 }}>
-      <p style={{ fontSize: 13, fontWeight: 700, color: "#232f3e", marginBottom: 8 }}>Carica/aggiorna documenti PDF (i file saranno criptati AES-256):</p>
+    <div style={{ marginTop: 10 }}>
+      <p style={{ fontSize: 12, fontWeight: 700, color: "#232f3e", marginBottom: 4 }}>Carica/aggiorna documenti PDF (i file saranno criptati AES-256):</p>
       <table className="gestione-scheda-table gestione-scheda-table-paired gestione-scheda-table-edit">
         <tbody>
           {Array.from({ length: Math.ceil(DOC_UPLOADS.length / 2) }, (_, i) => [DOC_UPLOADS[i * 2], DOC_UPLOADS[i * 2 + 1]]).map(([a, b], i) => (

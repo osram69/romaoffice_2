@@ -42,7 +42,7 @@ export function DomForm({ client, action, deleteAction, onClose }: { client?: Do
   );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <form action={action}>
         {client && <input type="hidden" name="id" value={client.id} />}
         <table className="gestione-scheda-table gestione-scheda-table-paired gestione-scheda-table-edit">
@@ -108,7 +108,7 @@ export function DomForm({ client, action, deleteAction, onClose }: { client?: Do
           </tbody>
         </table>
 
-        <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+        <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
           <button type="submit" className="gestione-btn gestione-btn-blue" style={{ padding: "9px 20px" }}>
             {client ? "Salva modifiche" : "Crea domiciliazione"}
           </button>

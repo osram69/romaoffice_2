@@ -66,11 +66,11 @@ export async function printRaccoglitori(raccoglitore: number) {
       if (row.stato === 1 && row.sede === 1) w.line(row.ragioneSociale, { size: 15, bold: true, gap: 10 });
     }
   } else {
-    w.line("RAGIONE SOCIALE", { size: 14, bold: true });
-    w.columns("", "N. RACCOGLITORE", 380, { size: 14, bold: true, gap: 14 });
+    w.columns("RAGIONE SOCIALE", "N. RACCOGLITORE", 380, { size: 14, bold: true, gap: 14 });
     const rows = await db.select({ ragioneSociale: domClients.ragioneSociale, raccoglitore: domClients.raccoglitore })
       .from(domClients).where(eq(domClients.stato, 1)).orderBy(asc(domClients.ragioneSociale));
-    for (const row of rows) w.columns(row.ragioneSociale, String(row.raccoglitore), 380, { size: 11, gap: 8 });
+    // Mirrors generaetichette.php: alternate bold/normal rows for readability.
+    rows.forEach((row, i) => w.columns(row.ragioneSociale, String(row.raccoglitore), 380, { size: 11, gap: 8, bold: i % 2 === 0 }));
   }
   return w.bytes();
 }

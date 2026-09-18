@@ -1,5 +1,6 @@
 import type { InferSelectModel } from "drizzle-orm";
 import type { domClients } from "@/db/schema";
+import type { DocType } from "@/lib/dom-archive";
 
 type DomClient = InferSelectModel<typeof domClients>;
 
@@ -24,14 +25,16 @@ export function docStatus(client: DomClient): "red" | "yellow" | "green" {
   return "yellow";
 }
 
-export function presenzaFileLabels(presenzaFile: number): string[] {
-  const labels: [number, string][] = [
-    [PRESENZA_FILE_BITS.con, "Contratto"],
-    [PRESENZA_FILE_BITS.mod, "Modulo"],
-    [PRESENZA_FILE_BITS.all, "Allegato"],
-    [PRESENZA_FILE_BITS.doc, "Doc. amministratore"],
-    [PRESENZA_FILE_BITS.avc, "Adeguata verifica"],
-    [PRESENZA_FILE_BITS.rev, "Revoca"],
-  ];
-  return labels.filter(([bit]) => (presenzaFile & bit) === bit).map(([, label]) => label);
+// Exact labels from the legacy openScheda()'s "Allegati PDF" list (domiciliazioni.php).
+export const DOC_LABELS: { key: DocType; label: string }[] = [
+  { key: "con", label: "Contratto" },
+  { key: "mod", label: "Modulo" },
+  { key: "all", label: "Allegato 1" },
+  { key: "doc", label: "Doc Amm." },
+  { key: "avc", label: "Adeguata Verifica" },
+  { key: "rev", label: "Revoca/Disdetta" },
+];
+
+export function presenzaFileLabels(presenzaFile: number): { key: DocType; label: string }[] {
+  return DOC_LABELS.filter(d => (presenzaFile & PRESENZA_FILE_BITS[d.key]) === PRESENZA_FILE_BITS[d.key]);
 }
