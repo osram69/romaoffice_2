@@ -5,14 +5,16 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { serviceAddons, serviceCatalog, servicePrices } from "@/db/schema";
-import { ADMIN_SESSION_COOKIE, checkAdminPassword, createAdminSessionCookie, verifyAdminSessionCookie } from "@/lib/admin-auth";
+import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
 import type { ServiceCode } from "@/lib/pricing";
 
 const BASE_PATH = "/gestione-tariffe-x9k2m7";
 
 async function requireAdmin() {
   const store = await cookies();
-  if (!verifyAdminSessionCookie(store.get(ADMIN_SESSION_COOKIE)?.value)) redirect(`${BASE_PATH}/login`);
+  const user = await getStaffUser(store.get(STAFF_SESSION_COOKIE)?.value);
+  if (!user) redirect(`${BASE_PATH}/login?next=${BASE_PATH}`);
+  if (user.role !== "admin") redirect("/gestione-domiciliazioni-x9k2m7");
 }
 
 function toCents(formData: FormData, key: string) {
@@ -22,22 +24,6 @@ function toCents(formData: FormData, key: string) {
   return value;
 }
 
-export async function loginAction(_prevState: { error: boolean }, formData: FormData) {
-  "use server";
-  const password = String(formData.get("password") ?? "");
-  if (!checkAdminPassword(password)) return { error: true };
-  const session = createAdminSessionCookie();
-  const store = await cookies();
-  store.set(ADMIN_SESSION_COOKIE, session.value, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict", path: "/", maxAge: session.maxAge });
-  redirect(BASE_PATH);
-}
-
-export async function logoutAction() {
-  "use server";
-  const store = await cookies();
-  store.delete(ADMIN_SESSION_COOKIE);
-  redirect(`${BASE_PATH}/login`);
-}
 
 export async function updateServiceAction(formData: FormData) {
   "use server";

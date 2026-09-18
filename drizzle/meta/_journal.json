@@ -8,6 +8,13 @@
       "when": 1789661275828,
       "tag": "0000_lumpy_master_chief",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789741997627,
+      "tag": "0001_fantastic_blazing_skull",
+      "breakpoints": true
     }
   ]
 }

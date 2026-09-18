@@ -3,8 +3,10 @@ import { redirect } from "next/navigation";
 import { asc } from "drizzle-orm";
 import { db } from "@/db";
 import { serviceAddons, serviceCatalog, servicePrices } from "@/db/schema";
-import { ADMIN_SESSION_COOKIE, verifyAdminSessionCookie } from "@/lib/admin-auth";
-import { addPriceAction, logoutAction, updateAddonAction, updatePriceAction, updateServiceAction } from "./actions";
+import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
+import { staffLogoutAction } from "@/lib/staff-actions";
+import { addPriceAction, updateAddonAction, updatePriceAction, updateServiceAction } from "./actions";
+import { GestioneNav } from "@/components/GestioneNav";
 
 const SERVICE_LABELS: Record<string, string> = { legal_unit: "Domiciliazione Sede Legale / Unità Locale", postal: "Domiciliazione Postale" };
 const euro = (cents: number | null) => cents === null ? "" : (cents / 100).toFixed(2);
@@ -13,7 +15,9 @@ const btnClass = "bg-slate-800 text-white rounded px-3 py-1.5 text-xs font-semib
 
 export default async function AdminDashboardPage() {
   const store = await cookies();
-  if (!verifyAdminSessionCookie(store.get(ADMIN_SESSION_COOKIE)?.value)) redirect("/gestione-tariffe-x9k2m7/login");
+  const user = await getStaffUser(store.get(STAFF_SESSION_COOKIE)?.value);
+  if (!user) redirect("/gestione-tariffe-x9k2m7/login?next=/gestione-tariffe-x9k2m7");
+  if (user.role !== "admin") redirect("/gestione-domiciliazioni-x9k2m7");
 
   const [services, tiers, addons] = await Promise.all([
     db.select().from(serviceCatalog),
@@ -23,9 +27,9 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-10">
+      <GestioneNav role={user.role} active="tariffe" username={user.username} />
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Gestione tariffe</h1>
-        <form action={logoutAction}><button className="text-sm text-slate-500 underline">Esci</button></form>
       </div>
 
       {services.map(service => {

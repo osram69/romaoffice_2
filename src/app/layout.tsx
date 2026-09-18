@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const h = await headers();
   const pathname = h.get("x-pathname") || "/";
-  if (pathname.startsWith("/gestione-tariffe-x9k2m7")) return <html lang="it"><body>{children}</body></html>;
+  if (pathname.startsWith("/gestione-tariffe-x9k2m7") || pathname.startsWith("/gestione-domiciliazioni-x9k2m7")) return <html lang="it"><body>{children}</body></html>;
   const parts = pathname.split("/").filter(Boolean);
   const { key, lang } = resolvePath(parts);
   const jsonLd = {

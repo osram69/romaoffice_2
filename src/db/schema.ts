@@ -1,4 +1,4 @@
-import { boolean, integer, jsonb, pgEnum, pgTable, serial, text, timestamp, varchar, uuid, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, date, integer, jsonb, pgEnum, pgTable, serial, text, timestamp, varchar, uuid, uniqueIndex } from "drizzle-orm/pg-core";
 
 export const orderStatus = pgEnum("order_status", ["pending", "paid", "filled", "signed", "cancelled"]);
 export const contacts = pgTable("contacts", {
@@ -109,4 +109,61 @@ export const standardOfferRequests = pgTable("standard_offer_requests", {
   attachmentHash: text("attachment_hash"), catalogSnapshot: jsonb("catalog_snapshot"), messageId: text("message_id"), errorCode: text("error_code"),
   consentAt: timestamp("consent_at", { withTimezone: true }).defaultNow().notNull(),
   sentAt: timestamp("sent_at", { withTimezone: true }), createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Staff accounts for the internal management dashboards (pricing, domiciliazioni).
+// "admin" can reach every dashboard; "operatore" is restricted to domiciliazioni + chat.
+export const staffRole = pgEnum("staff_role", ["admin", "operatore"]);
+export const staffUsers = pgTable("staff_users", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  username: varchar("username", { length: 60 }).notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  role: staffRole("role").notNull().default("operatore"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+});
+export const staffSessions = pgTable("staff_sessions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => staffUsers.id, { onDelete: "cascade" }),
+  tokenHash: varchar("token_hash", { length: 64 }).notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Domiciliazioni manager, ported from the legacy PHP/MySQL tool (u136588113_domiciliazioni).
+export const domClients = pgTable("dom_clients", {
+  id: serial("id").primaryKey(),
+  legacyId: integer("legacy_id").unique(),
+  ragioneSociale: text("ragione_sociale").notNull(),
+  sede: integer("sede").default(1),
+  emailPosta: text("email_posta").notNull().default(""),
+  emailPec: text("email_pec"),
+  testoScadenza: text("testo_scadenza"),
+  testoProforma: text("testo_proforma"),
+  testoSospensione: text("testo_sospensione"),
+  amministratore: text("amministratore"),
+  telefonoAmm: text("telefono_amm"),
+  personaRif: text("persona_rif"),
+  telefono: text("telefono"),
+  telefonoUrg: text("telefono_urg"),
+  inizioDom: date("inizio_dom"),
+  scadenzaDom: date("scadenza_dom"),
+  scadenzaPagamento: date("scadenza_pagamento"),
+  contrFirmato: boolean("contr_firmato"),
+  controfirmatoInviato: boolean("controfirmato_inviato"),
+  moduloCont: boolean("modulo_cont"),
+  docAmmPres: boolean("doc_amm_pres"),
+  allegato1Pres: boolean("allegato1_pres"),
+  visuraPres: boolean("visura_pres"),
+  stato: integer("stato"),
+  note: text("note"),
+  indSpedPosta: text("ind_sped_posta"),
+  presenzaFile: integer("presenza_file").notNull().default(0),
+  tipologia: integer("tipologia").notNull().default(0),
+  raccoglitore: integer("raccoglitore").notNull().default(0),
+  prezzoRinnovo: integer("prezzo_rinnovo"),
+  scadenzaInviata: boolean("scadenza_inviata"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
