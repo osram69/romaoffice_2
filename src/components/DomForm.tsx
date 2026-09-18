@@ -13,6 +13,10 @@ const STATI = [
   { value: 3, label: "Sospesa" },
   { value: -1, label: "Vuota" },
 ];
+const SEDI = [
+  { value: 0, label: "San Martino" },
+  { value: 1, label: "XX Settembre" },
+];
 const TIPOLOGIE = [
   { value: 0, label: "Legale" },
   { value: 1, label: "Postale" },
@@ -20,7 +24,7 @@ const TIPOLOGIE = [
   { value: 3, label: "Avvocato" },
 ];
 
-export function DomForm({ client, action, deleteAction }: { client?: DomClient; action: (formData: FormData) => void; deleteAction?: (formData: FormData) => void }) {
+export function DomForm({ client, action, deleteAction, onClose }: { client?: DomClient; action: (formData: FormData) => void; deleteAction?: (formData: FormData) => void; onClose?: () => void }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -50,6 +54,12 @@ export function DomForm({ client, action, deleteAction }: { client?: DomClient; 
               {TIPOLOGIE.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
           </div>
+          <div className="gestione-field">
+            <label>Sede</label>
+            <select name="sede" defaultValue={client?.sede ?? 1}>
+              {SEDI.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </div>
           <div className="gestione-field"><label>Inizio domiciliazione</label><input name="inizioDom" type="date" defaultValue={client?.inizioDom ?? ""} /></div>
           <div className="gestione-field"><label>Scadenza domiciliazione</label><input name="scadenzaDom" type="date" defaultValue={client?.scadenzaDom ?? ""} /></div>
           <div className="gestione-field"><label>Scadenza pagamento</label><input name="scadenzaPagamento" type="date" defaultValue={client?.scadenzaPagamento ?? ""} /></div>
@@ -71,9 +81,12 @@ export function DomForm({ client, action, deleteAction }: { client?: DomClient; 
           </div>
         </div>
 
-        <button type="submit" className="gestione-btn gestione-btn-blue" style={{ alignSelf: "flex-start", padding: "9px 20px" }}>
-          {client ? "Salva modifiche" : "Crea domiciliazione"}
-        </button>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button type="submit" className="gestione-btn gestione-btn-blue" style={{ padding: "9px 20px" }}>
+            {client ? "Salva modifiche" : "Crea domiciliazione"}
+          </button>
+          {onClose && <button type="button" onClick={onClose} className="gestione-btn gestione-btn-outline" style={{ padding: "9px 20px" }}>Chiudi</button>}
+        </div>
       </form>
 
       {client && deleteAction && (

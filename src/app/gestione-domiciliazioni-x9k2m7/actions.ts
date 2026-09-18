@@ -27,6 +27,7 @@ function dateOrNull(formData: FormData, key: string) {
 function fields(formData: FormData) {
   return {
     ragioneSociale: String(formData.get("ragioneSociale") ?? "").trim(),
+    sede: Number(formData.get("sede")) || 0,
     emailPosta: String(formData.get("emailPosta") ?? "").trim(),
     emailPec: str(formData, "emailPec"),
     amministratore: str(formData, "amministratore"),
@@ -55,9 +56,8 @@ function fields(formData: FormData) {
 export async function createDomiciliazioneAction(formData: FormData) {
   "use server";
   await requireStaff();
-  const [row] = await db.insert(domClients).values(fields(formData)).returning({ id: domClients.id });
+  await db.insert(domClients).values(fields(formData));
   revalidatePath(BASE_PATH);
-  redirect(`${BASE_PATH}/${row.id}/modifica`);
 }
 
 export async function updateDomiciliazioneAction(formData: FormData) {
@@ -66,8 +66,6 @@ export async function updateDomiciliazioneAction(formData: FormData) {
   const id = Number(formData.get("id"));
   await db.update(domClients).set(fields(formData)).where(eq(domClients.id, id));
   revalidatePath(BASE_PATH);
-  revalidatePath(`${BASE_PATH}/${id}`);
-  revalidatePath(`${BASE_PATH}/${id}/modifica`);
 }
 
 export async function deleteDomiciliazioneAction(formData: FormData) {
@@ -76,5 +74,4 @@ export async function deleteDomiciliazioneAction(formData: FormData) {
   const id = Number(formData.get("id"));
   await db.delete(domClients).where(eq(domClients.id, id));
   revalidatePath(BASE_PATH);
-  redirect(BASE_PATH);
 }

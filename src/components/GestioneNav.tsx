@@ -4,12 +4,12 @@ import { db } from "@/db";
 import { domClients } from "@/db/schema";
 import type { StaffRole } from "@/lib/staff-auth";
 import { GestioneSidebar } from "./GestioneSidebar";
+import { createDomiciliazioneAction } from "@/app/gestione-domiciliazioni-x9k2m7/actions";
 
 const STATO_TABS: { stato: number; label: string }[] = [
   { stato: 1, label: "Attive" },
   { stato: 0, label: "In Attivazione" },
   { stato: 2, label: "Decadute" },
-  { stato: 3, label: "Sospese" },
 ];
 
 async function statoCounts() {
@@ -22,7 +22,7 @@ export async function GestioneShell({ role, active, username, children }: { role
   const tabs = await statoCounts();
   return (
     <div className="gestione-shell">
-      <GestioneSidebar role={role} active={active} username={username} tabs={tabs} />
+      <GestioneSidebar role={role} active={active} username={username} tabs={tabs} newDomiciliazioneAction={active === "domiciliazioni" ? createDomiciliazioneAction : undefined} />
       <main className="gestione-main">{children}</main>
     </div>
   );
