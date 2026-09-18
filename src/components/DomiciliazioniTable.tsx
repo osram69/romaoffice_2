@@ -1,6 +1,6 @@
 "use client";
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Check, Pencil, RotateCcw } from "lucide-react";
+import { Check, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import type { InferSelectModel } from "drizzle-orm";
 import type { domClients } from "@/db/schema";
 import { cleanText, docStatus, DOC_LABELS, PRESENZA_FILE_BITS } from "@/lib/dom-status";
@@ -190,7 +190,7 @@ export function DomiciliazioniTable({ rows, stato }: { rows: DomClient[]; stato:
                               <Pencil size={14} />
                             </button>
                             <ActionFormButton id={row.id} action={decadiDomiciliazioneAction} className="gestione-icon-btn delete" label="Sposta tra le decadute" confirmText={`Spostare "${row.ragioneSociale}" tra le domiciliazioni decadute? Il record non viene eliminato.`}>
-                              <RotateCcw size={14} />
+                              <Trash2 size={14} />
                             </ActionFormButton>
                           </div>
                         )}

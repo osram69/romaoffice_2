@@ -79,7 +79,7 @@
 
 tr.gestione-letter-row { scroll-margin-top: 70px; }
 .gestione-letter-row td { background: #eaeaea; font-weight: bold; font-size: 2em; letter-spacing: 2px; color: #232f3e; padding: 5px 12px; }
-.gestione-ragione-link { color: #007bff; font-weight: 600; text-decoration: none; }
+.gestione-ragione-link { color: #007bff; text-decoration: none; }
 .gestione-ragione-link:hover { text-decoration: underline; }
 .gestione-doc-dot { display: inline-block; width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,.15); }
 .gestione-doc-dot.red { background: #ff5757; }
