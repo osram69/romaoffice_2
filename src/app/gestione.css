@@ -62,6 +62,10 @@
 .dom-list-table tbody tr:hover { background: #eef4fb; }
 .gestione-ragione-name { display: block; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gestione-file-chip { display: inline-block; background: #eef2f5; color: #444; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 3px; margin-right: 3px; white-space: nowrap; }
+.gestione-file-link { display: inline-block; background: #e7f0ff; color: #007bff; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 3px; margin-right: 3px; white-space: nowrap; text-decoration: none; }
+.gestione-file-link:hover { background: #cfe2ff; }
+.gestione-upload-btn { background: none; border: none; font-size: 18px; line-height: 1; cursor: pointer; color: #007bff; padding: 2px 4px; }
+.gestione-upload-btn:disabled { color: #aaa; cursor: default; }
 
 .gestione-field label { display: block; font-size: 12px; font-weight: 600; color: #232f3e; margin-bottom: 4px; }
 .gestione-field input, .gestione-field select, .gestione-field textarea { width: 100%; font-size: 13px; padding: 6px 10px; border-radius: 4px; border: 1px solid #c8c8c8; background: #f8f8f8; color: #232f3e; }

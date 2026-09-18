@@ -6,6 +6,8 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { domClients } from "@/db/schema";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
+import { removeEncrypted, saveEncrypted, type DocType, DOC_TYPES } from "@/lib/dom-archive";
+import { PRESENZA_FILE_BITS } from "@/lib/dom-status";
 
 const BASE_PATH = "/gestione-domiciliazioni-x9k2m7";
 
@@ -101,4 +103,45 @@ export async function attivaDomiciliazioneAction(formData: FormData) {
   const id = Number(formData.get("id"));
   await db.update(domClients).set({ stato: 1 }).where(eq(domClients.id, id));
   revalidatePath(BASE_PATH);
+}
+
+async function clientFileId(id: number) {
+  const [row] = await db.select({ legacyId: domClients.legacyId, presenzaFile: domClients.presenzaFile }).from(domClients).where(eq(domClients.id, id)).limit(1);
+  if (!row) throw new Error("Domiciliazione non trovata");
+  return { fileId: row.legacyId ?? id, presenzaFile: row.presenzaFile };
+}
+
+// Files are stored encrypted (AES-256-CTR, same format as the legacy PHP tool) directly in the
+// archivio_dmcl folder on disk — not in Postgres, these PDFs run into the gigabytes in total.
+export async function uploadDomDocumentAction(id: number, docType: DocType, file: File): Promise<{ success: boolean; message?: string; presenzaFile?: number }> {
+  "use server";
+  await requireStaff();
+  if (!DOC_TYPES.includes(docType)) return { success: false, message: "Tipo documento non valido" };
+  try {
+    const { fileId, presenzaFile } = await clientFileId(id);
+    const buffer = Buffer.from(await file.arrayBuffer());
+    await saveEncrypted(fileId, docType, buffer);
+    const newPresenzaFile = presenzaFile | PRESENZA_FILE_BITS[docType];
+    await db.update(domClients).set({ presenzaFile: newPresenzaFile }).where(eq(domClients.id, id));
+    revalidatePath(BASE_PATH);
+    return { success: true, presenzaFile: newPresenzaFile };
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : "Errore durante il caricamento" };
+  }
+}
+
+export async function removeDomDocumentAction(id: number, docType: DocType): Promise<{ success: boolean; message?: string; presenzaFile?: number }> {
+  "use server";
+  await requireStaff();
+  if (!DOC_TYPES.includes(docType)) return { success: false, message: "Tipo documento non valido" };
+  try {
+    const { fileId, presenzaFile } = await clientFileId(id);
+    await removeEncrypted(fileId, docType);
+    const newPresenzaFile = presenzaFile & ~PRESENZA_FILE_BITS[docType];
+    await db.update(domClients).set({ presenzaFile: newPresenzaFile }).where(eq(domClients.id, id));
+    revalidatePath(BASE_PATH);
+    return { success: true, presenzaFile: newPresenzaFile };
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : "Errore durante la rimozione" };
+  }
 }

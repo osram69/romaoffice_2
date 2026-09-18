@@ -14,13 +14,15 @@ export function GestioneSidebar({ role, active, username, tabs, newDomiciliazion
 }) {
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [printingRaccoglitori, setPrintingRaccoglitori] = useState(false);
+  const [raccoglitoreValue, setRaccoglitoreValue] = useState("0");
 
   useEffect(() => {
-    if (!open && !creating) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { setOpen(false); setCreating(false); } };
+    if (!open && !creating && !printingRaccoglitori) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { setOpen(false); setCreating(false); setPrintingRaccoglitori(false); } };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [open, creating]);
+  }, [open, creating, printingRaccoglitori]);
 
   return (
     <>
@@ -43,7 +45,11 @@ export function GestioneSidebar({ role, active, username, tabs, newDomiciliazion
             </li>
           ))}
           {newDomiciliazioneAction && (
-            <li><button type="button" className="sidebar-link" onClick={() => { setCreating(true); setOpen(false); }}>Nuova domiciliazione</button></li>
+            <>
+              <li><a className="sidebar-link" href="/api/dom-print?kind=lista" target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}>Stampa Lista</a></li>
+              <li><button type="button" className="sidebar-link" onClick={() => { setPrintingRaccoglitori(true); setOpen(false); }}>Stampa raccoglitori</button></li>
+              <li><button type="button" className="sidebar-link" onClick={() => { setCreating(true); setOpen(false); }}>Nuova domiciliazione</button></li>
+            </>
           )}
           {role === "admin" && (
             <li className={active === "tariffe" ? "active" : ""} style={{ borderTop: "2px solid #444" }}>
@@ -53,6 +59,27 @@ export function GestioneSidebar({ role, active, username, tabs, newDomiciliazion
           <li><form action={staffLogoutAction}><button type="submit" className="sidebar-link">Esci</button></form></li>
         </ul>
       </aside>
+
+      {printingRaccoglitori && (
+        <div className="gestione-modal-overlay" onClick={() => setPrintingRaccoglitori(false)}>
+          <div className="gestione-modal-box" style={{ maxWidth: 380 }} onClick={e => e.stopPropagation()}>
+            <div className="gestione-modal-header">
+              <h2>Stampa raccoglitori</h2>
+              <button type="button" className="gestione-modal-close" aria-label="Chiudi" onClick={() => setPrintingRaccoglitori(false)}>×</button>
+            </div>
+            <div className="gestione-modal-body">
+              <div className="gestione-field">
+                <label>Numero raccoglitore (0 = elenco completo di tutti i raccoglitori)</label>
+                <input type="number" min={0} value={raccoglitoreValue} onChange={e => setRaccoglitoreValue(e.target.value)} />
+              </div>
+              <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+                <a className="gestione-btn gestione-btn-blue" href={`/api/dom-print?kind=raccoglitori&raccoglitore=${Number(raccoglitoreValue) || 0}`} target="_blank" rel="noopener noreferrer" onClick={() => setPrintingRaccoglitori(false)}>Stampa</a>
+                <button type="button" className="gestione-btn gestione-btn-outline" onClick={() => setPrintingRaccoglitori(false)}>Chiudi</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {creating && newDomiciliazioneAction && (
         <div className="gestione-modal-overlay" onClick={() => setCreating(false)}>

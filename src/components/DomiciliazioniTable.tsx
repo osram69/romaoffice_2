@@ -47,10 +47,14 @@ function pairedRows(fields: Field[]) {
   return out;
 }
 
+const DOC_TYPE_BY_LABEL: Record<string, string> = { Contratto: "con", Modulo: "mod", Allegato: "all", "Doc. amministratore": "doc", "Adeguata verifica": "avc", Revoca: "rev" };
+
 export function DomiciliazioniTable({ rows, stato }: { rows: DomClient[]; stato: number }) {
   const [viewing, setViewing] = useState<DomClient | null>(null);
   const [editing, setEditing] = useState<DomClient | null>(null);
   let lastLetter = "";
+  const decadute = stato === 2;
+  const colCount = decadute ? 9 : 10;
 
   return (
     <>
@@ -58,7 +62,11 @@ export function DomiciliazioniTable({ rows, stato }: { rows: DomClient[]; stato:
         <table className="gestione-table dom-list-table">
           <thead>
             <tr>
-              <th>N°</th><th>Doc</th><th>Racc.</th><th>Ragione Sociale</th><th>Email</th><th>Email PEC</th><th>Telefono</th><th>Persona Rif.</th><th>Scadenza</th><th>Azioni</th>
+              <th>N°</th><th>Doc</th><th>Racc.</th><th>Ragione Sociale</th>
+              {!decadute && <><th>Email</th><th>Email PEC</th></>}
+              <th>Telefono</th><th>Persona Rif.</th><th>Scadenza</th>
+              {decadute && <th style={{ width: 220 }}>Documenti</th>}
+              <th style={{ width: decadute ? 110 : undefined }}>Azioni</th>
             </tr>
           </thead>
           <tbody>
@@ -68,7 +76,7 @@ export function DomiciliazioniTable({ rows, stato }: { rows: DomClient[]; stato:
               lastLetter = letter;
               return (
                 <Fragment key={row.id}>
-                  {showDivider && <tr className="gestione-letter-row"><td colSpan={10}>{letter}</td></tr>}
+                  {showDivider && <tr className="gestione-letter-row"><td colSpan={colCount}>{letter}</td></tr>}
                   <tr className={index % 2 === 0 ? "row-even" : "row-odd"}>
                     <td style={{ color: "#999" }}>{index + 1}</td>
                     <td><span className={`gestione-doc-dot ${docStatus(row)}`} title="Stato documenti" /></td>
@@ -78,24 +86,23 @@ export function DomiciliazioniTable({ rows, stato }: { rows: DomClient[]; stato:
                         {row.ragioneSociale}
                       </button>
                     </td>
-                    <td>{row.emailPosta}</td>
-                    <td>{row.emailPec}</td>
+                    {!decadute && <><td>{row.emailPosta}</td><td>{row.emailPec}</td></>}
                     <td>{cleanText(row.telefono)}</td>
                     <td>{cleanText(row.personaRif)}</td>
                     <td>{fmtDate(row.scadenzaDom)}</td>
+                    {decadute && (
+                      <td>
+                        {presenzaFileLabels(row.presenzaFile).map(label => (
+                          <a key={label} className="gestione-file-link" href={`/api/dom-documents?id=${row.id}&type=${DOC_TYPE_BY_LABEL[label]}`} target="_blank" rel="noopener noreferrer">{label}</a>
+                        ))}
+                      </td>
+                    )}
                     <td>
                       {stato === 2 ? (
-                        // Decadute: no attach/send/delete — only restore, plus which encrypted
-                        // files already exist (real download links need the file storage/API
-                        // bridge to archivio_dmcl, not built yet).
-                        <div className="gestione-row-actions">
-                          {presenzaFileLabels(row.presenzaFile).map(label => (
-                            <span key={label} className="gestione-file-chip">{label}</span>
-                          ))}
-                          <ActionFormButton id={row.id} action={ripristinaDomiciliazioneAction} className="gestione-btn gestione-btn-outline" label="Ripristina" confirmText={`Ripristinare "${row.ragioneSociale}" tra le attive?`}>
-                            <RotateCcw size={13} /> Ripristina
-                          </ActionFormButton>
-                        </div>
+                        // Decadute: no attach/send/delete — only restore. Documents are their own column.
+                        <ActionFormButton id={row.id} action={ripristinaDomiciliazioneAction} className="gestione-btn gestione-btn-outline" label="Ripristina" confirmText={`Ripristinare "${row.ragioneSociale}" tra le attive?`}>
+                          <RotateCcw size={13} /> Ripristina
+                        </ActionFormButton>
                       ) : stato === 0 ? (
                         // In Attivazione: activate, edit, or delete outright (never truly activated).
                         <div className="gestione-row-actions">
@@ -128,7 +135,7 @@ export function DomiciliazioniTable({ rows, stato }: { rows: DomClient[]; stato:
                 </Fragment>
               );
             })}
-            {rows.length === 0 && <tr><td colSpan={10} style={{ textAlign: "center", color: "#999", padding: 24 }}>Nessuna domiciliazione in questo stato.</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={colCount} style={{ textAlign: "center", color: "#999", padding: 24 }}>Nessuna domiciliazione in questo stato.</td></tr>}
           </tbody>
         </table>
       </div>
