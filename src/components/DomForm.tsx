@@ -107,6 +107,28 @@ export function DomForm({ client, action, deleteAction, onClose }: { client?: Do
           </tbody>
         </table>
 
+        {client && (
+          <div style={{ marginTop: 20 }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: "#232f3e", marginBottom: 8 }}>Carica/aggiorna documenti PDF (i file saranno criptati AES-256):</p>
+            <div className="dom-upload-grid">
+              {[
+                ["Contratto completo PDF", "con"],
+                ["Modulo tenuta libri contabili", "mod"],
+                ["Allegato (mail e contatti)", "all"],
+                ["Doc. amministratore", "doc"],
+                ["Adeguata verifica clientela", "avc"],
+                ["Revoca", "rev"],
+              ].map(([label, code]) => (
+                <div key={code} className="dom-upload-row">
+                  <span>{label}</span>
+                  <input type="file" accept="application/pdf" disabled title="Non ancora disponibile: serve prima configurare lo spazio di archiviazione." />
+                </div>
+              ))}
+            </div>
+            <p style={{ fontSize: 11, color: "#999", marginTop: 6 }}>Caricamento non ancora attivo: va prima deciso e configurato dove conservare i file cifrati.</p>
+          </div>
+        )}
+
         <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
           <button type="submit" className="gestione-btn gestione-btn-blue" style={{ padding: "9px 20px" }}>
             {client ? "Salva modifiche" : "Crea domiciliazione"}
@@ -126,6 +148,13 @@ export function DomForm({ client, action, deleteAction, onClose }: { client?: Do
           )}
         </form>
       )}
+
+      <style>{`
+        .dom-upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .dom-upload-row { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #444; background: #f8f8f8; border: 1px solid #eee; border-radius: 4px; padding: 8px 10px; }
+        .dom-upload-row input[type="file"] { font-size: 11px; }
+        @media (max-width: 640px) { .dom-upload-grid { grid-template-columns: 1fr; } }
+      `}</style>
     </div>
   );
 }

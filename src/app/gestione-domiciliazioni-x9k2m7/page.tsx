@@ -22,7 +22,7 @@ export default async function DomiciliazioniPage({ searchParams }: { searchParam
   return (
     <GestioneShell role={user.role} active="domiciliazioni" username={user.username}>
       <h1 className="gestione-h1" style={{ textAlign: "center", marginBottom: 24 }}>Elenco Domiciliazioni {LABELS[stato] ?? ""}</h1>
-      <DomiciliazioniTable rows={rows} />
+      <DomiciliazioniTable rows={rows} stato={stato} />
     </GestioneShell>
   );
 }

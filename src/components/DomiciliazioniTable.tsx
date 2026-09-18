@@ -1,12 +1,16 @@
 "use client";
 import { Fragment, useState } from "react";
-import { Pencil } from "lucide-react";
+import { Check, Pencil, RotateCcw } from "lucide-react";
 import type { InferSelectModel } from "drizzle-orm";
 import type { domClients } from "@/db/schema";
-import { cleanText, docStatus } from "@/lib/dom-status";
+import { cleanText, docStatus, presenzaFileLabels } from "@/lib/dom-status";
 import { DomForm } from "./DomForm";
 import { DeleteIconButton } from "./DeleteIconButton";
-import { updateDomiciliazioneAction, deleteDomiciliazioneAction } from "@/app/gestione-domiciliazioni-x9k2m7/actions";
+import { ActionFormButton } from "./ActionFormButton";
+import {
+  updateDomiciliazioneAction, deleteDomiciliazioneAction,
+  decadiDomiciliazioneAction, ripristinaDomiciliazioneAction, attivaDomiciliazioneAction,
+} from "@/app/gestione-domiciliazioni-x9k2m7/actions";
 
 type DomClient = InferSelectModel<typeof domClients>;
 
@@ -43,7 +47,7 @@ function pairedRows(fields: Field[]) {
   return out;
 }
 
-export function DomiciliazioniTable({ rows }: { rows: DomClient[] }) {
+export function DomiciliazioniTable({ rows, stato }: { rows: DomClient[]; stato: number }) {
   const [viewing, setViewing] = useState<DomClient | null>(null);
   const [editing, setEditing] = useState<DomClient | null>(null);
   let lastLetter = "";
@@ -80,16 +84,45 @@ export function DomiciliazioniTable({ rows }: { rows: DomClient[] }) {
                     <td>{cleanText(row.personaRif)}</td>
                     <td>{fmtDate(row.scadenzaDom)}</td>
                     <td>
-                      <div className="gestione-row-actions">
-                        <button type="button" className="gestione-action-btn gestione-action-allega" onClick={notYet}>Allega</button>
-                        <button type="button" className="gestione-action-btn gestione-action-invia" onClick={notYet}>Invia</button>
-                        <button type="button" className="gestione-action-btn gestione-action-pec" onClick={notYet}>PEC</button>
-                        <button type="button" className="gestione-action-btn gestione-action-aperta" onClick={notYet}>Aperta</button>
-                        <button type="button" className="gestione-icon-btn edit" aria-label={`Modifica ${row.ragioneSociale}`} title="Modifica" onClick={() => setEditing(row)}>
-                          <Pencil size={14} />
-                        </button>
-                        <DeleteIconButton id={row.id} action={deleteDomiciliazioneAction} label={row.ragioneSociale} />
-                      </div>
+                      {stato === 2 ? (
+                        // Decadute: no attach/send/delete — only restore, plus which encrypted
+                        // files already exist (real download links need the file storage/API
+                        // bridge to archivio_dmcl, not built yet).
+                        <div className="gestione-row-actions">
+                          {presenzaFileLabels(row.presenzaFile).map(label => (
+                            <span key={label} className="gestione-file-chip">{label}</span>
+                          ))}
+                          <ActionFormButton id={row.id} action={ripristinaDomiciliazioneAction} className="gestione-btn gestione-btn-outline" label="Ripristina" confirmText={`Ripristinare "${row.ragioneSociale}" tra le attive?`}>
+                            <RotateCcw size={13} /> Ripristina
+                          </ActionFormButton>
+                        </div>
+                      ) : stato === 0 ? (
+                        // In Attivazione: activate, edit, or delete outright (never truly activated).
+                        <div className="gestione-row-actions">
+                          <ActionFormButton id={row.id} action={attivaDomiciliazioneAction} className="gestione-icon-btn edit" label="Attiva" confirmText={`Attivare "${row.ragioneSociale}"?`}>
+                            <Check size={14} color="#28a745" />
+                          </ActionFormButton>
+                          <button type="button" className="gestione-icon-btn edit" aria-label={`Modifica ${row.ragioneSociale}`} title="Modifica" onClick={() => setEditing(row)}>
+                            <Pencil size={14} />
+                          </button>
+                          <DeleteIconButton id={row.id} action={deleteDomiciliazioneAction} label={row.ragioneSociale} />
+                        </div>
+                      ) : (
+                        // Attive: full action row. The trash icon here "decade" the record
+                        // (moves it to Decadute) — it never permanently deletes.
+                        <div className="gestione-row-actions">
+                          <button type="button" className="gestione-action-btn gestione-action-allega" onClick={notYet}>Allega</button>
+                          <button type="button" className="gestione-action-btn gestione-action-invia" onClick={notYet}>Invia</button>
+                          <button type="button" className="gestione-action-btn gestione-action-pec" onClick={notYet}>PEC</button>
+                          <button type="button" className="gestione-action-btn gestione-action-aperta" onClick={notYet}>Aperta</button>
+                          <button type="button" className="gestione-icon-btn edit" aria-label={`Modifica ${row.ragioneSociale}`} title="Modifica" onClick={() => setEditing(row)}>
+                            <Pencil size={14} />
+                          </button>
+                          <ActionFormButton id={row.id} action={decadiDomiciliazioneAction} className="gestione-icon-btn delete" label="Sposta tra le decadute" confirmText={`Spostare "${row.ragioneSociale}" tra le domiciliazioni decadute? Il record non viene eliminato.`}>
+                            <RotateCcw size={14} />
+                          </ActionFormButton>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 </Fragment>
@@ -155,7 +188,7 @@ export function DomiciliazioniTable({ rows }: { rows: DomClient[] }) {
               <button type="button" className="gestione-modal-close" aria-label="Chiudi" onClick={() => setEditing(null)}>×</button>
             </div>
             <div className="gestione-modal-body">
-              <DomForm client={editing} action={updateDomiciliazioneAction} deleteAction={deleteDomiciliazioneAction} onClose={() => setEditing(null)} />
+              <DomForm client={editing} action={updateDomiciliazioneAction} deleteAction={editing.stato === 0 ? deleteDomiciliazioneAction : undefined} onClose={() => setEditing(null)} />
             </div>
           </div>
         </div>

@@ -30,8 +30,8 @@
 .gestione-sidebar a:hover, .gestione-sidebar button.sidebar-link:hover, .gestione-sidebar li.active > a { background: rgba(26,34,48,.85); color: #ff7900; }
 .gestione-badge { display: inline-block; background: #ff7900; color: #232f3e; font-size: 10px; font-weight: 700; border-radius: 10px; padding: 2px 7px; margin-left: 6px; }
 
-.gestione-main { padding: 32px 32px 32px 84px; max-width: 1700px; }
-@media (max-width: 640px) { .gestione-main { padding: 20px 16px 20px 70px; } .gestione-sidebar { width: 85vw; } }
+.gestione-main { padding: 64px 24px 24px 24px; max-width: 1700px; }
+@media (max-width: 640px) { .gestione-main { padding: 56px 16px 20px 16px; } .gestione-sidebar { width: 85vw; } }
 
 .gestione-h1 { font-size: 1.4rem; font-weight: 700; color: #232f3e; margin: 0; }
 .gestione-card { background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
@@ -61,6 +61,7 @@
 .dom-list-table tbody tr.row-even { background: #fff; }
 .dom-list-table tbody tr:hover { background: #eef4fb; }
 .gestione-ragione-name { display: block; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gestione-file-chip { display: inline-block; background: #eef2f5; color: #444; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 3px; margin-right: 3px; white-space: nowrap; }
 
 .gestione-field label { display: block; font-size: 12px; font-weight: 600; color: #232f3e; margin-bottom: 4px; }
 .gestione-field input, .gestione-field select, .gestione-field textarea { width: 100%; font-size: 13px; padding: 6px 10px; border-radius: 4px; border: 1px solid #c8c8c8; background: #f8f8f8; color: #232f3e; }

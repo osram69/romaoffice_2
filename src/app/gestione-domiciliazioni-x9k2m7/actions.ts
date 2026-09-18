@@ -2,7 +2,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { domClients } from "@/db/schema";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
@@ -68,10 +68,37 @@ export async function updateDomiciliazioneAction(formData: FormData) {
   revalidatePath(BASE_PATH);
 }
 
+// Permanent deletion is only allowed for records that were never activated (stato 0,
+// "In Attivazione"). Everywhere else the record must be soft-"decaduta" instead — enforced
+// here server-side, not just by hiding the button, since this is a real data-safety rule.
 export async function deleteDomiciliazioneAction(formData: FormData) {
   "use server";
   await requireStaff();
   const id = Number(formData.get("id"));
-  await db.delete(domClients).where(eq(domClients.id, id));
+  await db.delete(domClients).where(and(eq(domClients.id, id), eq(domClients.stato, 0)));
+  revalidatePath(BASE_PATH);
+}
+
+export async function decadiDomiciliazioneAction(formData: FormData) {
+  "use server";
+  await requireStaff();
+  const id = Number(formData.get("id"));
+  await db.update(domClients).set({ stato: 2 }).where(eq(domClients.id, id));
+  revalidatePath(BASE_PATH);
+}
+
+export async function ripristinaDomiciliazioneAction(formData: FormData) {
+  "use server";
+  await requireStaff();
+  const id = Number(formData.get("id"));
+  await db.update(domClients).set({ stato: 1 }).where(eq(domClients.id, id));
+  revalidatePath(BASE_PATH);
+}
+
+export async function attivaDomiciliazioneAction(formData: FormData) {
+  "use server";
+  await requireStaff();
+  const id = Number(formData.get("id"));
+  await db.update(domClients).set({ stato: 1 }).where(eq(domClients.id, id));
   revalidatePath(BASE_PATH);
 }
