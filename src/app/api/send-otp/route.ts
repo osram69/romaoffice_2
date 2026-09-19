@@ -18,9 +18,15 @@ export async function POST(req: NextRequest) {
       const [old] = await tx.select().from(otpVerifications).where(eq(otpVerifications.orderPublicId, order.publicId)).limit(1);
       if (old && (old.sends >= 3 || old.attempts >= 5)) return "limited";
       if (old && Date.now() - old.sentAt.getTime() < 60000) return "wait";
-      const code = String(randomInt(0, 1000000)).padStart(6, "0"); const lang = (order.formData as RequestData).lang;
+      // Debug-only shortcut (set via env, never in source): skips the real SMS send for this one
+      // phone number, using a fixed code instead — for testing without burning SMS credits.
+      // Unset DEBUG_BYPASS_PHONE to disable it entirely.
+      const bypassPhone = process.env.DEBUG_BYPASS_PHONE?.trim();
+      const isBypass = Boolean(bypassPhone && order.phone === bypassPhone);
+      const code = isBypass ? (process.env.DEBUG_BYPASS_CODE || "888888") : String(randomInt(0, 1000000)).padStart(6, "0");
+      const lang = (order.formData as RequestData).lang;
       const hash = otpDigest(`order:${order.publicId}`, code);
-      await sendLoginSms(order.phone!, code, lang, "request");
+      if (!isBypass) await sendLoginSms(order.phone!, code, lang, "request");
       const values = { phone: order.phone!, codeHash: hash, expiresAt: new Date(Date.now() + 600000), verifiedAt: null, sends: (old?.sends ?? 0) + 1, sentAt: new Date() };
       if (old) await tx.update(otpVerifications).set(values).where(eq(otpVerifications.id, old.id));
       else await tx.insert(otpVerifications).values({ orderPublicId: order.publicId, ...values });

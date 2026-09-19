@@ -18,7 +18,11 @@ export async function checkoutOrder(req: NextRequest, orderId: string, provider:
     if (locked.provider && locked.provider !== provider && locked.checkoutUrl) throw new CustomerError("payment-pending", 409);
     if (locked.provider === provider && locked.checkoutUrl) return { url: locked.checkoutUrl, orderRef: orderId };
     const copy = copyFor(snapshot.product.code, data.lang);
-    const session = await createPaymentSession({ provider, service: snapshot.product.code, orderId, lang: data.lang, origin: process.env.NEXT_PUBLIC_SITE_URL || req.nextUrl.origin, email: order.email, totalCents: order.amountCents, description: `${copy.name} — ${copy.months(order.durationMonths)}` });
+    // Normalize to scheme+host only: a stray trailing path/slash on NEXT_PUBLIC_SITE_URL (e.g.
+    // "https://site.it/it") would otherwise get baked into the payment-provider return URL and
+    // 404 on redirect back, since returnPath() already supplies the full path itself.
+    const origin = new URL(process.env.NEXT_PUBLIC_SITE_URL || req.nextUrl.origin).origin;
+    const session = await createPaymentSession({ provider, service: snapshot.product.code, orderId, lang: data.lang, origin, email: order.email, totalCents: order.amountCents, description: `${copy.name} — ${copy.months(order.durationMonths)}` });
     if (!("url" in session)) return { paymentUnavailable: true, message: session.message };
     await tx.update(orders).set({ provider, providerReference: session.providerRef, paymentMethod: provider, checkoutUrl: session.url, updatedAt: new Date() }).where(eq(orders.id, order.id));
     return { url: session.url, orderRef: orderId };

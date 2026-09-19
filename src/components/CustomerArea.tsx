@@ -13,6 +13,7 @@ const messages = {
     smsUnavailable: "Al momento non possiamo inviare l’SMS. Riprova più tardi o contatta la reception.", unavailable: "Il servizio non è disponibile. Riprova tra poco.",
     session: "La sessione è scaduta. Accedi nuovamente.", notFound: "Il documento non è disponibile.", forbidden: "Richiesta non consentita. Ricarica la pagina.",
     password: "Usa una password di almeno 12 caratteri (massimo 128).", resetExpired: "Il link è scaduto o è già stato utilizzato. Richiedine uno nuovo.",
+    emailNotOnFile: "Questa email non risulta tra gli indirizzi registrati per la tua domiciliazione. Contatta la reception per aggiornarla.",
   },
   en: {
     credentials: "Incorrect email or password. Please try again.", invalid: "Please check the details you entered.", code: "That code is incorrect. Please try again.",
@@ -21,11 +22,12 @@ const messages = {
     smsUnavailable: "We cannot send the SMS right now. Try again later or contact reception.", unavailable: "The service is unavailable. Please try again shortly.",
     session: "Your session has expired. Please sign in again.", notFound: "This document is unavailable.", forbidden: "This request is not permitted. Please reload the page.",
     password: "Use a password with at least 12 characters (128 maximum).", resetExpired: "This link has expired or has already been used. Please request a new one.",
+    emailNotOnFile: "This email isn't among the addresses registered for your domiciliation. Please contact reception to update it.",
   },
 };
 type Account = { name: string; email: string; companyName: string | null; phone: string; lastLoginAt: string | null };
 type Contract = { id: string; title: string; titleEn: string; reference: string; sizeBytes: number; createdAt: string };
-type Profile = { customer: Account; contracts: Contract[] };
+type Profile = { customer: Account; contracts: Contract[]; domContractAvailable?: boolean };
 type View = "loading" | "login" | "sms" | "reset" | "setup" | "dashboard";
 
 export function CustomerArea({ lang }: { lang: Lang }) {
@@ -108,6 +110,17 @@ export function CustomerArea({ lang }: { lang: Lang }) {
       setNotice(it ? "Download del contratto avviato." : "Your contract download has started.");
     } catch (e) { setError(textError(e instanceof Error ? e.message : "unavailable")); } finally { setDownloading(""); }
   }
+  async function downloadDomContract() {
+    setDownloading("dom"); setError("");
+    try {
+      const r = await fetch("/api/customer/dom-contract", { cache: "no-store" });
+      if (r.status === 401) { setProfile(null); setView("login"); throw new Error("session"); }
+      if (!r.ok) throw new Error("notFound");
+      const blob = await r.blob(); const url = URL.createObjectURL(blob); const a = document.createElement("a");
+      a.href = url; a.download = "contratto-domiciliazione.pdf"; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setNotice(it ? "Download del contratto avviato." : "Your contract download has started.");
+    } catch (e) { setError(textError(e instanceof Error ? e.message : "unavailable")); } finally { setDownloading(""); }
+  }
   const status = <><div className="customer-error" role="alert">{error}</div><div className="customer-notice" role="status">{notice}</div></>;
   if (view === "loading") return <div className="customer-loading" role="status"><LoaderCircle className="spin" />{it ? "Caricamento area riservata…" : "Loading your customer area…"}</div>;
   if (view === "dashboard" && profile) return <div className="customer-dashboard">
@@ -125,7 +138,10 @@ export function CustomerArea({ lang }: { lang: Lang }) {
       <div className="dashboard-stats"><div><FileCheck2 /><span>{it ? "Contratti disponibili" : "Available contracts"}<b>{profile.contracts.length.toString().padStart(2, "0")}</b></span></div><div><Smartphone /><span>{it ? "Cellulare verificato" : "Verified mobile"}<b>{profile.customer.phone}</b></span></div><div><ShieldCheck /><span>{it ? "Protezione account" : "Account protection"}<b>{it ? "Password + SMS" : "Password + SMS"}</b></span></div></div>
       {status}
       <section className="dashboard-contracts" id="customer-contracts"><div className="dashboard-section-heading"><div><span className="eyebrow">{it ? "DOCUMENTI" : "DOCUMENTS"}</span><h3>{it ? "I miei contratti" : "My contracts"}</h3></div><span className="file-type-badge">PDF</span></div>
-        {profile.contracts.length ? <div className="contract-list">{profile.contracts.map(contract => <article key={contract.id} className="contract-row"><span className="contract-icon"><FileText /></span><div><h4>{it ? contract.title : contract.titleEn}</h4><p>{contract.reference} · {new Date(contract.createdAt).toLocaleDateString(it ? "it-IT" : "en-GB")} · {Math.max(1, Math.round(contract.sizeBytes / 1024))} KB</p></div><button className="button primary" disabled={!!downloading} onClick={() => download(contract)}>{downloading === contract.id ? <LoaderCircle className="spin" /> : <Download />}{it ? "Scarica contratto" : "Download contract"}</button></article>)}</div> : <div className="document-empty"><FileCheck2 /><h4>{it ? "Il tuo contratto sarà qui" : "Your contract will appear here"}</h4><p>{it ? "Non ci sono ancora contratti disponibili. La reception li pubblicherà in quest’area dopo la verifica e il completamento della pratica." : "No contracts are available yet. Reception will publish them here after your application has been reviewed and completed."}</p></div>}
+        {profile.contracts.length || profile.domContractAvailable ? <div className="contract-list">
+          {profile.domContractAvailable && <article className="contract-row"><span className="contract-icon"><FileText /></span><div><h4>{it ? "Contratto di domiciliazione" : "Registered office agreement"}</h4><p>{it ? "Documento archiviato dalla reception" : "Document archived by reception"}</p></div><button className="button primary" disabled={!!downloading} onClick={downloadDomContract}>{downloading === "dom" ? <LoaderCircle className="spin" /> : <Download />}{it ? "Scarica contratto" : "Download contract"}</button></article>}
+          {profile.contracts.map(contract => <article key={contract.id} className="contract-row"><span className="contract-icon"><FileText /></span><div><h4>{it ? contract.title : contract.titleEn}</h4><p>{contract.reference} · {new Date(contract.createdAt).toLocaleDateString(it ? "it-IT" : "en-GB")} · {Math.max(1, Math.round(contract.sizeBytes / 1024))} KB</p></div><button className="button primary" disabled={!!downloading} onClick={() => download(contract)}>{downloading === contract.id ? <LoaderCircle className="spin" /> : <Download />}{it ? "Scarica contratto" : "Download contract"}</button></article>)}
+        </div> : <div className="document-empty"><FileCheck2 /><h4>{it ? "Il tuo contratto sarà qui" : "Your contract will appear here"}</h4><p>{it ? "Non ci sono ancora contratti disponibili. La reception li pubblicherà in quest’area dopo la verifica e il completamento della pratica." : "No contracts are available yet. Reception will publish them here after your application has been reviewed and completed."}</p></div>}
       </section>
       <div className="future-documents" id="customer-future"><section><FolderLock /><span className="coming-soon">{it ? "PROSSIMAMENTE" : "COMING SOON"}</span><h3>{it ? "Altri download" : "Other downloads"}</h3><p>{it ? "Uno spazio dedicato a modulistica e documenti relativi ai tuoi servizi." : "A dedicated space for forms and documents relating to your services."}</p><span className="future-state"><LockKeyhole />{it ? "Non ancora disponibile" : "Not available yet"}</span></section><section><IdCard /><span className="coming-soon">{it ? "PROSSIMAMENTE" : "COMING SOON"}</span><h3>{it ? "Documenti d’identità" : "Identity documents"}</h3><p>{it ? "Qui potrai caricare i documenti richiesti in modo sicuro. Il caricamento non è ancora attivo." : "You will be able to securely upload the documents we need here. Uploads are not enabled yet."}</p><span className="future-state"><LockKeyhole />{it ? "Caricamento non attivo" : "Uploads not enabled"}</span></section></div>
       <div className="dashboard-help"><Mail /><div><b>{it ? "Hai bisogno di assistenza?" : "Need assistance?"}</b><p>{it ? "Per il contratto o per aggiornare il cellulare registrato, contatta la reception." : "For help with your contract or to update your registered mobile, contact reception."}</p></div><a href="mailto:info@romaofficesharing.it">{it ? "Contattaci" : "Contact us"}<ArrowRight /></a></div>

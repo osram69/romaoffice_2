@@ -7,6 +7,9 @@ import { customers, customerChallenges, customerSessions, customerPasswordTokens
 import { CHALLENGE_COOKIE, SESSION_COOKIE, OTP_SECONDS, SESSION_SECONDS, CustomerError, clientIp, constantEqual, digest, failed, getCustomer, hashPassword, json, limit, maskPhone, otpDigest, protectMutation, sendLoginSms, setCookie, token, verifyPassword } from "@/lib/customer-auth";
 import { readCustomerContract } from "@/lib/customer-documents";
 import { inviteCustomer } from "@/lib/customer-invitations";
+import { findDomClientByEmail } from "@/lib/dom-customer-match";
+import { readDecrypted } from "@/lib/dom-archive";
+import { PRESENZA_FILE_BITS } from "@/lib/dom-status";
 
 type Props = { params: Promise<{ action: string }> };
 export const dynamic = "force-dynamic";
@@ -20,7 +23,17 @@ export async function GET(req: NextRequest, { params }: Props) {
     if (action === "me") {
       const contracts = await db.select({ id: customerContracts.id, title: customerContracts.title, titleEn: customerContracts.titleEn, reference: customerContracts.reference, sizeBytes: customerContracts.sizeBytes, createdAt: customerContracts.createdAt }).from(customerContracts)
         .where(eq(customerContracts.customerId, customer.id)).orderBy(desc(customerContracts.createdAt));
-      return json({ customer: { name: customer.name, email: customer.email, companyName: customer.companyName, phone: maskPhone(customer.phone), lastLoginAt: customer.lastLoginAt }, contracts });
+      const domMatch = await findDomClientByEmail(customer.email);
+      const domContractAvailable = Boolean(domMatch && (domMatch.presenzaFile & PRESENZA_FILE_BITS.con) === PRESENZA_FILE_BITS.con);
+      return json({ customer: { name: customer.name, email: customer.email, companyName: customer.companyName, phone: maskPhone(customer.phone), lastLoginAt: customer.lastLoginAt }, contracts, domContractAvailable });
+    }
+    if (action === "dom-contract") {
+      await limit(`download:${customer.id}`, 40, 300);
+      const domMatch = await findDomClientByEmail(customer.email);
+      if (!domMatch || (domMatch.presenzaFile & PRESENZA_FILE_BITS.con) !== PRESENZA_FILE_BITS.con) throw new CustomerError("notFound", 404);
+      const data = await readDecrypted(domMatch.legacyId ?? domMatch.id, "con");
+      await db.insert(customerAudit).values({ customerId: customer.id, event: "dom_contract.downloaded" });
+      return new Response(new Uint8Array(data), { headers: { "Content-Type": "application/pdf", "Content-Length": String(data.length), "Content-Disposition": `attachment; filename="contratto-domiciliazione.pdf"`, "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff", "X-Robots-Tag": "noindex, nofollow" } });
     }
     if (action === "contract") {
       const id = z.string().uuid().safeParse(req.nextUrl.searchParams.get("id"));
@@ -50,9 +63,20 @@ export async function POST(req: NextRequest, { params }: Props) {
       const [customer] = await db.select().from(customers).where(eq(customers.email, email)).limit(1);
       const valid = await verifyPassword(data.data.password, customer?.passwordHash ?? null);
       if (!valid || !customer?.active) throw new CustomerError("credentials", 401);
-      const raw = token(); const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+      // Debug-only shortcut (set via env, never in source): skips the "email on file" check and
+      // the real SMS send below, using a fixed code instead — for testing without burning SMS
+      // credits. Unset DEBUG_BYPASS_EMAIL to disable it entirely.
+      const bypassEmail = process.env.DEBUG_BYPASS_EMAIL?.trim().toLowerCase();
+      const isBypass = Boolean(bypassEmail && email === bypassEmail);
+      if (!isBypass) {
+        // The login email must still be a live recipient for this company's scanned mail —
+        // confirms the account hasn't gone stale relative to the domiciliazioni records.
+        const domMatch = await findDomClientByEmail(email);
+        if (!domMatch) throw new CustomerError("emailNotOnFile", 403);
+      }
+      const raw = token(); const code = isBypass ? (process.env.DEBUG_BYPASS_CODE || "888888") : String(randomInt(0, 1_000_000)).padStart(6, "0");
       const codeHash = otpDigest(raw, code);
-      await sendLoginSms(customer.phone, code, data.data.lang);
+      if (!isBypass) await sendLoginSms(customer.phone, code, data.data.lang);
       await db.delete(customerChallenges).where(eq(customerChallenges.customerId, customer.id));
       await db.insert(customerChallenges).values({ customerId: customer.id, tokenHash: digest(raw), codeHash, expiresAt: new Date(Date.now() + OTP_SECONDS * 1000) });
       const response = json({ step: "sms", phone: maskPhone(customer.phone), resendAfter: 60, expiresIn: OTP_SECONDS });
