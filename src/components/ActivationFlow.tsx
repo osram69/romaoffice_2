@@ -76,7 +76,18 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService }
     if (state === "return" && provider) {
       setStatus(it ? "Verifica del pagamento in corso…" : "Verifying payment…");
       fetch("/api/verify-payment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ order, provider, sessionId: params.get("session_id") }) })
-        .then(r => r.json()).then(d => setStatus(d.paid ? (it ? "Pagamento confermato. Grazie!" : "Payment confirmed. Thank you!") : (it ? "Pagamento non ancora confermato: riceverai conferma via email oppure puoi riprovare." : "Payment not confirmed yet: you will receive an email confirmation, or try again."))).catch(() => setStatus(it ? "Verifica non riuscita." : "Verification failed."));
+        .then(r => r.json()).then(d => {
+          if (!d.paid) { setStatus(it ? "Pagamento non ancora confermato: riceverai conferma via email oppure puoi riprovare." : "Payment not confirmed yet: you will receive an email confirmation, or try again."); return; }
+          setStatus("");
+          // The page reloaded fresh on the way back from the payment provider, so the finalize()
+          // result (PDF, email status...) saved just before redirecting is only in sessionStorage,
+          // not component state. Fall back to a minimal confirmation if it's missing (e.g. a
+          // different browser/tab, or storage cleared) rather than showing nothing at all.
+          const stored = sessionStorage.getItem(`ros-order-${order}`);
+          if (stored) { try { setResult(JSON.parse(stored)); sessionStorage.removeItem(`ros-order-${order}`); } catch { setResult({ paymentMethod: provider, orderRef: order, emailSent: true }); } }
+          else setResult({ paymentMethod: provider, orderRef: order, emailSent: true });
+          setStep(4);
+        }).catch(() => setStatus(it ? "Verifica non riuscita." : "Verification failed."));
     } else if (state === "cancelled") setStatus(it ? "Pagamento annullato. Puoi riprendere la procedura quando vuoi." : "Payment cancelled. You can resume whenever you like.");
   }, [it]);
 
@@ -143,7 +154,10 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService }
         if (data.error === "otp-required") { setStatus(it ? "La verifica SMS è scaduta: ricomincia la richiesta per ricevere un nuovo codice." : "SMS verification has expired. Start a new application to receive another code."); return; }
         throw new Error(data.error || "error");
       }
-      if (data.url) { window.location.href = data.url; return; }
+      if (data.url) {
+        try { sessionStorage.setItem(`ros-order-${orderId}`, JSON.stringify(data)); } catch { /* storage may be unavailable (e.g. private mode) — the return page falls back gracefully */ }
+        window.location.href = data.url; return;
+      }
       setResult(data); setStep(4);
     } catch {
       setStatus(it ? "Invio non riuscito. Riprova o chiamaci." : "Submission failed. Please retry or call us.");
