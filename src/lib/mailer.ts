@@ -1,7 +1,7 @@
 import nodemailer from "nodemailer";
 
 export type MailAttachment = { filename: string; content: Buffer; contentType?: string };
-export type MailPayload = { to: string; subject: string; text: string; html: string; attachments?: MailAttachment[]; bcc?: string; cc?: string };
+export type MailPayload = { to: string; subject: string; text: string; html: string; attachments?: MailAttachment[]; bcc?: string; cc?: string; replyTo?: string };
 export type MailResult = { sent: boolean; reason?: string; messageId?: string };
 
 export function adminEmail(): string {
@@ -60,6 +60,7 @@ async function deliver(account: { host: string; port: number; user: string; pass
       to: payload.to,
       cc: payload.cc,
       bcc: payload.bcc,
+      replyTo: payload.replyTo,
       subject: payload.subject,
       text: payload.text,
       html: payload.html,
