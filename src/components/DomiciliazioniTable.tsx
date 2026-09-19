@@ -157,7 +157,7 @@ export function DomiciliazioniTable({ rows, stato }: { rows: DomClient[]; stato:
                       <td><span className={`gestione-doc-dot ${docStatus(row)}`} title="Stato documenti" /></td>
                       <td>{row.raccoglitore}</td>
                       <td style={{ maxWidth: 220 }}>
-                        <button type="button" className="gestione-ragione-link gestione-ragione-name" title={row.ragioneSociale} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit", textAlign: "left" }} onClick={() => setViewing(row)}>
+                        <button type="button" className={`gestione-ragione-link gestione-ragione-name${(row.presenzaFile & PRESENZA_FILE_BITS.rev) === PRESENZA_FILE_BITS.rev ? " revoca" : ""}`} title={row.ragioneSociale} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit", textAlign: "left" }} onClick={() => setViewing(row)}>
                           {row.ragioneSociale}
                         </button>
                       </td>
