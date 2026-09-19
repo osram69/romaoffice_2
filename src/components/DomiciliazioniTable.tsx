@@ -8,6 +8,7 @@ import type { DocType } from "@/lib/dom-archive";
 import { DomForm } from "./DomForm";
 import { DeleteIconButton } from "./DeleteIconButton";
 import { ActionFormButton } from "./ActionFormButton";
+import { ScadenzaEmailPanel } from "./ScadenzaEmailPanel";
 import {
   updateDomiciliazioneAction, deleteDomiciliazioneAction,
   decadiDomiciliazioneAction, ripristinaDomiciliazioneAction, attivaDomiciliazioneAction,
@@ -253,6 +254,9 @@ export function DomiciliazioniTable({ rows, stato }: { rows: DomClient[]; stato:
                   </tr>
                 </tbody>
               </table>
+              <div style={{ marginTop: 14 }}>
+                <ScadenzaEmailPanel id={viewing.id} initialPrezzoRinnovo={viewing.prezzoRinnovo} />
+              </div>
             </div>
             <div className="gestione-modal-footer">
               <button type="button" className="gestione-btn gestione-btn-blue" onClick={() => { setEditing(viewing); setViewing(null); }} style={{ marginRight: 10 }}>

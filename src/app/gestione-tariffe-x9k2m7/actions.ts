@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { serviceAddons, serviceCatalog, servicePrices } from "@/db/schema";
+import { domRinnovoPrezzi, serviceAddons, serviceCatalog, servicePrices } from "@/db/schema";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
 import type { ServiceCode } from "@/lib/pricing";
 
@@ -65,6 +65,24 @@ export async function addPriceAction(formData: FormData) {
     offerCents: offerRaw ? toCents(formData, "offerCents") : null,
     newActivation: formData.get("newActivation") === "on", active: true,
   });
+  revalidatePath(BASE_PATH);
+}
+
+// Renewal pricing shown in scadenza emails — plain whole euros, same convention as
+// dom_clients.prezzo_rinnovo, deliberately not the servicePrices cents convention above.
+export async function updateRinnovoPrezzoAction(formData: FormData) {
+  "use server";
+  await requireAdmin();
+  const mesi = Number(formData.get("mesi"));
+  const pienoRaw = String(formData.get("prezzoPieno") ?? "").trim();
+  const offertaRaw = String(formData.get("prezzoOfferta") ?? "").trim();
+  const nota = String(formData.get("notaMensile") ?? "").trim();
+  await db.update(domRinnovoPrezzi).set({
+    prezzoPieno: pienoRaw ? Math.round(Number(pienoRaw)) : null,
+    prezzoOfferta: offertaRaw ? Math.round(Number(offertaRaw)) : null,
+    notaMensile: nota || null,
+    updatedAt: new Date(),
+  }).where(eq(domRinnovoPrezzi.mesi, mesi));
   revalidatePath(BASE_PATH);
 }
 

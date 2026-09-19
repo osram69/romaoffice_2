@@ -15,6 +15,13 @@
       "when": 1789741997627,
       "tag": "0001_fantastic_blazing_skull",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789811778006,
+      "tag": "0002_lazy_lake",
+      "breakpoints": true
     }
   ]
 }

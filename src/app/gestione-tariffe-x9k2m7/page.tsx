@@ -2,9 +2,9 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { asc } from "drizzle-orm";
 import { db } from "@/db";
-import { serviceAddons, serviceCatalog, servicePrices } from "@/db/schema";
+import { domRinnovoPrezzi, serviceAddons, serviceCatalog, servicePrices } from "@/db/schema";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
-import { addPriceAction, updateAddonAction, updatePriceAction, updateServiceAction } from "./actions";
+import { addPriceAction, updateAddonAction, updatePriceAction, updateRinnovoPrezzoAction, updateServiceAction } from "./actions";
 import { GestioneShell } from "@/components/GestioneNav";
 
 const SERVICE_LABELS: Record<string, string> = { legal_unit: "Domiciliazione Sede Legale / Unità Locale", postal: "Domiciliazione Postale" };
@@ -16,15 +16,46 @@ export default async function AdminDashboardPage() {
   if (!user) redirect("/gestione-tariffe-x9k2m7/login?next=/gestione-tariffe-x9k2m7");
   if (user.role !== "admin") redirect("/gestione-domiciliazioni-x9k2m7");
 
-  const [services, tiers, addons] = await Promise.all([
+  const [services, tiers, addons, rinnovoPrezzi] = await Promise.all([
     db.select().from(serviceCatalog),
     db.select().from(servicePrices).orderBy(asc(servicePrices.service), asc(servicePrices.months)),
     db.select().from(serviceAddons).orderBy(asc(serviceAddons.service), asc(serviceAddons.sortOrder)),
+    db.select().from(domRinnovoPrezzi).orderBy(asc(domRinnovoPrezzi.mesi)),
   ]);
 
   return (
     <GestioneShell role={user.role} active="tariffe" username={user.username}>
       <h1 className="gestione-h1" style={{ marginBottom: 20 }}>Gestione tariffe</h1>
+
+      <section className="gestione-card" style={{ padding: 24, marginBottom: 24 }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: "#232f3e", marginTop: 0 }}>Prezzi rinnovi (email di scadenza)</h2>
+        <p style={{ fontSize: 12, color: "#666", marginTop: -6 }}>
+          Prezzi delle offerte proposte nelle email di promemoria scadenza — separati dalle tariffe di nuova attivazione qui sotto.
+        </p>
+        <div style={{ overflowX: "auto" }}>
+          <table className="gestione-table">
+            <thead>
+              <tr><th>Mesi</th><th>Prezzo pieno (€)</th><th>Prezzo offerta (€)</th><th>Nota (es. &quot;31€/mese&quot;)</th><th></th></tr>
+            </thead>
+            <tbody>
+              {rinnovoPrezzi.map(row => (
+                <tr key={row.mesi}>
+                  <td>
+                    <form id={`rinnovo-${row.mesi}`} action={updateRinnovoPrezzoAction}>
+                      <input type="hidden" name="mesi" value={row.mesi} />
+                    </form>
+                    {row.mesi}
+                  </td>
+                  <td><input form={`rinnovo-${row.mesi}`} name="prezzoPieno" type="number" min="0" defaultValue={row.prezzoPieno ?? ""} style={inputStyle} /></td>
+                  <td><input form={`rinnovo-${row.mesi}`} name="prezzoOfferta" type="number" min="0" defaultValue={row.prezzoOfferta ?? ""} style={inputStyle} /></td>
+                  <td><input form={`rinnovo-${row.mesi}`} name="notaMensile" defaultValue={row.notaMensile ?? ""} style={inputStyle} /></td>
+                  <td><button form={`rinnovo-${row.mesi}`} type="submit" className="gestione-btn gestione-btn-blue">Salva</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
         {services.map(service => {

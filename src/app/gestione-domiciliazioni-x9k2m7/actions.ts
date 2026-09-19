@@ -4,10 +4,12 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { domClients } from "@/db/schema";
+import { domClients, domRinnovoPrezzi } from "@/db/schema";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
 import { removeEncrypted, saveEncrypted, type DocType, DOC_TYPES } from "@/lib/dom-archive";
-import { PRESENZA_FILE_BITS } from "@/lib/dom-status";
+import { PRESENZA_FILE_BITS, cleanText } from "@/lib/dom-status";
+import { buildScadenzaEmailHtml, scadenzaEmailSubject } from "@/lib/dom-scadenza-email";
+import { sendDomMail } from "@/lib/mailer";
 
 const BASE_PATH = "/gestione-domiciliazioni-x9k2m7";
 
@@ -52,6 +54,7 @@ function fields(formData: FormData) {
     tipologia: Number(formData.get("tipologia")) || 0,
     raccoglitore: Number(formData.get("raccoglitore")) || 0,
     prezzoRinnovo: formData.get("prezzoRinnovo") ? Math.round(Number(formData.get("prezzoRinnovo"))) : null,
+    primoRinnovo: formData.get("primoRinnovo") === "on",
   };
 }
 
@@ -144,4 +147,54 @@ export async function removeDomDocumentAction(id: number, docType: DocType): Pro
   } catch (error) {
     return { success: false, message: error instanceof Error ? error.message : "Errore durante la rimozione" };
   }
+}
+
+// Draft the scadenza reminder for staff to review/edit before sending — never sent unmodified.
+// Reuses a previously edited/sent draft (testoScadenza) unless `regenerate` asks for a fresh one.
+export async function getScadenzaDraftAction(id: number, regenerate = false): Promise<{ success: boolean; message?: string; subject?: string; html?: string; prezzoRinnovo?: number | null }> {
+  "use server";
+  await requireStaff();
+  const [client] = await db.select().from(domClients).where(eq(domClients.id, id)).limit(1);
+  if (!client) return { success: false, message: "Domiciliazione non trovata" };
+  const prezzi = await db.select().from(domRinnovoPrezzi);
+  const stored = !regenerate ? client.testoScadenza?.trim() : "";
+  return {
+    success: true,
+    subject: scadenzaEmailSubject(client),
+    html: stored || buildScadenzaEmailHtml(client, prezzi),
+    prezzoRinnovo: client.prezzoRinnovo,
+  };
+}
+
+// Mirrors ajax_invia_scadenza.php: PEC is used (with the ordinary addresses CC'd) whenever the
+// client has one on file, otherwise the first ordinary address is the recipient and the rest are
+// CC'd — always with a fixed internal CC so the office keeps a copy either way.
+export async function inviaScadenzaAction(formData: FormData): Promise<{ success: boolean; message?: string }> {
+  "use server";
+  await requireStaff();
+  const id = Number(formData.get("id"));
+  const html = String(formData.get("html") ?? "");
+  const prezzoRaw = formData.get("prezzoRinnovo");
+
+  const [client] = await db.select().from(domClients).where(eq(domClients.id, id)).limit(1);
+  if (!client) return { success: false, message: "Domiciliazione non trovata" };
+  if (!html.trim()) return { success: false, message: "Testo email vuoto" };
+
+  const pec = cleanText(client.emailPec);
+  const ordinarie = cleanText(client.emailPosta).split(";").map(s => s.trim()).filter(Boolean);
+  const usaPec = Boolean(pec);
+  const to = usaPec ? pec : ordinarie[0];
+  if (!to) return { success: false, message: "Nessun indirizzo email valido per questa società" };
+  const ccList = usaPec ? [...ordinarie, "info@romaofficesharing.it"] : [...ordinarie.slice(1), "inviate@romaofficesharing.it"];
+
+  const result = await sendDomMail(usaPec ? "pec" : "ordinaria", {
+    to, cc: ccList.join(","), subject: scadenzaEmailSubject(client),
+    text: html.replace(/<[^>]+>/g, " "), html,
+  });
+  if (!result.sent) return { success: false, message: `Invio non riuscito (${result.reason})` };
+
+  const prezzoRinnovo = prezzoRaw !== null && prezzoRaw !== "" ? Math.round(Number(prezzoRaw)) : client.prezzoRinnovo;
+  await db.update(domClients).set({ scadenzaInviata: true, prezzoRinnovo, testoScadenza: html }).where(eq(domClients.id, id));
+  revalidatePath(BASE_PATH);
+  return { success: true };
 }

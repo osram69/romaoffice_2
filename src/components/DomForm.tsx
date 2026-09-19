@@ -92,6 +92,9 @@ export function DomForm({ client, action, deleteAction, onClose }: { client?: Do
               field("Raccoglitore", <input name="raccoglitore" type="number" defaultValue={client?.raccoglitore ?? 0} />),
               field("Indirizzo spedizione posta", text("indSpedPosta", client?.indSpedPosta))
             )}
+            {row(
+              field("Primo rinnovo (sconto attivazioni ancora da togliere)", <input type="checkbox" name="primoRinnovo" defaultChecked={client ? !!client.primoRinnovo : true} />)
+            )}
             {row(field("Note", <textarea name="note" rows={2} defaultValue={cleanText(client?.note)} />))}
             {row(
               field("Contratto firmato", <input type="checkbox" name="contrFirmato" defaultChecked={!!client?.contrFirmato} />),

@@ -164,6 +164,20 @@ export const domClients = pgTable("dom_clients", {
   raccoglitore: integer("raccoglitore").notNull().default(0),
   prezzoRinnovo: integer("prezzo_rinnovo"),
   scadenzaInviata: boolean("scadenza_inviata"),
+  // Whether the one-time "sconto attivazioni" still needs to be disclaimed away in the next
+  // scadenza email. Defaults true for every client (a fresh activation is always due its first
+  // renewal); staff untick it once that first renewal has actually gone through.
+  primoRinnovo: boolean("primo_rinnovo").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Renewal-specific pricing shown as upsell offers in scadenza emails — deliberately separate
+// from servicePrices (the public "new activation" tariffe), since renewal list prices differ.
+export const domRinnovoPrezzi = pgTable("dom_rinnovo_prezzi", {
+  mesi: integer("mesi").primaryKey(),
+  prezzoPieno: integer("prezzo_pieno"),
+  prezzoOfferta: integer("prezzo_offerta"),
+  notaMensile: text("nota_mensile"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
