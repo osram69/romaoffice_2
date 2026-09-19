@@ -15,13 +15,15 @@ export function ContactForm({ lang }: { lang: Lang }) {
     submit: it ? "INVIA RICHIESTA" : "SEND ENQUIRY", required: it ? "Campo obbligatorio" : "Required field", invalidEmail: it ? "Inserisci un indirizzo email valido" : "Enter a valid email address",
     nameTooShort: it ? "Inserisci almeno 2 caratteri" : "Enter at least 2 characters", messageTooShort: it ? "Il messaggio deve avere almeno 5 caratteri" : "The message must be at least 5 characters long",
   };
+  function validateName(value: string) { const v = value.trim(); return !v ? labels.required : v.length < 2 ? labels.nameTooShort : ""; }
+  function validateEmail(value: string) { return /^\S+@\S+\.\S+$/.test(value) ? "" : labels.invalidEmail; }
+  function validateMessage(value: string) { const v = value.trim(); return !v ? labels.required : v.length < 5 ? labels.messageTooShort : ""; }
+  function setFieldError(key: string, message: string) { setErrors(prev => { if (!message) { if (!(key in prev)) return prev; const { [key]: _drop, ...rest } = prev; return rest; } return { ...prev, [key]: message }; }); }
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); const form = e.currentTarget; const fd = new FormData(form); const next: Record<string, string> = {};
-    const name = String(fd.get("name") || "").trim();
-    if (!name) next.name = labels.required; else if (name.length < 2) next.name = labels.nameTooShort;
-    const message = String(fd.get("message") || "").trim();
-    if (!message) next.message = labels.required; else if (message.length < 5) next.message = labels.messageTooShort;
-    if (!/^\S+@\S+\.\S+$/.test(String(fd.get("email") || ""))) next.email = labels.invalidEmail;
+    const nameErr = validateName(String(fd.get("name") || "")); if (nameErr) next.name = nameErr;
+    const messageErr = validateMessage(String(fd.get("message") || "")); if (messageErr) next.message = messageErr;
+    const emailErr = validateEmail(String(fd.get("email") || "")); if (emailErr) next.email = emailErr;
     if (!fd.get("consent")) next.consent = labels.required;
     setErrors(next); if (Object.keys(next).length) { document.getElementById(`err-${Object.keys(next)[0]}`)?.focus(); return; }
     setState("loading");
@@ -34,12 +36,12 @@ export function ContactForm({ lang }: { lang: Lang }) {
   const err = (key: string) => errors[key] ? <span id={`err-${key}`} className="field-error" role="alert" tabIndex={-1}>{errors[key]}</span> : null;
   return <form className="contact-form" noValidate onSubmit={submit}>
     <div className="form-grid">
-      <label>{labels.name}<input name="name" autoComplete="name" aria-invalid={!!errors.name} aria-describedby={errors.name ? "err-name" : undefined} />{err("name")}</label>
-      <label>{labels.email}<input name="email" type="email" autoComplete="email" aria-invalid={!!errors.email} aria-describedby={errors.email ? "err-email" : undefined} />{err("email")}</label>
+      <label>{labels.name}<input name="name" autoComplete="name" onBlur={e => setFieldError("name", validateName(e.target.value))} aria-invalid={!!errors.name} aria-describedby={errors.name ? "err-name" : undefined} />{err("name")}</label>
+      <label>{labels.email}<input name="email" type="email" autoComplete="email" onBlur={e => setFieldError("email", validateEmail(e.target.value))} aria-invalid={!!errors.email} aria-describedby={errors.email ? "err-email" : undefined} />{err("email")}</label>
       <label>{labels.phone}<input name="phone" type="tel" autoComplete="tel" /></label>
       <label>{labels.subject}<select name="subject"><option>{it ? "Informazioni Generali" : "General Information"}</option><option>{it ? "Uffici Arredati" : "Furnished Offices"}</option><option>{it ? "Domiciliazioni" : "Business addresses"}</option><option>{it ? "Tariffe" : "Pricing"}</option><option>{it ? "Contratti Smart" : "Smart-Start agreements"}</option><option>{it ? "Corsi" : "Training"}</option><option>{it ? "Altro" : "Other"}</option></select></label>
     </div>
-    <label>{labels.message}<textarea name="message" rows={6} aria-invalid={!!errors.message} aria-describedby={errors.message ? "err-message" : undefined} />{err("message")}</label>
+    <label>{labels.message}<textarea name="message" rows={6} onBlur={e => setFieldError("message", validateMessage(e.target.value))} aria-invalid={!!errors.message} aria-describedby={errors.message ? "err-message" : undefined} />{err("message")}</label>
 <div className="honeypot" aria-hidden="true"><label>Website<input name="website" tabIndex={-1} autoComplete="off" /></label></div>
     <label className="check-label"><input name="consent" type="checkbox" value="true" /> <span>{labels.consent} <Link href={it ? "/privacy.html" : "/en/privacy.html"} target="_blank" rel="noopener noreferrer">{it ? "(leggi l’informativa privacy)" : "(read the privacy notice)"}</Link>*</span></label>{err("consent")}
     <button className="button primary" disabled={state === "loading"}>{state === "loading" && <LoaderCircle className="spin" />}{labels.submit}</button>

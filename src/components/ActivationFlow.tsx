@@ -91,20 +91,27 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService }
     } else if (state === "cancelled") setStatus(it ? "Pagamento annullato. Puoi riprendere la procedura quando vuoi." : "Payment cancelled. You can resume whenever you like.");
   }, [it]);
 
+  function validateRepresentativeName(value: string) { return value.trim().length < 2 ? t.required : ""; }
+  function validateEmailField(value: string) { return /^\S+@\S+\.\S+$/.test(value) ? "" : t.invalidEmail; }
+  function validatePhoneField(value: string) { return /^\+[1-9]\d{7,14}$/.test(value.trim().replace(/^00/, "+").replace(/[\s.()\/-]/g, "")) ? "" : t.invalidPhone; }
+  function validateStartDateField(value: string) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return t.invalidDate;
+    const dateValue = new Date(`${value}T12:00:00`);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const max = new Date(today.getFullYear() + 2, today.getMonth(), today.getDate());
+    return dateValue < today || dateValue > max ? t.invalidDate : "";
+  }
+  function validateCompanyNameField(value: string) { return (postal || form.companyExists) && value.trim().length < 2 ? t.required : ""; }
+  function setFieldError(key: string, message: string) { setErrors(prev => { if (!message) { if (!(key in prev)) return prev; const { [key]: _drop, ...rest } = prev; return rest; } return { ...prev, [key]: message }; }); }
+
   function validate() {
     const next: Record<string, string> = {};
-    if (form.representativeName.trim().length < 2) next.representativeName = t.required;
-    if (!/^\S+@\S+\.\S+$/.test(form.email)) next.email = t.invalidEmail;
-    if (!/^\+[1-9]\d{7,14}$/.test(form.phone.trim().replace(/^00/, "+").replace(/[\s.()\/-]/g, ""))) next.phone = t.invalidPhone;
+    const nameErr = validateRepresentativeName(form.representativeName); if (nameErr) next.representativeName = nameErr;
+    const emailErr = validateEmailField(form.email); if (emailErr) next.email = emailErr;
+    const phoneErr = validatePhoneField(form.phone); if (phoneErr) next.phone = phoneErr;
     if (!product.tiers.some(x => x.months === form.months)) next.months = t.required;
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(form.startDate)) next.startDate = t.invalidDate;
-    else {
-      const value = new Date(`${form.startDate}T12:00:00`);
-      const today = new Date(); today.setHours(0, 0, 0, 0);
-      const max = new Date(today.getFullYear() + 2, today.getMonth(), today.getDate());
-      if (value < today || value > max) next.startDate = t.invalidDate;
-    }
-    if ((postal || form.companyExists) && form.companyName.trim().length < 2) next.companyName = t.required;
+    const dateErr = validateStartDateField(form.startDate); if (dateErr) next.startDate = dateErr;
+    const companyErr = validateCompanyNameField(form.companyName); if (companyErr) next.companyName = companyErr;
     if (!form.consent) next.consent = t.required;
     if (postal && !form.termsAccepted) next.terms = it ? "Leggi e accetta integralmente le condizioni dell’offerta postale prima di proseguire." : "Read and accept the full mailing-service offer terms before continuing.";
     return next;
@@ -180,7 +187,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService }
             <p className="form-note">{t.companyHint}</p>
             {!postal && <label className="check-label"><input type="checkbox" checked={form.companyExists} onChange={e => setForm({ ...form, companyExists: e.target.checked })} /> <span>{t.companyExists}</span></label>}
             {(postal || form.companyExists) && <>
-              <label>{t.companyName}<input id="field-companyName" value={form.companyName} onChange={e => setForm({ ...form, companyName: e.target.value })} {...aria("companyName")} />{err("companyName")}</label>
+              <label>{t.companyName}<input id="field-companyName" value={form.companyName} onChange={e => setForm({ ...form, companyName: e.target.value })} onBlur={e => setFieldError("companyName", validateCompanyNameField(e.target.value))} {...aria("companyName")} />{err("companyName")}</label>
               <div className="form-grid">
                 <label>{t.companyVat}<input value={form.companyVat} onChange={e => setForm({ ...form, companyVat: e.target.value })} /></label>
                 <label>{t.companyTaxCode}<input value={form.companyTaxCode} onChange={e => setForm({ ...form, companyTaxCode: e.target.value })} /></label>
@@ -191,7 +198,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService }
           </fieldset>
 
           <fieldset><legend>{t.repTitle}</legend>
-            <label>{t.repName}*<input id="field-representativeName" value={form.representativeName} onChange={e => setForm({ ...form, representativeName: e.target.value })} autoComplete="name" {...aria("representativeName")} />{err("representativeName")}</label>
+            <label>{t.repName}*<input id="field-representativeName" value={form.representativeName} onChange={e => setForm({ ...form, representativeName: e.target.value })} onBlur={e => setFieldError("representativeName", validateRepresentativeName(e.target.value))} autoComplete="name" {...aria("representativeName")} />{err("representativeName")}</label>
             <div className="form-grid">
               <label>{t.repRole}<select value={form.representativeRole} onChange={e => setForm({ ...form, representativeRole: e.target.value })}>
                 {[it ? "Legale rappresentante" : "Legal representative", it ? "Amministratore" : "Administrator", it ? "Titolare" : "Owner", it ? "Delegato" : "Delegate"].map(r => <option key={r} value={r}>{r}</option>)}
@@ -199,8 +206,8 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService }
               <label>{t.repTaxCode}<input value={form.representativeTaxCode} onChange={e => setForm({ ...form, representativeTaxCode: e.target.value })} /></label>
             </div>
             <div className="form-grid">
-              <label>{t.email}*<input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} autoComplete="email" {...aria("email")} />{err("email")}</label>
-              <label>{t.phone}*<input type="tel" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} autoComplete="tel" placeholder="+39 …" {...aria("phone")} />{err("phone")}
+              <label>{t.email}*<input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} onBlur={e => setFieldError("email", validateEmailField(e.target.value))} autoComplete="email" {...aria("email")} />{err("email")}</label>
+              <label>{t.phone}*<input type="tel" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} onBlur={e => setFieldError("phone", validatePhoneField(e.target.value))} autoComplete="tel" placeholder="+39 …" {...aria("phone")} />{err("phone")}
                 <small className="form-note">{t.phoneHint}</small></label>
             </div>
           </fieldset>
@@ -209,7 +216,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService }
             <label>{t.duration}*<select value={form.months} onChange={e => setForm({ ...form, months: Number(e.target.value) })}>
               {product.tiers.map(tier => <option key={tier.months} value={tier.months}>{copy.months(tier.months)} — {formatEur(offerActive(product) ? (tier.offerCents ?? tier.listCents) : tier.listCents, lang)} {it ? "+ IVA" : "+ VAT"}</option>)}
             </select></label>
-            <label>{t.startDate}*<input type="date" value={form.startDate} min={new Date().toISOString().slice(0, 10)} onChange={e => setForm({ ...form, startDate: e.target.value })} {...aria("startDate")} />{err("startDate")}</label>
+            <label>{t.startDate}*<input type="date" value={form.startDate} min={new Date().toISOString().slice(0, 10)} onChange={e => setForm({ ...form, startDate: e.target.value })} onBlur={e => setFieldError("startDate", validateStartDateField(e.target.value))} {...aria("startDate")} />{err("startDate")}</label>
             {!postal && <label className="check-label"><input type="checkbox" checked={form.newActivation} onChange={e => setForm({ ...form, newActivation: e.target.checked })} /> <span>{t.newActivation}</span></label>}
             <label className="check-label"><input type="checkbox" checked={form.additionalDomiciliation} onChange={e => setForm({ ...form, additionalDomiciliation: e.target.checked })} /> <span>{t.additional}</span></label>
             <label className="check-label"><input type="checkbox" checked={form.consent} onChange={e => setForm({ ...form, consent: e.target.checked })} {...aria("consent")} /> <span>{t.consent} <Link href={it ? "/privacy.html" : "/en/privacy.html"} target="_blank" rel="noopener noreferrer">{it ? "Informativa privacy" : "Privacy notice"}</Link>*</span></label>{err("consent")}

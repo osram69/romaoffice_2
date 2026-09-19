@@ -63,9 +63,10 @@ export function CustomerArea({ lang }: { lang: Lang }) {
     if (!r.ok) throw new Error(data.error || "unavailable");
     return data;
   }
+  function validateEmailField(value: string) { return /^\S+@\S+\.\S+$/.test(value.trim()) ? "" : (it ? "Inserisci un indirizzo email valido." : "Enter a valid email address."); }
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); setError(""); setNotice("");
-    if (view === "login" && !/^\S+@\S+\.\S+$/.test(email.trim())) { setError(it ? "Inserisci un indirizzo email valido." : "Enter a valid email address."); return; }
+    if (view === "login") { const emailErr = validateEmailField(email); if (emailErr) { setError(emailErr); return; } }
     if (view === "login" && !password) { setError(it ? "Inserisci la password." : "Enter your password."); return; }
     if (view === "sms" && !/^\d{6}$/.test(otp)) { setError(it ? "Inserisci il codice SMS a 6 cifre." : "Enter the 6-digit SMS code."); return; }
     setBusy(true);
@@ -154,7 +155,7 @@ export function CustomerArea({ lang }: { lang: Lang }) {
       <h2 ref={titleRef} tabIndex={-1}>{view === "sms" ? (it ? "Verifica il tuo accesso" : "Verify your sign-in") : (it ? "Accedi all’Area Clienti" : "Sign in to your Customer Area")}</h2>
       <p className="login-description">{view === "sms" ? (it ? `Abbiamo inviato un codice a ${phone}, il cellulare registrato sul tuo account. Il codice scade dopo 5 minuti.` : `We sent a code to ${phone}, the mobile registered to your account. The code expires after 5 minutes.`) : (it ? "Inserisci l’email e la password associate al tuo account." : "Enter the email and password associated with your account.")}</p>
       <form noValidate onSubmit={submit}>
-        {view === "login" && <label htmlFor="customer-email">Email<input required id="customer-email" type="email" autoComplete="username" value={email} maxLength={254} onChange={e => setEmail(e.target.value)} placeholder={it ? "nome@azienda.it" : "name@company.com"} /></label>}
+        {view === "login" && <label htmlFor="customer-email">Email<input required id="customer-email" type="email" autoComplete="username" value={email} maxLength={254} onChange={e => setEmail(e.target.value)} onBlur={e => { const msg = validateEmailField(e.target.value); const invalidEmailMsg = it ? "Inserisci un indirizzo email valido." : "Enter a valid email address."; setError(prev => msg || (prev === invalidEmailMsg ? "" : prev)); }} placeholder={it ? "nome@azienda.it" : "name@company.com"} /></label>}
         {view === "login" && <label htmlFor="customer-password">{it ? "Password" : "Password"}<span className="password-input"><input required id="customer-password" type={showPassword ? "text" : "password"} maxLength={128} autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} /><button type="button" aria-label={it ? (showPassword ? "Nascondi password" : "Mostra password") : (showPassword ? "Hide password" : "Show password")} onClick={() => setShowPassword(s => !s)}>{showPassword ? <EyeOff /> : <Eye />}</button></span></label>}
         {view === "sms" && <label htmlFor="customer-code">{it ? "Codice SMS a 6 cifre" : "6-digit SMS code"}<input id="customer-code" required className="customer-otp" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ""))} placeholder="000000" /></label>}
         {status}
