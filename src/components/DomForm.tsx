@@ -4,6 +4,7 @@ import type { InferSelectModel } from "drizzle-orm";
 import type { domClients } from "@/db/schema";
 import { cleanText } from "@/lib/dom-status";
 import { DomDocumentUploads } from "./DomDocumentUploads";
+import { AreaClientiPasswordReset } from "./AreaClientiPasswordReset";
 
 type DomClient = InferSelectModel<typeof domClients>;
 
@@ -92,6 +93,9 @@ export function DomForm({ client, action, deleteAction, onClose }: { client?: Do
               field("Raccoglitore", <input name="raccoglitore" type="number" defaultValue={client?.raccoglitore ?? 0} />),
               field("Indirizzo spedizione posta", text("indSpedPosta", client?.indSpedPosta))
             )}
+            {row(
+              field("Email area clienti", <input name="areaClientiEmail" type="email" defaultValue={client?.areaClientiEmail ?? ""} placeholder="email usata dal cliente per accedere" />)
+            )}
             {row(field("Note", <textarea name="note" rows={2} defaultValue={cleanText(client?.note)} />))}
             {row(
               field("Contratto firmato", <input type="checkbox" name="contrFirmato" defaultChecked={!!client?.contrFirmato} />),
@@ -109,6 +113,12 @@ export function DomForm({ client, action, deleteAction, onClose }: { client?: Do
         </table>
 
         {client && <DomDocumentUploads id={client.id} presenzaFile={client.presenzaFile} />}
+
+        {client && (
+          <div style={{ marginTop: 10 }}>
+            <AreaClientiPasswordReset id={client.id} hasPassword={!!client.areaClientiPasswordHash} />
+          </div>
+        )}
 
         <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
           <button type="submit" className="gestione-btn gestione-btn-blue" style={{ padding: "9px 20px" }}>

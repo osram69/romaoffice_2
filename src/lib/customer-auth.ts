@@ -2,7 +2,7 @@ import { createHash, createHmac, randomBytes, scrypt, timingSafeEqual } from "no
 import { and, eq, gt, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { authLimits, customers, customerSessions } from "@/db/schema";
+import { authLimits, domClients, domCustomerSessions } from "@/db/schema";
 import type { Lang } from "@/lib/site";
 
 export const SESSION_COOKIE = "ros_customer_session";
@@ -75,14 +75,17 @@ export function failed(error: unknown) {
   console.error("Customer area request failed", error instanceof Error ? error.name : "UnknownError");
   return json({ error: "unavailable" }, 503);
 }
-export async function getCustomer(req: NextRequest) {
+/** Area Clienti identity is the domiciliazione record itself — see domClients.areaClientiEmail/
+ * areaClientiPasswordHash in schema.ts. There is deliberately no "active" gate here: a lapsed
+ * domiciliazione should still let its contact see their old contract. */
+export async function getDomCustomer(req: NextRequest) {
   const value = req.cookies.get(SESSION_COOKIE)?.value;
   if (!value || !/^[a-f0-9]{64}$/.test(value)) throw new CustomerError("session", 401);
-  const [row] = await db.select({ customer: customers }).from(customerSessions)
-    .innerJoin(customers, eq(customers.id, customerSessions.customerId))
-    .where(and(eq(customerSessions.tokenHash, digest(value)), gt(customerSessions.expiresAt, new Date()), eq(customers.active, true))).limit(1);
+  const [row] = await db.select({ client: domClients }).from(domCustomerSessions)
+    .innerJoin(domClients, eq(domClients.id, domCustomerSessions.domClientId))
+    .where(and(eq(domCustomerSessions.tokenHash, digest(value)), gt(domCustomerSessions.expiresAt, new Date()))).limit(1);
   if (!row) throw new CustomerError("session", 401);
-  return row.customer;
+  return row.client;
 }
 export function maskPhone(phone: string) { return `${phone.slice(0, 3)} ••• ••• ${phone.slice(-3)}`; }
 async function sendViaTwilio(phone: string, body: string) {

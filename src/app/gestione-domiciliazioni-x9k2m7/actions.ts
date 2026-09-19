@@ -4,12 +4,13 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { domClients, domRinnovoPrezzi } from "@/db/schema";
+import { domClients, domCustomerChallenges, domCustomerSessions, domRinnovoPrezzi } from "@/db/schema";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
 import { removeEncrypted, saveEncrypted, type DocType, DOC_TYPES } from "@/lib/dom-archive";
 import { PRESENZA_FILE_BITS, cleanText } from "@/lib/dom-status";
 import { buildScadenzaEmailHtml, defaultScontoApplicabile, scadenzaEmailSubject } from "@/lib/dom-scadenza-email";
 import { sendDomMail } from "@/lib/mailer";
+import { hashPassword } from "@/lib/customer-auth";
 
 const BASE_PATH = "/gestione-domiciliazioni-x9k2m7";
 
@@ -54,6 +55,7 @@ function fields(formData: FormData) {
     tipologia: Number(formData.get("tipologia")) || 0,
     raccoglitore: Number(formData.get("raccoglitore")) || 0,
     prezzoRinnovo: formData.get("prezzoRinnovo") ? Math.round(Number(formData.get("prezzoRinnovo"))) : null,
+    areaClientiEmail: str(formData, "areaClientiEmail")?.toLowerCase() ?? null,
   };
 }
 
@@ -198,6 +200,21 @@ export async function inviaScadenzaAction(formData: FormData): Promise<{ success
 
   const prezzoRinnovo = prezzoRaw !== null && prezzoRaw !== "" ? Math.round(Number(prezzoRaw)) : client.prezzoRinnovo;
   await db.update(domClients).set({ scadenzaInviata: true, prezzoRinnovo, testoScadenza: html }).where(eq(domClients.id, id));
+  revalidatePath(BASE_PATH);
+  return { success: true };
+}
+
+// Staff sets or resets the Area Clienti password directly (no email-link dance): used both for
+// the very first password on a new client and later if the customer loses theirs. Either way the
+// customer is forced to change it on next login, and any live session/pending SMS code is revoked.
+export async function setAreaClientiPasswordAction(id: number, newPassword: string): Promise<{ success: boolean; message?: string }> {
+  "use server";
+  await requireStaff();
+  if (newPassword.length < 12 || newPassword.length > 128) return { success: false, message: "La password deve avere tra 12 e 128 caratteri" };
+  const passwordHash = await hashPassword(newPassword);
+  await db.update(domClients).set({ areaClientiPasswordHash: passwordHash, mustChangePassword: true }).where(eq(domClients.id, id));
+  await db.delete(domCustomerSessions).where(eq(domCustomerSessions.domClientId, id));
+  await db.delete(domCustomerChallenges).where(eq(domCustomerChallenges.domClientId, id));
   revalidatePath(BASE_PATH);
   return { success: true };
 }

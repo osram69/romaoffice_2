@@ -1,14 +1,12 @@
 import "dotenv/config";
 import { test, expect } from "@playwright/test";
 import { randomUUID } from "node:crypto";
-import { unlink } from "node:fs/promises";
-import { resolve } from "node:path";
-import { PDFDocument } from "pdf-lib";
 import { eq } from "drizzle-orm";
 import { db, pool } from "@/db";
-import { customers, customerContracts, customerSessions, customerAudit } from "@/db/schema";
+import { domClients, domCustomerSessions } from "@/db/schema";
 import { digest, token, SESSION_COOKIE } from "@/lib/customer-auth";
-import { storeCustomerContract } from "@/lib/customer-documents";
+import { saveEncrypted, removeEncrypted } from "@/lib/dom-archive";
+import { PRESENZA_FILE_BITS } from "@/lib/dom-status";
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("ros_cookie_consent", JSON.stringify({ necessary: true, analytics: false, marketing: false, savedAt: Date.now() })));
@@ -55,9 +53,6 @@ test("customer login and mobile navigation remain accessible", async ({ page }) 
   await expect(page.getByRole("heading", { name: "Sign in to your Customer Area" })).toBeVisible();
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
   await page.screenshot({ path: "test-results/customer-login-desktop.png", fullPage: true });
-  await page.getByRole("button", { name: "Forgot your password?" }).click();
-  await expect(page.getByRole("heading", { name: "Reset your password", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Back to sign-in" }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: "test-results/customer-login-mobile.png", fullPage: true });
   await expect(page.locator(".lang-switch")).toBeVisible();
@@ -70,34 +65,31 @@ test("customer login and mobile navigation remain accessible", async ({ page }) 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 });
 
-test("authenticated dashboard downloads only its real contract and reserves future features", async ({ page, context, baseURL }) => {
-  const [customer] = await db.insert(customers).values({ email: `qa-browser-${randomUUID()}@example.invalid`, name: "Giulia Rossi", companyName: "Studio Rossi", phone: "+393331234567" }).returning();
-  let storageKey = "";
+test("authenticated dashboard downloads only its own domiciliazione contract and reserves future features", async ({ page, context, baseURL }) => {
+  const [client] = await db.insert(domClients).values({ ragioneSociale: "Studio Rossi", areaClientiEmail: `qa-browser-${randomUUID()}@example.invalid`, telefono: "+393331234567", presenzaFile: PRESENZA_FILE_BITS.con }).returning();
   try {
-    const pdf = await PDFDocument.create(); pdf.addPage().drawText("QA CONTRACT - NOT A REAL CUSTOMER DOCUMENT"); const bytes = Buffer.from(await pdf.save());
-    storageKey = await storeCustomerContract(bytes);
-    await db.insert(customerContracts).values({ customerId: customer.id, title: "Contratto di domiciliazione sede legale", titleEn: "Registered office address agreement", reference: "QA-2026-001", storageKey, sizeBytes: bytes.length });
-    const session = token(); await db.insert(customerSessions).values({ customerId: customer.id, tokenHash: digest(session), expiresAt: new Date(Date.now() + 600000) });
+    const bytes = Buffer.from("%PDF-1.4 QA CONTRACT - NOT A REAL CUSTOMER DOCUMENT");
+    await saveEncrypted(client.id, "con", bytes);
+    const session = token(); await db.insert(domCustomerSessions).values({ domClientId: client.id, tokenHash: digest(session), expiresAt: new Date(Date.now() + 600000) });
     await context.addCookies([{ name: SESSION_COOKIE, value: session, url: baseURL!, httpOnly: true, sameSite: "Strict" }]);
     await page.goto("/area-clienti.html");
-    await expect(page.getByRole("heading", { name: "Bentornato, Giulia." })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Contratto di domiciliazione sede legale", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Bentornato, Studio Rossi." })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Contratto di domiciliazione", exact: true })).toBeVisible();
     await expect(page.getByText("Caricamento non attivo", { exact: true })).toBeVisible();
     await page.screenshot({ path: "test-results/customer-dashboard.png", fullPage: true });
     const downloadPromise = page.waitForEvent("download");
     await page.getByRole("button", { name: "Scarica contratto" }).click();
-    const download = await downloadPromise; expect(download.suggestedFilename()).toContain("QA-2026-001");
+    const download = await downloadPromise; expect(download.suggestedFilename()).toBe("contratto-domiciliazione.pdf");
     await page.locator(".lang-switch").getByRole("link", { name: "English" }).click();
-    await expect(page.getByRole("heading", { name: "Welcome back, Giulia." })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Registered office address agreement", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Welcome back, Studio Rossi." })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Registered office agreement", exact: true })).toBeVisible();
     await page.setViewportSize({ width: 390, height: 844 });
     await page.screenshot({ path: "test-results/customer-dashboard-mobile.png", fullPage: true });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
     await page.getByRole("button", { name: "Sign out", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Sign in to your Customer Area" })).toBeVisible();
   } finally {
-    await db.delete(customerAudit).where(eq(customerAudit.customerId, customer.id));
-    await db.delete(customers).where(eq(customers.id, customer.id));
-    if (storageKey) await unlink(resolve(process.env.CUSTOMER_STORAGE_PATH || "private/customer-contracts", storageKey)).catch(() => {});
+    await removeEncrypted(client.id, "con").catch(() => {});
+    await db.delete(domClients).where(eq(domClients.id, client.id));
   }
 });

@@ -168,8 +168,37 @@ export const domClients = pgTable("dom_clients", {
   // scadenza email. Defaults true for every client (a fresh activation is always due its first
   // renewal); staff untick it once that first renewal has actually gone through.
   primoRinnovo: boolean("primo_rinnovo").notNull().default(true),
+  // Area Clienti login, set directly here by staff instead of through a separate customer
+  // record: staff picks the login email during setup and sets the first password themselves
+  // (or resets it later if the customer loses it) — mustChangePassword forces a change on the
+  // next login either way, since the password briefly passed through staff's hands.
+  areaClientiEmail: text("area_clienti_email"),
+  areaClientiPasswordHash: text("area_clienti_password_hash"),
+  mustChangePassword: boolean("must_change_password").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Area Clienti sessions/SMS-challenges, keyed directly to the domiciliazione record — replaces
+// the earlier separate customers/customerSessions/customerChallenges design (kept below, unused,
+// rather than dropped, to avoid a destructive migration for tables nothing reads anymore).
+export const domCustomerSessions = pgTable("dom_customer_sessions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  domClientId: integer("dom_client_id").notNull().references(() => domClients.id, { onDelete: "cascade" }),
+  tokenHash: varchar("token_hash", { length: 64 }).notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+export const domCustomerChallenges = pgTable("dom_customer_challenges", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  domClientId: integer("dom_client_id").notNull().references(() => domClients.id, { onDelete: "cascade" }),
+  tokenHash: varchar("token_hash", { length: 64 }).notNull().unique(),
+  codeHash: text("code_hash").notNull(),
+  attempts: integer("attempts").notNull().default(0),
+  sends: integer("sends").notNull().default(1),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  sentAt: timestamp("sent_at", { withTimezone: true }).defaultNow().notNull(),
+  consumedAt: timestamp("consumed_at", { withTimezone: true }),
 });
 
 // Renewal-specific pricing shown as upsell offers in scadenza emails — deliberately separate
