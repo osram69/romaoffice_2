@@ -13,7 +13,7 @@ import { GET, POST } from "@/app/api/customer/[action]/route";
 
 test("area clienti: password + registered-mobile SMS and the domiciliazione contract", async t => {
   const nonce = randomUUID(); const email = `qa-${nonce}@example.invalid`;
-  const password = `QA-only-${token()}`; const phone = "+393331234567";
+  let currentPassword = `QA-only-${token()}`; const phone = "+393331234567";
   const originalFetch = globalThis.fetch;
   const envNames = ["TWILIO_ACCOUNT_SID", "TWILIO_API_KEY", "TWILIO_API_KEY_SECRET", "TWILIO_FROM", "TRUSTED_CLIENT_IP_HEADER"];
   const saved = envNames.map(name => [name, process.env[name]] as const);
@@ -32,7 +32,7 @@ test("area clienti: password + registered-mobile SMS and the domiciliazione cont
   const get = (action: string, cookie?: string, query = "") => GET(new NextRequest(`http://localhost:3000/api/customer/${action}${query}`, { headers: cookie ? { Cookie: cookie } : {} }), { params: Promise.resolve({ action }) });
   const cookieValue = (response: Response, name: string) => response.headers.get("set-cookie")?.match(new RegExp(`${name}=([^; ,]+)`))?.[1] || "";
   async function login() {
-    const r = await request("login", { email, password, lang: "en" }); assert.equal(r.status, 200);
+    const r = await request("login", { email, password: currentPassword, lang: "en" }); assert.equal(r.status, 200);
     challenge = cookieValue(r, CHALLENGE_COOKIE); assert.ok(challenge);
     assert.equal(cookieValue(r, SESSION_COOKIE), ""); assert.equal(sentPhone, phone);
     assert.ok(r.headers.get("set-cookie")?.includes("HttpOnly"));
@@ -42,7 +42,7 @@ test("area clienti: password + registered-mobile SMS and the domiciliazione cont
   }
   try {
     const [client] = await db.insert(domClients).values({
-      ragioneSociale: "QA Test Client", areaClientiEmail: email, areaClientiPasswordHash: await hashPassword(password),
+      ragioneSociale: "QA Test Client", areaClientiEmail: email, areaClientiPasswordHash: await hashPassword(currentPassword),
       telefono: phone, presenzaFile: PRESENZA_FILE_BITS.con,
     }).returning();
     domClientIds.push(client.id);
@@ -54,11 +54,11 @@ test("area clienti: password + registered-mobile SMS and the domiciliazione cont
     await saveEncrypted(other.id, "con", Buffer.from("%PDF-1.4 QA contract for the OTHER client"));
 
     await t.test("password hashing, anonymous protection, and cross-site rejection", async () => {
-      assert.notEqual(client.areaClientiPasswordHash, password); assert.equal(await verifyPassword(password, client.areaClientiPasswordHash), true);
+      assert.notEqual(client.areaClientiPasswordHash, currentPassword); assert.equal(await verifyPassword(currentPassword, client.areaClientiPasswordHash), true);
       assert.equal(await verifyPassword("wrong password", client.areaClientiPasswordHash), false);
       assert.equal((await get("me")).status, 401); assert.equal((await get("dom-contract")).status, 401);
       assert.equal((await request("login", { email, password: "wrong password" })).status, 401);
-      assert.equal((await request("login", { email, password }, undefined, "https://attacker.invalid")).status, 403);
+      assert.equal((await request("login", { email, password: currentPassword }, undefined, "https://attacker.invalid")).status, 403);
       const proxied = new NextRequest("http://internal-server:3000/api/customer/logout", { method: "POST", headers: { "Content-Type": "application/json", Host: "preview.example.test", Origin: "https://preview.example.test", "Sec-Fetch-Site": "same-origin" }, body: "{}" });
       assert.equal((await POST(proxied, { params: Promise.resolve({ action: "logout" }) })).status, 200);
     });
@@ -87,11 +87,12 @@ test("area clienti: password + registered-mobile SMS and the domiciliazione cont
       assert.equal(Buffer.from(await downloaded.arrayBuffer()).equals(contractBytes), true);
     });
     await t.test("a customer can change their own password while logged in", async () => {
-      const newPassword = `new-${password}`;
+      const newPassword = `new-${currentPassword}`;
       const r = await request("set-password", { password: newPassword }, `${SESSION_COOKIE}=${session}`); assert.equal(r.status, 200);
       const [updated] = await db.select().from(domClients).where(eq(domClients.id, client.id));
       assert.equal(await verifyPassword(newPassword, updated.areaClientiPasswordHash), true);
       assert.equal(updated.mustChangePassword, false);
+      currentPassword = newPassword;
     });
     await t.test("expired sessions and logout revoke protected access", async () => {
       await db.update(domCustomerSessions).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(domCustomerSessions.tokenHash, digest(session)));
@@ -109,7 +110,7 @@ test("area clienti: password + registered-mobile SMS and the domiciliazione cont
     });
     await t.test("missing SMS configuration fails closed", async () => {
       delete process.env.TWILIO_ACCOUNT_SID;
-      const r = await request("login", { email, password: `new-${password}` }); assert.equal(r.status, 503); assert.equal(cookieValue(r, SESSION_COOKIE), "");
+      const r = await request("login", { email, password: currentPassword }); assert.equal(r.status, 503); assert.equal(cookieValue(r, SESSION_COOKIE), "");
       process.env.TWILIO_ACCOUNT_SID = "AC_TEST_ONLY";
     });
     await t.test("database-backed throttling is enforced", async () => {
