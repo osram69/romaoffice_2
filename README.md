@@ -4,6 +4,14 @@ Production-oriented bilingual website built with Next.js App Router, PostgreSQL 
 
 > No real credentials are committed. Prices, VAT treatment, company VAT/REA values, testimonials and legal wording must be approved before launch. The prompt referred to an “exact” Italian privacy text but did not include it; a complete nine-section draft and faithful English translation are present. Replace the Italian policy with counsel-approved source text if available.
 
+## Ultimo aggiornamento: fotografie reali, tariffe Smart-Start e validazione moduli
+
+Le immagini hero e galleria (`public/images/office-hero.jpg`, `public/images/office-hero-og.jpg`, `public/images/gallery/office.webp`, `public/images/gallery/meeting.webp`) sono ora fotografie reali della sede di Via Venti Settembre, non più lo scatto Pexels dimostrativo né le foto di bassa qualità originarie. La voce "workspace" della galleria (che puntava a un file mai esistito) è stata rimossa da `src/lib/gallery.ts`.
+
+Il pannello **Gestione tariffe** (`/gestione-tariffe-x9k2m7`) ora espone, per ciascuna durata, un check "Dom. aggiuntiva" indipendente da "Nuova attiv." (prima lo sconto domiciliazioni aggiuntive era sempre applicato, senza controllo); espone inoltre due check a livello di servizio "Smart 3+24 attivo" / "Smart 6+24 attivo" per il contratto Smart-Start (sede legale), che quando attivi compaiono nel menu a tendina di "Compila il modulo online" con dicitura "Smart 3+24"/"Smart 6+24". Vedere `drizzle/0005_moaning_mikhail_rasputin.sql` per la migrazione corrispondente.
+
+Tutti i moduli pubblici con campi validati (contatti, attivazione online, richiesta manuale, offerta standard, login Area Clienti) ora eseguono il controllo di formato (email, telefono, codice fiscale, date) quando il focus lascia il campo, non solo all'invio.
+
 ## Ultimo aggiornamento: tariffe e offerta standard
 
 Il tariffario ora presenta due offerte acquistabili, sede legale e postale/commerciale. Prezzi, IVA, sconti ed extra sono letti dal database; `scripts/seed-catalog.ts` inizializza i valori senza sovrascrivere quelli già presenti. La fonte prezzi non è più una costante in `pricing.ts`.
@@ -222,7 +230,7 @@ When splitting frontend/backend, set a strict allowed origin, use HTTPS, CSRF pr
 
 The site includes semantic landmarks/headings, a skip link, visible focus, keyboard mobile menu, live validation status, explicit labels, reduced-motion handling, sufficient color contrast, local optimized imagery, responsive image generation, lazy map loading, unique localized metadata, canonical/hreflang, localized LocalBusiness JSON-LD, `sitemap.xml` and `robots.txt`.
 
-Image: Pexels photo 8082224 by Max Vakhtbovych, downloaded in compressed form. Verify the Pexels licence/attribution policy at launch.
+Hero, Open Graph and gallery photography are the client's own site (Via Venti Settembre, 118), not stock imagery.
 
 ### Analytics and Search Console migration from the Joomla site
 

@@ -26,7 +26,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     name: "ROMA OFFICE SHARING", alternateName: lang === "it" ? "Business Center Roma" : "Rome Business Centre",
     description: lang === "it" ? "Uffici arredati e servizi di domiciliazione nel centro di Roma." : "Furnished offices and registered office and mailing address services in central Rome.",
     url: `${BASE_URL}${pathname}`, telephone: contact.phoneHref, email: contact.email,
-    image: `${BASE_URL}/images/office-hero.jpg`, logo: `${BASE_URL}/LogoFull_trasp.svg`, priceRange: "€€",
+    image: `${BASE_URL}/images/office-hero-og.jpg`, logo: `${BASE_URL}/LogoFull_trasp.svg`, priceRange: "€€",
     address: { "@type": "PostalAddress", streetAddress: "Via Venti Settembre, 118 int.1", postalCode: "00187", addressLocality: "Roma", addressRegion: "RM", addressCountry: "IT" },
     geo: { "@type": "GeoCoordinates", latitude: 41.9037423, longitude: 12.4934357 },
     openingHoursSpecification: [{ "@type": "OpeningHoursSpecification", dayOfWeek: ["Monday","Tuesday","Wednesday","Thursday","Friday"], opens: "08:30", closes: "18:00" }, { "@type": "OpeningHoursSpecification", dayOfWeek: "Saturday", opens: "08:30", closes: "13:00", description: lang === "it" ? "Su richiesta" : "On request" }],
