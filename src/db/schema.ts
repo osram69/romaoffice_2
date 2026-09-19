@@ -1,4 +1,5 @@
 import { boolean, date, integer, jsonb, pgEnum, pgTable, serial, text, timestamp, varchar, uuid, uniqueIndex } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const orderStatus = pgEnum("order_status", ["pending", "paid", "filled", "signed", "cancelled"]);
 export const contacts = pgTable("contacts", {
@@ -177,7 +178,13 @@ export const domClients = pgTable("dom_clients", {
   mustChangePassword: boolean("must_change_password").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-});
+}, table => [
+  // Login looks a client up by this email alone — without this, two records sharing the same
+  // area_clienti_email make the lookup silently pick whichever one Postgres returns first,
+  // which can have no password set at all (this happened: a stray test row with the same
+  // email as a real one made login fail with "wrong password" for the real one).
+  uniqueIndex("dom_clients_area_clienti_email_unique").on(table.areaClientiEmail).where(sql`${table.areaClientiEmail} is not null`),
+]);
 
 // Area Clienti sessions/SMS-challenges, keyed directly to the domiciliazione record — replaces
 // the earlier separate customers/customerSessions/customerChallenges design (kept below, unused,
