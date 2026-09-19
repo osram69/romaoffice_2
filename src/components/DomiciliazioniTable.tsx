@@ -79,6 +79,8 @@ function pairedRows(fields: Field[]) {
 export function DomiciliazioniTable({ rows, stato }: { rows: DomClient[]; stato: number }) {
   const [viewing, setViewing] = useState<DomClient | null>(null);
   const [editing, setEditing] = useState<DomClient | null>(null);
+  const [schedaTab, setSchedaTab] = useState<"dati" | "scadenza" | "proforma">("dati");
+  function openScheda(row: DomClient) { setViewing(row); setSchedaTab("dati"); }
   let lastLetter = "";
   const decadute = stato === 2;
   const colCount = decadute ? 11 : 10;
@@ -130,7 +132,7 @@ export function DomiciliazioniTable({ rows, stato }: { rows: DomClient[]; stato:
                     <tr className={index % 2 === 0 ? "row-even" : "row-odd"}>
                       <td style={{ color: "#999" }}>{index + 1}</td>
                       <td style={{ maxWidth: 220 }}>
-                        <button type="button" className="gestione-ragione-link gestione-ragione-name" title={row.ragioneSociale} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit", textAlign: "left" }} onClick={() => setViewing(row)}>
+                        <button type="button" className="gestione-ragione-link gestione-ragione-name" title={row.ragioneSociale} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit", textAlign: "left" }} onClick={() => openScheda(row)}>
                           {row.ragioneSociale}
                         </button>
                       </td>
@@ -158,7 +160,7 @@ export function DomiciliazioniTable({ rows, stato }: { rows: DomClient[]; stato:
                       <td><span className={`gestione-doc-dot ${docStatus(row)}`} title="Stato documenti" /></td>
                       <td>{row.raccoglitore}</td>
                       <td style={{ maxWidth: 220 }}>
-                        <button type="button" className={`gestione-ragione-link gestione-ragione-name${(row.presenzaFile & PRESENZA_FILE_BITS.rev) === PRESENZA_FILE_BITS.rev ? " revoca" : ""}`} title={row.ragioneSociale} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit", textAlign: "left" }} onClick={() => setViewing(row)}>
+                        <button type="button" className={`gestione-ragione-link gestione-ragione-name${(row.presenzaFile & PRESENZA_FILE_BITS.rev) === PRESENZA_FILE_BITS.rev ? " revoca" : ""}`} title={row.ragioneSociale} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit", textAlign: "left" }} onClick={() => openScheda(row)}>
                           {row.ragioneSociale}
                         </button>
                       </td>
@@ -214,49 +216,67 @@ export function DomiciliazioniTable({ rows, stato }: { rows: DomClient[]; stato:
               <button type="button" className="gestione-modal-close" aria-label="Chiudi" onClick={() => setViewing(null)}>×</button>
             </div>
             <div className="gestione-modal-body">
-              <table className="gestione-scheda-table gestione-scheda-table-paired">
-                <tbody>
-                  {pairedRows([
-                    ["Stato", STATI[viewing.stato ?? -1]],
-                    ["Tipologia", TIPOLOGIE[viewing.tipologia]],
-                    ["Email", viewing.emailPosta],
-                    ["Email PEC", viewing.emailPec],
-                    ["Amministratore", cleanText(viewing.amministratore)],
-                    ["Telefono amministratore", cleanText(viewing.telefonoAmm)],
-                    ["Persona di riferimento", cleanText(viewing.personaRif)],
-                    ["Telefono", cleanText(viewing.telefono)],
-                    ["Telefono urgenze", cleanText(viewing.telefonoUrg)],
-                    ["Raccoglitore", viewing.raccoglitore],
-                    ["Inizio domiciliazione", fmtDate(viewing.inizioDom)],
-                    ["Scadenza domiciliazione", fmtDate(viewing.scadenzaDom)],
-                    ["Scadenza pagamento", fmtDate(viewing.scadenzaPagamento)],
-                    ["Prezzo rinnovo", viewing.prezzoRinnovo !== null ? `${viewing.prezzoRinnovo} €` : null],
-                    ["Indirizzo spedizione posta", cleanText(viewing.indSpedPosta)],
-                    ["Note", cleanText(viewing.note)],
-                    ["Contratto firmato", viewing.contrFirmato ? "Sì" : "No"],
-                    ["Controfirmato inviato", viewing.controfirmatoInviato ? "Sì" : "No"],
-                    ["Modulo", viewing.moduloCont ? "Sì" : "No"],
-                    ["Doc. amministratore", viewing.docAmmPres ? "Sì" : "No"],
-                    ["Allegato 1", viewing.allegato1Pres ? "Sì" : "No"],
-                    ["Visura", viewing.visuraPres ? "Sì" : "No"],
-                  ])}
-                  <tr>
-                    <th>Allegati PDF</th>
-                    <td colSpan={3}>
-                      {(() => {
-                        const present = DOC_LABELS.filter(d => (viewing.presenzaFile & PRESENZA_FILE_BITS[d.key]) === PRESENZA_FILE_BITS[d.key]);
-                        if (present.length === 0) return <span style={{ color: "#aaa" }}>Nessun allegato presente</span>;
-                        return present.map(d => (
-                          <a key={d.key} className="gestione-file-link" style={{ marginRight: 8 }} href={`/api/dom-documents?id=${viewing.id}&type=${d.key}`} target="_blank" rel="noopener noreferrer">{d.label}</a>
-                        ));
-                      })()}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-              <div style={{ marginTop: 14 }}>
-                <ScadenzaEmailPanel id={viewing.id} initialPrezzoRinnovo={viewing.prezzoRinnovo} />
-              </div>
+              {(() => {
+                const inScadenza = ["scad-yellow", "scad-yellow-dark"].includes(scadenzaRowClass(viewing));
+                return (
+                  <div className="gestione-tabs" style={{ marginBottom: 14 }}>
+                    <button type="button" className={`gestione-tab${schedaTab === "dati" ? " active" : ""}`} onClick={() => setSchedaTab("dati")}>Dati Società</button>
+                    {inScadenza && <button type="button" className={`gestione-tab${schedaTab === "scadenza" ? " active" : ""}`} onClick={() => setSchedaTab("scadenza")}>Gestione Scadenza</button>}
+                    {inScadenza && <button type="button" className={`gestione-tab${schedaTab === "proforma" ? " active" : ""}`} onClick={() => setSchedaTab("proforma")}>Invio Proforma</button>}
+                  </div>
+                );
+              })()}
+
+              {schedaTab === "dati" && (
+                <table className="gestione-scheda-table gestione-scheda-table-paired">
+                  <tbody>
+                    {pairedRows([
+                      ["Stato", STATI[viewing.stato ?? -1]],
+                      ["Tipologia", TIPOLOGIE[viewing.tipologia]],
+                      ["Email", viewing.emailPosta],
+                      ["Email PEC", viewing.emailPec],
+                      ["Amministratore", cleanText(viewing.amministratore)],
+                      ["Telefono amministratore", cleanText(viewing.telefonoAmm)],
+                      ["Persona di riferimento", cleanText(viewing.personaRif)],
+                      ["Telefono", cleanText(viewing.telefono)],
+                      ["Telefono urgenze", cleanText(viewing.telefonoUrg)],
+                      ["Raccoglitore", viewing.raccoglitore],
+                      ["Inizio domiciliazione", fmtDate(viewing.inizioDom)],
+                      ["Scadenza domiciliazione", fmtDate(viewing.scadenzaDom)],
+                      ["Scadenza pagamento", fmtDate(viewing.scadenzaPagamento)],
+                      ["Prezzo rinnovo", viewing.prezzoRinnovo !== null ? `${viewing.prezzoRinnovo} €` : null],
+                      ["Indirizzo spedizione posta", cleanText(viewing.indSpedPosta)],
+                      ["Note", cleanText(viewing.note)],
+                      ["Contratto firmato", viewing.contrFirmato ? "Sì" : "No"],
+                      ["Controfirmato inviato", viewing.controfirmatoInviato ? "Sì" : "No"],
+                      ["Modulo", viewing.moduloCont ? "Sì" : "No"],
+                      ["Doc. amministratore", viewing.docAmmPres ? "Sì" : "No"],
+                      ["Allegato 1", viewing.allegato1Pres ? "Sì" : "No"],
+                      ["Visura", viewing.visuraPres ? "Sì" : "No"],
+                    ])}
+                    <tr>
+                      <th>Allegati PDF</th>
+                      <td colSpan={3}>
+                        {(() => {
+                          const present = DOC_LABELS.filter(d => (viewing.presenzaFile & PRESENZA_FILE_BITS[d.key]) === PRESENZA_FILE_BITS[d.key]);
+                          if (present.length === 0) return <span style={{ color: "#aaa" }}>Nessun allegato presente</span>;
+                          return present.map(d => (
+                            <a key={d.key} className="gestione-file-link" style={{ marginRight: 8 }} href={`/api/dom-documents?id=${viewing.id}&type=${d.key}`} target="_blank" rel="noopener noreferrer">{d.label}</a>
+                          ));
+                        })()}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              )}
+
+              {schedaTab === "scadenza" && (
+                <ScadenzaEmailPanel key={viewing.id} id={viewing.id} initialPrezzoRinnovo={viewing.prezzoRinnovo} />
+              )}
+
+              {schedaTab === "proforma" && (
+                <p style={{ fontSize: 13, color: "#666" }}>Funzione non ancora disponibile.</p>
+              )}
             </div>
             <div className="gestione-modal-footer">
               <button type="button" className="gestione-btn gestione-btn-blue" onClick={() => { setEditing(viewing); setViewing(null); }} style={{ marginRight: 10 }}>

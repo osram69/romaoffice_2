@@ -26,9 +26,9 @@ function fmtEuro(cents: number | null): string {
 
 const DURATA_PAROLA: Record<number, string> = { 6: "semestrale", 12: "annuo", 24: "biennale", 36: "triennale", 48: "quadriennale" };
 
-/** Rounds the (inizio_dom -> scadenza_dom) span to the nearest whole month, used only to pick
- * wording ("canone semestrale/annuo/...") and to decide which renewal offers count as upsells. */
-function contractMonths(client: Pick<DomClient, "inizioDom" | "scadenzaDom">): number | null {
+/** Rounds the (inizio_dom -> scadenza_dom) span to the nearest whole month, used to pick wording
+ * ("canone semestrale/annuo/...") and to decide which renewal offers count as upsells. */
+export function contractMonths(client: Pick<DomClient, "inizioDom" | "scadenzaDom">): number | null {
   if (!client.inizioDom || !client.scadenzaDom) return null;
   const start = new Date(client.inizioDom);
   const end = new Date(client.scadenzaDom);
@@ -36,11 +36,21 @@ function contractMonths(client: Pick<DomClient, "inizioDom" | "scadenzaDom">): n
   return Math.max(1, Math.round(months));
 }
 
-/** The "sconto attivazioni non più applicabile" disclaimer added on top of the legacy template,
- * per the user's explicit request: shown only while primoRinnovo is still true, citing the exact
- * activation year from inizio_dom when known (falls back to no year if inizio_dom is missing). */
-function scontoClause(client: Pick<DomClient, "primoRinnovo" | "inizioDom">): string {
-  if (!client.primoRinnovo) return "";
+/** Only 6- and 12-month contracts ever carried the one-time "sconto attivazioni" 10% discount
+ * (24/36/48-month contracts never had it); this is the automatic default for the checkbox staff
+ * can still override per send, per the user's explicit correction to the earlier primoRinnovo
+ * flag — a contract's own duration is more reliable than a hand-tracked "first renewal" flag. */
+export function defaultScontoApplicabile(client: Pick<DomClient, "inizioDom" | "scadenzaDom">): boolean {
+  const months = contractMonths(client);
+  return months !== null && months >= 6 && months <= 12;
+}
+
+/** The "sconto attivazioni non più applicabile" disclaimer added on top of the legacy template.
+ * `includeSconto` is an explicit, staff-controlled choice (seeded from defaultScontoApplicabile)
+ * — never inferred silently inside the builder. Cites the exact activation year from inizio_dom
+ * when known, falling back to no year if that date is missing. */
+function scontoClause(client: Pick<DomClient, "inizioDom">, includeSconto: boolean): string {
+  if (!includeSconto) return "";
   const year = client.inizioDom ? new Date(client.inizioDom).getFullYear() : null;
   return ` (lo sconto una-tantum attivazioni${year ? ` ${year}` : ""} non è più applicabile)`;
 }
@@ -65,7 +75,7 @@ export function scadenzaEmailSubject(client: Pick<DomClient, "ragioneSociale">):
  * plus the (new) activation-discount disclaimer. This is meant to be shown to staff for review/
  * editing before sending — never sent unmodified — but is also a stable building block a future
  * automation (local agent / AI) can call directly with the same DomClient + pricing shape. */
-export function buildScadenzaEmailHtml(client: DomClient, prezzi: RinnovoPrezzo[]): string {
+export function buildScadenzaEmailHtml(client: DomClient, prezzi: RinnovoPrezzo[], includeSconto: boolean): string {
   const months = contractMonths(client);
   const durata = months ? DURATA_PAROLA[months] ?? `di ${months} mesi` : "";
   const prezzoRinnovo = client.prezzoRinnovo !== null ? String(client.prezzoRinnovo) : "[PREZZO]";
@@ -73,7 +83,7 @@ export function buildScadenzaEmailHtml(client: DomClient, prezzi: RinnovoPrezzo[
   return `<p>Buongiorno Sig. ${cognomeDi(client)},</p>
 <p>con la presente volevamo informarLa che in data <strong>${fmtDateIT(client.scadenzaDom)}</strong>, scadrà il contratto di domiciliazione legale della società <strong>${client.ragioneSociale}</strong></p>
 <p>Qualora desideri interrompere la domiciliazione, La preghiamo di inviarci richiesta scritta (raccomandata o PEC al nostro indirizzo <a href="mailto:cubeng@pec.it">cubeng@pec.it</a>) oppure di comunicarci l'intento al rinnovo rispondendo a questa email.</p>
-<p>Per il rinnovo possiamo mantenere le stesse condizioni precedenti con canone${durata ? ` ${durata}` : ""} di ${prezzoRinnovo}&nbsp;€ + IVA${scontoClause(client)}</p>
+<p>Per il rinnovo possiamo mantenere le stesse condizioni precedenti con canone${durata ? ` ${durata}` : ""} di ${prezzoRinnovo}&nbsp;€ + IVA${scontoClause(client, includeSconto)}</p>
 <p><u>Nel caso di pagamento tardivo, non sarà possibile rinnovare alle stesse condizioni.</u></p>
 <p>Abbiamo altresì attive le seguenti offerte:</p>
 ${offerteRows(prezzi, months)}

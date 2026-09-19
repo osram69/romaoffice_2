@@ -8,7 +8,7 @@ import { domClients, domRinnovoPrezzi } from "@/db/schema";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
 import { removeEncrypted, saveEncrypted, type DocType, DOC_TYPES } from "@/lib/dom-archive";
 import { PRESENZA_FILE_BITS, cleanText } from "@/lib/dom-status";
-import { buildScadenzaEmailHtml, scadenzaEmailSubject } from "@/lib/dom-scadenza-email";
+import { buildScadenzaEmailHtml, defaultScontoApplicabile, scadenzaEmailSubject } from "@/lib/dom-scadenza-email";
 import { sendDomMail } from "@/lib/mailer";
 
 const BASE_PATH = "/gestione-domiciliazioni-x9k2m7";
@@ -54,7 +54,6 @@ function fields(formData: FormData) {
     tipologia: Number(formData.get("tipologia")) || 0,
     raccoglitore: Number(formData.get("raccoglitore")) || 0,
     prezzoRinnovo: formData.get("prezzoRinnovo") ? Math.round(Number(formData.get("prezzoRinnovo"))) : null,
-    primoRinnovo: formData.get("primoRinnovo") === "on",
   };
 }
 
@@ -150,19 +149,23 @@ export async function removeDomDocumentAction(id: number, docType: DocType): Pro
 }
 
 // Draft the scadenza reminder for staff to review/edit before sending — never sent unmodified.
-// Reuses a previously edited/sent draft (testoScadenza) unless `regenerate` asks for a fresh one.
-export async function getScadenzaDraftAction(id: number, regenerate = false): Promise<{ success: boolean; message?: string; subject?: string; html?: string; prezzoRinnovo?: number | null }> {
+// Reuses a previously edited/sent draft (testoScadenza) unless `regenerate` asks for a fresh one;
+// `includeSconto`, when given, overrides the automatic (contract-duration-based) default for the
+// "sconto attivazioni non più applicabile" disclaimer while regenerating.
+export async function getScadenzaDraftAction(id: number, regenerate = false, includeSconto?: boolean): Promise<{ success: boolean; message?: string; subject?: string; html?: string; prezzoRinnovo?: number | null; scontoDefault?: boolean }> {
   "use server";
   await requireStaff();
   const [client] = await db.select().from(domClients).where(eq(domClients.id, id)).limit(1);
   if (!client) return { success: false, message: "Domiciliazione non trovata" };
   const prezzi = await db.select().from(domRinnovoPrezzi);
+  const scontoDefault = defaultScontoApplicabile(client);
   const stored = !regenerate ? client.testoScadenza?.trim() : "";
   return {
     success: true,
     subject: scadenzaEmailSubject(client),
-    html: stored || buildScadenzaEmailHtml(client, prezzi),
+    html: stored || buildScadenzaEmailHtml(client, prezzi, includeSconto ?? scontoDefault),
     prezzoRinnovo: client.prezzoRinnovo,
+    scontoDefault,
   };
 }
 
