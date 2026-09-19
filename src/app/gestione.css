@@ -128,8 +128,11 @@ tr.gestione-letter-row { scroll-margin-top: 70px; }
 .gestione-scheda-table-edit input[type="file"]::-webkit-file-upload-button:hover { background: #eef2f5; }
 .gestione-scheda-table-edit textarea { min-height: 26px; resize: vertical; }
 
-.gestione-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 24px; overflow-y: auto; }
-.gestione-modal-box { background: #fff; border-radius: 12px; width: 100%; max-width: 960px; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+.gestione-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 200; display: flex; align-items: flex-start; justify-content: center; padding: 24px; overflow-y: auto; }
+/* No internal scrollbar: the box is exactly as tall as its content. The overlay itself already
+   scrolls (overflow-y:auto below), so a modal taller than the viewport scrolls the whole page
+   instead of a cramped nested scrollbar. */
+.gestione-modal-box { background: #fff; border-radius: 12px; width: 100%; max-width: 960px; position: relative; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
 .gestione-modal-box .gestione-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px 6px; }
 .gestione-modal-box .gestione-modal-header h2 { font-size: 1.1rem; font-weight: 700; color: #232f3e; margin: 0; }
 .gestione-modal-close { background: none; border: none; font-size: 22px; line-height: 1; color: #888; cursor: pointer; padding: 4px; }

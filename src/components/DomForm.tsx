@@ -28,6 +28,7 @@ const STATI = [
 
 export function DomForm({ client, action, deleteAction, onClose }: { client?: DomClient; action: (formData: FormData) => void; deleteAction?: (formData: FormData) => void; onClose?: () => void }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const row = (left: React.ReactNode, right?: React.ReactNode) => (
     <tr>{left}{right ?? <><th /><td /></>}</tr>
@@ -112,7 +113,7 @@ export function DomForm({ client, action, deleteAction, onClose }: { client?: Do
           </tbody>
         </table>
 
-        {client && <DomDocumentUploads id={client.id} presenzaFile={client.presenzaFile} />}
+        {client && <DomDocumentUploads id={client.id} presenzaFile={client.presenzaFile} onUploadingChange={setUploading} />}
 
         {client && (
           <div style={{ marginTop: 10 }}>
@@ -120,11 +121,11 @@ export function DomForm({ client, action, deleteAction, onClose }: { client?: Do
           </div>
         )}
 
-        <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-          <button type="submit" className="gestione-btn gestione-btn-blue" style={{ padding: "9px 20px" }}>
+        <div style={{ display: "flex", gap: 10, marginTop: 10, justifyContent: "flex-end" }}>
+          {onClose && <button type="button" onClick={onClose} disabled={uploading} className="gestione-btn gestione-btn-outline" style={{ padding: "9px 20px" }}>Chiudi</button>}
+          <button type="submit" disabled={uploading} className="gestione-btn gestione-btn-blue" style={{ padding: "9px 20px" }}>
             {client ? "Salva modifiche" : "Crea domiciliazione"}
           </button>
-          {onClose && <button type="button" onClick={onClose} className="gestione-btn gestione-btn-outline" style={{ padding: "9px 20px" }}>Chiudi</button>}
         </div>
       </form>
 

@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { uploadDomDocumentAction, removeDomDocumentAction } from "@/app/gestione-domiciliazioni-x9k2m7/actions";
 import { PRESENZA_FILE_BITS } from "@/lib/dom-status";
 import type { DocType } from "@/lib/dom-archive";
@@ -13,36 +13,48 @@ const DOC_UPLOADS: { lab: string; key: DocType }[] = [
   { lab: "Revoca/Disdetta", key: "rev" },
 ];
 
-function UploadRow({ id, docType, label, present, onChange }: { id: number; docType: DocType; label: string; present: boolean; onChange: (presenzaFile: number) => void }) {
+function UploadRow({ id, docType, label, present, onChange, onBusyChange }: { id: number; docType: DocType; label: string; present: boolean; onChange: (presenzaFile: number) => void; onBusyChange: (busy: boolean) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [hasFile, setHasFile] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<{ text: string; color: string } | null>(null);
 
+  function setBusyState(value: boolean) { setBusy(value); onBusyChange(value); }
+
   async function upload() {
     const file = inputRef.current?.files?.[0];
     if (!file) { setStatus({ text: "Seleziona un file.", color: "#555" }); return; }
-    setBusy(true);
+    setBusyState(true);
     setStatus({ text: "Caricamento...", color: "#555" });
-    const result = await uploadDomDocumentAction(id, docType, file);
-    setBusy(false);
-    if (result.success) {
-      setStatus({ text: "OK", color: "green" });
-      if (result.presenzaFile !== undefined) onChange(result.presenzaFile);
-    } else {
-      setStatus({ text: result.message || "Errore", color: "red" });
+    try {
+      const result = await uploadDomDocumentAction(id, docType, file);
+      if (result.success) {
+        setStatus({ text: "OK", color: "green" });
+        if (result.presenzaFile !== undefined) onChange(result.presenzaFile);
+      } else {
+        setStatus({ text: result.message || "Errore", color: "red" });
+      }
+    } catch {
+      setStatus({ text: "Errore imprevisto durante il caricamento. La sessione potrebbe essere scaduta: ricarica la pagina.", color: "red" });
+    } finally {
+      setBusyState(false);
     }
   }
 
   async function remove() {
-    setBusy(true);
+    setBusyState(true);
     setStatus({ text: "Rimozione...", color: "#555" });
-    const result = await removeDomDocumentAction(id, docType);
-    setBusy(false);
-    if (inputRef.current) inputRef.current.value = "";
-    setHasFile(false);
-    if (result.presenzaFile !== undefined) onChange(result.presenzaFile);
-    setStatus(result.success ? { text: "Rimosso", color: "green" } : { text: result.message || "Errore", color: "red" });
+    try {
+      const result = await removeDomDocumentAction(id, docType);
+      if (inputRef.current) inputRef.current.value = "";
+      setHasFile(false);
+      if (result.presenzaFile !== undefined) onChange(result.presenzaFile);
+      setStatus(result.success ? { text: "Rimosso", color: "green" } : { text: result.message || "Errore", color: "red" });
+    } catch {
+      setStatus({ text: "Errore imprevisto durante la rimozione. La sessione potrebbe essere scaduta: ricarica la pagina.", color: "red" });
+    } finally {
+      setBusyState(false);
+    }
   }
 
   return (
@@ -60,8 +72,15 @@ function UploadRow({ id, docType, label, present, onChange }: { id: number; docT
   );
 }
 
-export function DomDocumentUploads({ id, presenzaFile: initialPresenzaFile }: { id: number; presenzaFile: number }) {
+export function DomDocumentUploads({ id, presenzaFile: initialPresenzaFile, onUploadingChange }: { id: number; presenzaFile: number; onUploadingChange?: (uploading: boolean) => void }) {
   const [presenzaFile, setPresenzaFile] = useState(initialPresenzaFile);
+  const busyRows = useRef(new Set<DocType>());
+
+  function reportBusy(docType: DocType, busy: boolean) {
+    if (busy) busyRows.current.add(docType); else busyRows.current.delete(docType);
+    onUploadingChange?.(busyRows.current.size > 0);
+  }
+  useEffect(() => () => onUploadingChange?.(false), [onUploadingChange]);
 
   return (
     <div style={{ marginTop: 10 }}>
@@ -79,8 +98,8 @@ export function DomDocumentUploads({ id, presenzaFile: initialPresenzaFile }: { 
           </tr>
           {Array.from({ length: Math.ceil(DOC_UPLOADS.length / 2) }, (_, i) => [DOC_UPLOADS[i * 2], DOC_UPLOADS[i * 2 + 1]]).map(([a, b], i) => (
             <tr key={i}>
-              <UploadRow id={id} docType={a.key} label={a.lab} present={(presenzaFile & PRESENZA_FILE_BITS[a.key]) === PRESENZA_FILE_BITS[a.key]} onChange={setPresenzaFile} />
-              {b ? <UploadRow id={id} docType={b.key} label={b.lab} present={(presenzaFile & PRESENZA_FILE_BITS[b.key]) === PRESENZA_FILE_BITS[b.key]} onChange={setPresenzaFile} /> : <><th /><td /></>}
+              <UploadRow id={id} docType={a.key} label={a.lab} present={(presenzaFile & PRESENZA_FILE_BITS[a.key]) === PRESENZA_FILE_BITS[a.key]} onChange={setPresenzaFile} onBusyChange={busy => reportBusy(a.key, busy)} />
+              {b ? <UploadRow id={id} docType={b.key} label={b.lab} present={(presenzaFile & PRESENZA_FILE_BITS[b.key]) === PRESENZA_FILE_BITS[b.key]} onChange={setPresenzaFile} onBusyChange={busy => reportBusy(b.key, busy)} /> : <><th /><td /></>}
             </tr>
           ))}
         </tbody>

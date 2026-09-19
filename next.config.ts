@@ -1,5 +1,10 @@
 import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
+  // Scanned contract/document PDFs routinely exceed Next's default 1MB Server Action body
+  // limit — without this, uploadDomDocumentAction's request is rejected before it ever runs,
+  // and (since the framework-level rejection isn't a normal {success:false} response) the
+  // client call hangs instead of showing an error.
+  experimental: { serverActions: { bodySizeLimit: "25mb" } },
   async headers() {
     return [
       { source: "/:path*", headers: [{ key: "X-Content-Type-Options", value: "nosniff" }, { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" }] },
