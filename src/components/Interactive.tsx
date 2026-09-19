@@ -13,10 +13,14 @@ export function ContactForm({ lang }: { lang: Lang }) {
     name: it ? "Nome e Cognome o Ragione Sociale*" : "Name and Surname or Company Name*", email: "Email*", email2: it ? "Conferma email*" : "Confirm email*", phone: it ? "Telefono (consigliato)" : "Phone (recommended)",
     subject: it ? "Argomento" : "Subject", message: it ? "Messaggio*" : "Message*", consent: it ? "Acconsento al trattamento dei dati personali" : "I consent to the processing of personal data",
     submit: it ? "INVIA RICHIESTA" : "SEND ENQUIRY", required: it ? "Campo obbligatorio" : "Required field", invalidEmail: it ? "Inserisci un indirizzo email valido" : "Enter a valid email address", mismatch: it ? "Gli indirizzi email non coincidono" : "Email addresses do not match",
+    nameTooShort: it ? "Inserisci almeno 2 caratteri" : "Enter at least 2 characters", messageTooShort: it ? "Il messaggio deve avere almeno 5 caratteri" : "The message must be at least 5 characters long",
   };
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); const form = e.currentTarget; const fd = new FormData(form); const next: Record<string, string> = {};
-    ["name", "message"].forEach(k => { if (!String(fd.get(k) || "").trim()) next[k] = labels.required; });
+    const name = String(fd.get("name") || "").trim();
+    if (!name) next.name = labels.required; else if (name.length < 2) next.name = labels.nameTooShort;
+    const message = String(fd.get("message") || "").trim();
+    if (!message) next.message = labels.required; else if (message.length < 5) next.message = labels.messageTooShort;
     if (!/^\S+@\S+\.\S+$/.test(String(fd.get("email") || ""))) next.email = labels.invalidEmail;
     if (fd.get("email") !== fd.get("emailConfirm")) next.emailConfirm = labels.mismatch;
     if (!fd.get("consent")) next.consent = labels.required;
