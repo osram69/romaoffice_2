@@ -118,7 +118,14 @@ tr.gestione-letter-row { scroll-margin-top: 70px; }
   width: 100%; font-size: 12.5px; line-height: 1.2; padding: 1px 6px; border-radius: 4px; border: 1px solid #c8c8c8; background: #f8f8f8; color: #232f3e; box-sizing: border-box;
 }
 .gestione-scheda-table-edit input[type="checkbox"] { width: auto; }
-.gestione-scheda-table-edit input[type="file"] { display: block; width: auto; padding: 0; border: none; background: none; min-height: 0; }
+.gestione-scheda-table-edit input[type="file"] { display: block; width: auto; padding: 0; border: none; background: none; min-height: 0; cursor: pointer; }
+.gestione-scheda-table-edit input[type="file"]::file-selector-button,
+.gestione-scheda-table-edit input[type="file"]::-webkit-file-upload-button {
+  cursor: pointer; border: 1px solid #c8c8c8; border-radius: 4px; background: #f8f9fa; color: #232f3e;
+  font-size: inherit; padding: 2px 10px; margin-right: 8px;
+}
+.gestione-scheda-table-edit input[type="file"]::file-selector-button:hover,
+.gestione-scheda-table-edit input[type="file"]::-webkit-file-upload-button:hover { background: #eef2f5; }
 .gestione-scheda-table-edit textarea { min-height: 26px; resize: vertical; }
 
 .gestione-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 24px; overflow-y: auto; }
