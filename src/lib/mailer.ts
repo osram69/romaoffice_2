@@ -14,7 +14,7 @@ export function smtpConfigured(): boolean {
 
 /** Never throws: a failed email must not break the request flow, but must be reported. */
 export async function sendMail(payload: MailPayload): Promise<MailResult> {
-  if (!smtpConfigured()) return { sent: false, reason: "smtp-not-configured" };
+  if (!smtpConfigured()) { console.error("Mail not sent: SMTP_HOST/SMTP_USER/SMTP_PASS are not all set"); return { sent: false, reason: "smtp-not-configured" }; }
   return deliver({
     host: process.env.SMTP_HOST as string, port: Number(process.env.SMTP_PORT || 465),
     user: process.env.SMTP_USER as string, pass: process.env.SMTP_PASS as string,
@@ -42,7 +42,7 @@ export function domAccountConfigured(account: DomMailAccount): boolean {
 
 export async function sendDomMail(account: DomMailAccount, payload: MailPayload): Promise<MailResult> {
   const env = accountEnv(account);
-  if (!env.host || !env.user || !env.pass) return { sent: false, reason: `${account}-smtp-not-configured` };
+  if (!env.host || !env.user || !env.pass) { console.error(`Mail not sent: ${account} SMTP account is not fully configured`); return { sent: false, reason: `${account}-smtp-not-configured` }; }
   return deliver({ host: env.host, port: env.port, user: env.user, pass: env.pass, from: env.from as string }, payload);
 }
 
@@ -67,10 +67,16 @@ async function deliver(account: { host: string; port: number; user: string; pass
       attachments: payload.attachments,
     });
     const accepted = (info.accepted || []).map(value => String(value).toLowerCase());
-    if (!accepted.includes(payload.to.toLowerCase())) return { sent: false, reason: "recipient-rejected" };
+    if (!accepted.includes(payload.to.toLowerCase())) {
+      console.error("Mail delivery failed: recipient rejected", { to: payload.to, accepted: info.accepted, rejected: info.rejected });
+      return { sent: false, reason: "recipient-rejected" };
+    }
+    console.log("Mail delivered", { to: payload.to, host: account.host, user: account.user, messageId: info.messageId });
     return { sent: true, messageId: info.messageId };
   } catch (error) {
-    console.error("Mail delivery failed", { name: error instanceof Error ? error.name : "UnknownError" });
+    // Logs the real SMTP failure reason (e.g. auth rejected, host unreachable) — never the
+    // password itself, since nodemailer/SMTP error messages don't echo credentials back.
+    console.error("Mail delivery failed", { host: account.host, user: account.user, name: error instanceof Error ? error.name : "UnknownError", message: error instanceof Error ? error.message : String(error) });
     return { sent: false, reason: "smtp-error" };
   }
 }
