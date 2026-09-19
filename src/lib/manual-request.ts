@@ -1,13 +1,22 @@
 import { z } from "zod";
 import { copyFor, formatEur, tierFor, type Lang, type ProductOffer } from "./pricing";
 import { adminEmail, type MailPayload } from "./mailer";
+import { normalizePhone } from "./request";
+import { isValidTaxCode } from "./codice-fiscale";
 
 export const manualRequestSchema = z.object({
   requestId: z.string().uuid(), service: z.enum(["legal_unit", "postal"]), lang: z.enum(["it", "en"]),
   companyName: z.string().trim().min(1).max(200), vatNumber: z.string().trim().min(1).max(30), taxCode: z.string().trim().min(1).max(30),
   representativeName: z.string().trim().min(1).max(150), email: z.string().trim().email().max(254).transform(s => s.toLowerCase()),
+  representativeAddress: z.string().trim().min(1).max(240),
+  representativePhone: z.string().max(40).transform(normalizePhone).refine(s => /^\+[1-9]\d{7,14}$/.test(s), "invalid-phone"),
+  representativeTaxCode: z.string().trim().min(1).max(40).refine(isValidTaxCode, "invalid-tax-code"),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   months: z.coerce.number().int(), notes: z.string().trim().max(1000).optional().default(""),
   consent: z.literal(true), website: z.string().max(0).optional(),
+}).superRefine((v, ctx) => {
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Rome" });
+  if (v.startDate < today) ctx.addIssue({ code: "custom", path: ["startDate"], message: "invalid-date" });
 });
 export type ManualRequestInput = z.infer<typeof manualRequestSchema>;
 
@@ -21,6 +30,10 @@ export function buildManualRequestEmail(input: ManualRequestInput, product: Prod
     [it ? "Partita IVA" : "VAT number", input.vatNumber],
     [it ? "Codice Fiscale" : "Tax code", input.taxCode],
     [it ? "Rappresentante/Titolare" : "Representative/Owner", input.representativeName],
+    [it ? "Indirizzo rappresentante" : "Representative's address", input.representativeAddress],
+    [it ? "Telefono rappresentante" : "Representative's phone", input.representativePhone],
+    [it ? "Codice Fiscale rappresentante" : "Representative's tax code", input.representativeTaxCode],
+    [it ? "Data prevista di attivazione" : "Expected activation date", input.startDate],
     [it ? "Servizio" : "Service", copy.name],
     [it ? "Durata/tariffa" : "Duration/rate", rate],
     ["Email", input.email],
