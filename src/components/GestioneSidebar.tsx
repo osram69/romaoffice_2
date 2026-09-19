@@ -38,7 +38,7 @@ export function GestioneSidebar({ role, active, username, tabs, newDomiciliazion
             <Link href="/gestione-domiciliazioni-x9k2m7" onClick={() => setOpen(false)}>Domiciliazioni</Link>
           </li>
           {tabs.map(tab => (
-            <li key={tab.stato}>
+            <li key={tab.stato} className="sidebar-sub">
               <Link href={`/gestione-domiciliazioni-x9k2m7?stato=${tab.stato}`} onClick={() => setOpen(false)}>
                 {tab.label} <span className="gestione-badge">{tab.count}</span>
               </Link>
@@ -46,15 +46,18 @@ export function GestioneSidebar({ role, active, username, tabs, newDomiciliazion
           ))}
           {newDomiciliazioneAction && (
             <>
-              <li><a className="sidebar-link" href="/api/dom-print?kind=lista" target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}>Stampa Lista</a></li>
-              <li><button type="button" className="sidebar-link" onClick={() => { setPrintingRaccoglitori(true); setOpen(false); }}>Stampa raccoglitori</button></li>
-              <li><button type="button" className="sidebar-link" onClick={() => { setCreating(true); setOpen(false); }}>Nuova domiciliazione</button></li>
+              <li className="sidebar-sub"><a className="sidebar-link" href="/api/dom-print?kind=lista" target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}>Stampa Lista</a></li>
+              <li className="sidebar-sub"><button type="button" className="sidebar-link" onClick={() => { setPrintingRaccoglitori(true); setOpen(false); }}>Stampa raccoglitori</button></li>
+              <li className="sidebar-sub"><button type="button" className="sidebar-link" onClick={() => { setCreating(true); setOpen(false); }}>Nuova domiciliazione</button></li>
             </>
           )}
           {role === "admin" && (
-            <li className={active === "tariffe" ? "active" : ""} style={{ borderTop: "2px solid #444" }}>
-              <Link href="/gestione-tariffe-x9k2m7" onClick={() => setOpen(false)}>Tariffe e Offerte</Link>
-            </li>
+            <>
+              <li className="sidebar-section" style={{ borderTop: "2px solid #444" }}>Configurazione</li>
+              <li className={`sidebar-sub${active === "tariffe" ? " active" : ""}`}>
+                <Link href="/gestione-tariffe-x9k2m7" onClick={() => setOpen(false)}>Tariffe e Offerte</Link>
+              </li>
+            </>
           )}
           <li><form action={staffLogoutAction}><button type="submit" className="sidebar-link">Esci</button></form></li>
         </ul>

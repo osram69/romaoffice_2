@@ -38,3 +38,22 @@ export const DOC_LABELS: { key: DocType; label: string }[] = [
 export function presenzaFileLabels(presenzaFile: number): { key: DocType; label: string }[] {
   return DOC_LABELS.filter(d => (presenzaFile & PRESENZA_FILE_BITS[d.key]) === PRESENZA_FILE_BITS[d.key]);
 }
+
+/** Mirrors the legacy scadenza coloring for the Attive/In Attivazione list (domiciliazioni.php,
+ * main table row rendering): red if already past due, dark blue if the payment due date has
+ * also passed, yellow (dark yellow if the reminder email was already sent) within 20 days of
+ * due, light blue if only the payment date is within 15 days. Checked in that priority order. */
+export function scadenzaRowClass(client: Pick<DomClient, "scadenzaDom" | "scadenzaPagamento" | "scadenzaInviata">): string {
+  if (!client.scadenzaDom) return "";
+  const dayMs = 86400000;
+  const oggi = new Date(); oggi.setHours(0, 0, 0, 0);
+  const scadDom = new Date(client.scadenzaDom); scadDom.setHours(0, 0, 0, 0);
+  const scadPag = client.scadenzaPagamento ? new Date(client.scadenzaPagamento) : null;
+  if (scadPag) scadPag.setHours(0, 0, 0, 0);
+
+  if (scadDom.getTime() < oggi.getTime()) return "scad-red";
+  if (scadPag && scadPag.getTime() < oggi.getTime()) return "scad-blu";
+  if ((scadDom.getTime() - oggi.getTime()) / dayMs <= 20) return client.scadenzaInviata ? "scad-yellow-dark" : "scad-yellow";
+  if (scadPag && (scadPag.getTime() - oggi.getTime()) / dayMs <= 15) return "scad-azzurro";
+  return "";
+}

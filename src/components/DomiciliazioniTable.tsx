@@ -3,7 +3,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { Check, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import type { InferSelectModel } from "drizzle-orm";
 import type { domClients } from "@/db/schema";
-import { cleanText, docStatus, DOC_LABELS, PRESENZA_FILE_BITS } from "@/lib/dom-status";
+import { cleanText, docStatus, DOC_LABELS, PRESENZA_FILE_BITS, scadenzaRowClass } from "@/lib/dom-status";
 import type { DocType } from "@/lib/dom-archive";
 import { DomForm } from "./DomForm";
 import { DeleteIconButton } from "./DeleteIconButton";
@@ -165,7 +165,7 @@ export function DomiciliazioniTable({ rows, stato }: { rows: DomClient[]; stato:
                       <td className="gestione-email-cell">{row.emailPec}</td>
                       <td>{cleanText(row.telefono)}</td>
                       <td>{cleanText(row.personaRif)}</td>
-                      <td>{fmtDate(row.scadenzaDom)}</td>
+                      <td className={scadenzaRowClass(row)}>{fmtDate(row.scadenzaDom)}</td>
                       <td>
                         {stato === 0 ? (
                           // In Attivazione: activate, edit, or delete outright (never truly activated).
