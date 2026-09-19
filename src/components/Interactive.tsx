@@ -10,9 +10,9 @@ export function ContactForm({ lang }: { lang: Lang }) {
   const [state, setState] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const labels = {
-    name: it ? "Nome e Cognome o Ragione Sociale*" : "Name and Surname or Company Name*", email: "Email*", email2: it ? "Conferma email*" : "Confirm email*", phone: it ? "Telefono (consigliato)" : "Phone (recommended)",
+    name: it ? "Nome e Cognome o Ragione Sociale*" : "Name and Surname or Company Name*", email: "Email*", phone: it ? "Telefono (consigliato)" : "Phone (recommended)",
     subject: it ? "Argomento" : "Subject", message: it ? "Messaggio*" : "Message*", consent: it ? "Acconsento al trattamento dei dati personali" : "I consent to the processing of personal data",
-    submit: it ? "INVIA RICHIESTA" : "SEND ENQUIRY", required: it ? "Campo obbligatorio" : "Required field", invalidEmail: it ? "Inserisci un indirizzo email valido" : "Enter a valid email address", mismatch: it ? "Gli indirizzi email non coincidono" : "Email addresses do not match",
+    submit: it ? "INVIA RICHIESTA" : "SEND ENQUIRY", required: it ? "Campo obbligatorio" : "Required field", invalidEmail: it ? "Inserisci un indirizzo email valido" : "Enter a valid email address",
     nameTooShort: it ? "Inserisci almeno 2 caratteri" : "Enter at least 2 characters", messageTooShort: it ? "Il messaggio deve avere almeno 5 caratteri" : "The message must be at least 5 characters long",
   };
   async function submit(e: FormEvent<HTMLFormElement>) {
@@ -22,7 +22,6 @@ export function ContactForm({ lang }: { lang: Lang }) {
     const message = String(fd.get("message") || "").trim();
     if (!message) next.message = labels.required; else if (message.length < 5) next.message = labels.messageTooShort;
     if (!/^\S+@\S+\.\S+$/.test(String(fd.get("email") || ""))) next.email = labels.invalidEmail;
-    if (fd.get("email") !== fd.get("emailConfirm")) next.emailConfirm = labels.mismatch;
     if (!fd.get("consent")) next.consent = labels.required;
     setErrors(next); if (Object.keys(next).length) { document.getElementById(`err-${Object.keys(next)[0]}`)?.focus(); return; }
     setState("loading");
@@ -37,7 +36,6 @@ export function ContactForm({ lang }: { lang: Lang }) {
     <div className="form-grid">
       <label>{labels.name}<input name="name" autoComplete="name" aria-invalid={!!errors.name} aria-describedby={errors.name ? "err-name" : undefined} />{err("name")}</label>
       <label>{labels.email}<input name="email" type="email" autoComplete="email" aria-invalid={!!errors.email} aria-describedby={errors.email ? "err-email" : undefined} />{err("email")}</label>
-      <label>{labels.email2}<input name="emailConfirm" type="email" autoComplete="email" aria-invalid={!!errors.emailConfirm} aria-describedby={errors.emailConfirm ? "err-emailConfirm" : undefined} />{err("emailConfirm")}</label>
       <label>{labels.phone}<input name="phone" type="tel" autoComplete="tel" /></label>
       <label>{labels.subject}<select name="subject"><option>{it ? "Informazioni Generali" : "General Information"}</option><option>{it ? "Uffici Arredati" : "Furnished Offices"}</option><option>{it ? "Domiciliazioni" : "Business addresses"}</option><option>{it ? "Tariffe" : "Pricing"}</option><option>{it ? "Contratti Smart" : "Smart-Start agreements"}</option><option>{it ? "Corsi" : "Training"}</option><option>{it ? "Altro" : "Other"}</option></select></label>
     </div>
