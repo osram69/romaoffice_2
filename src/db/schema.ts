@@ -89,11 +89,20 @@ export const serviceCatalog = pgTable("service_catalog", {
   newActivationDiscountBps: integer("new_activation_discount_bps").notNull().default(0),
   offerValidUntil: timestamp("offer_valid_until", { withTimezone: true }),
   termsRevision: text("terms_revision").notNull(), active: boolean("active").notNull().default(true),
+  // Smart-Start (3+24 / 6+24 two-tranche legal_unit agreements) has a fixed structure that
+  // bypasses the normal per-tier pricing, so it's just an on/off flag rather than a servicePrices row.
+  smart3x24Active: boolean("smart_3x24_active").notNull().default(true),
+  smart6x24Active: boolean("smart_6x24_active").notNull().default(true),
 });
 export const servicePrices = pgTable("service_prices", {
   id: serial("id").primaryKey(), service: varchar("service", { length: 30 }).notNull().references(() => serviceCatalog.code),
   months: integer("months").notNull(), listCents: integer("list_cents").notNull(), offerCents: integer("offer_cents"),
-  newActivation: boolean("new_activation").notNull().default(false), active: boolean("active").notNull().default(true),
+  newActivation: boolean("new_activation").notNull().default(false),
+  // Defaults true (unlike newActivation) because the additional-domiciliation discount used to
+  // apply unconditionally to every tier; this preserves that behavior for existing rows until an
+  // admin opts a tier out, rather than silently disabling the discount everywhere on migration.
+  additionalDomiciliation: boolean("additional_domiciliation").notNull().default(true),
+  active: boolean("active").notNull().default(true),
 }, table => [uniqueIndex("service_duration_unique").on(table.service, table.months)]);
 export const serviceAddons = pgTable("service_addons", {
   code: varchar("code", { length: 50 }).primaryKey(), service: varchar("service", { length: 30 }).notNull().references(() => serviceCatalog.code),

@@ -35,6 +35,8 @@ export async function updateServiceAction(formData: FormData) {
     newActivationDiscountBps: Math.round(Number(formData.get("newActivationDiscountBps")) * 100),
     offerValidUntil: offerValidUntilRaw ? new Date(`${offerValidUntilRaw}T23:59:59+02:00`) : null,
     active: formData.get("active") === "on",
+    smart3x24Active: formData.get("smart3x24Active") === "on",
+    smart6x24Active: formData.get("smart6x24Active") === "on",
   }).where(eq(serviceCatalog.code, code));
   revalidatePath(BASE_PATH);
 }
@@ -48,6 +50,7 @@ export async function updatePriceAction(formData: FormData) {
     listCents: toCents(formData, "listCents"),
     offerCents: offerRaw ? toCents(formData, "offerCents") : null,
     newActivation: formData.get("newActivation") === "on",
+    additionalDomiciliation: formData.get("additionalDomiciliation") === "on",
     active: formData.get("active") === "on",
   }).where(eq(servicePrices.id, id));
   revalidatePath(BASE_PATH);
@@ -63,7 +66,9 @@ export async function addPriceAction(formData: FormData) {
   await db.insert(servicePrices).values({
     service, months, listCents: toCents(formData, "listCents"),
     offerCents: offerRaw ? toCents(formData, "offerCents") : null,
-    newActivation: formData.get("newActivation") === "on", active: true,
+    newActivation: formData.get("newActivation") === "on",
+    additionalDomiciliation: formData.get("additionalDomiciliation") === "on",
+    active: true,
   });
   revalidatePath(BASE_PATH);
 }

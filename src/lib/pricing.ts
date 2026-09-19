@@ -2,16 +2,16 @@ export type Lang = "it" | "en";
 export type ServiceCode = "legal_unit" | "postal";
 export type DurationMonths = 3 | 6 | 12 | 24 | 36 | 48;
 export type PaymentMethod = "stripe" | "paypal" | "sumup" | "bank_transfer" | "on_site";
-export type PriceTier = { months: number; listCents: number; offerCents: number | null; newActivation: boolean };
+export type PriceTier = { months: number; listCents: number; offerCents: number | null; newActivation: boolean; additionalDomiciliation: boolean };
 export type Addon = { code: string; titleIt: string; titleEn: string; priceCents: number; annualCents: number; billing: string; maxQuantity: number; selectable: boolean };
 export type SelectedAddon = { code: string; quantity: number };
-export type ProductOffer = { code: ServiceCode; vatBps: number; additionalDiscountBps: number; newActivationDiscountBps: number; offerValidUntil: string | null; termsRevision: string; version: string; tiers: PriceTier[]; addons: Addon[] };
+export type ProductOffer = { code: ServiceCode; vatBps: number; additionalDiscountBps: number; newActivationDiscountBps: number; offerValidUntil: string | null; termsRevision: string; version: string; tiers: PriceTier[]; addons: Addon[]; smart3x24Active: boolean; smart6x24Active: boolean };
 export type Catalog = Record<ServiceCode, ProductOffer>;
 export type Quote = {
   service: ServiceCode; catalogVersion: string; months: number; listCents: number; baseCents: number; offerApplied: boolean;
   newActivationDiscountCents: number; additionalDomiciliationDiscountCents: number; serviceNetCents: number;
   addonLines: (SelectedAddon & { titleIt: string; titleEn: string; monthlyCents: number; annualCents: number; totalCents: number })[];
-  addonsCents: number; netCents: number; vatBps: number; vatCents: number; totalCents: number; renewalBaseCents: number; newActivationEligible: boolean;
+  addonsCents: number; netCents: number; vatBps: number; vatCents: number; totalCents: number; renewalBaseCents: number; newActivationEligible: boolean; additionalDomiciliationEligible: boolean;
 };
 export const flag = (v: boolean | string | undefined) => v === true || v === "true";
 export function offerActive(product: ProductOffer, now = new Date()) { return !product.offerValidUntil || now.getTime() <= new Date(product.offerValidUntil).getTime(); }
@@ -22,7 +22,8 @@ export function quote(product: ProductOffer, input: { months: number; newActivat
   const baseCents = offerApplied ? tier.offerCents! : tier.listCents;
   const newActivationEligible = product.code === "legal_unit" && offerApplied && tier.newActivation;
   const newActivationDiscountCents = newActivationEligible && flag(input.newActivation) ? Math.round(baseCents * product.newActivationDiscountBps / 10000) : 0;
-  const additionalDomiciliationDiscountCents = flag(input.additionalDomiciliation) ? Math.round((baseCents - newActivationDiscountCents) * product.additionalDiscountBps / 10000) : 0;
+  const additionalDomiciliationEligible = tier.additionalDomiciliation;
+  const additionalDomiciliationDiscountCents = additionalDomiciliationEligible && flag(input.additionalDomiciliation) ? Math.round((baseCents - newActivationDiscountCents) * product.additionalDiscountBps / 10000) : 0;
   const serviceNetCents = baseCents - newActivationDiscountCents - additionalDomiciliationDiscountCents;
   const seen = new Set<string>(); const addonLines: Quote["addonLines"] = [];
   for (const selection of input.addons || []) {
@@ -33,7 +34,7 @@ export function quote(product: ProductOffer, input: { months: number; newActivat
   }
   const addonsCents = addonLines.reduce((sum, line) => sum + line.totalCents, 0);
   const netCents = serviceNetCents + addonsCents; const vatCents = Math.round(netCents * product.vatBps / 10000);
-  return { service: product.code, catalogVersion: product.version, months: tier.months, listCents: tier.listCents, baseCents, offerApplied, newActivationDiscountCents, additionalDomiciliationDiscountCents, serviceNetCents, addonLines, addonsCents, netCents, vatBps: product.vatBps, vatCents, totalCents: netCents + vatCents, renewalBaseCents: baseCents, newActivationEligible };
+  return { service: product.code, catalogVersion: product.version, months: tier.months, listCents: tier.listCents, baseCents, offerApplied, newActivationDiscountCents, additionalDomiciliationDiscountCents, serviceNetCents, addonLines, addonsCents, netCents, vatBps: product.vatBps, vatCents, totalCents: netCents + vatCents, renewalBaseCents: baseCents, newActivationEligible, additionalDomiciliationEligible };
 }
 export function formatEur(cents: number, lang: Lang = "it") { return new Intl.NumberFormat(lang === "it" ? "it-IT" : "en-GB", { style: "currency", currency: "EUR" }).format(cents / 100); }
 export function monthlyEquivalent(cents: number, months: number, lang: Lang = "it") { return formatEur(Math.round(cents / months), lang); }

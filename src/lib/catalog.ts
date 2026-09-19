@@ -20,7 +20,8 @@ export async function getCatalog(): Promise<Catalog> {
       code, vatBps: row.vatBps, additionalDiscountBps: row.additionalDiscountBps,
       newActivationDiscountBps: row.newActivationDiscountBps, offerValidUntil: row.offerValidUntil?.toISOString() ?? null,
       termsRevision: row.termsRevision, version: "",
-      tiers: tiers.filter(t => t.service === code).map(t => ({ months: t.months, listCents: t.listCents, offerCents: t.offerCents, newActivation: t.newActivation })),
+      smart3x24Active: row.smart3x24Active, smart6x24Active: row.smart6x24Active,
+      tiers: tiers.filter(t => t.service === code).map(t => ({ months: t.months, listCents: t.listCents, offerCents: t.offerCents, newActivation: t.newActivation, additionalDomiciliation: t.additionalDomiciliation })),
       addons: addons.filter(a => a.service === code).map(a => ({ code: a.code, titleIt: a.titleIt, titleEn: a.titleEn, priceCents: a.priceCents, annualCents: a.annualCents, billing: a.billing, maxQuantity: a.maxQuantity, selectable: a.selectable })),
     };
     if (!offer.tiers.length || offer.tiers.some(t => t.listCents < 0 || (t.offerCents !== null && t.offerCents < 0))) throw new Error("Invalid catalogue prices");

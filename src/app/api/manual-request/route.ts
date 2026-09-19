@@ -15,7 +15,12 @@ export async function POST(req: NextRequest) {
     await limit(`manual-request-email:${data.email}`, 5, 3600);
     if (!smtpConfigured()) return json({ error: "mail" }, 503);
     const product = await getOffer(data.service);
-    if (!tierFor(product, data.months)) return json({ error: "invalid" }, 400);
+    if (typeof data.months === "number") {
+      if (!tierFor(product, data.months)) return json({ error: "invalid" }, 400);
+    } else {
+      const smartActive = data.months === "smart3x24" ? product.smart3x24Active : product.smart6x24Active;
+      if (data.service !== "legal_unit" || !smartActive) return json({ error: "invalid" }, 400);
+    }
     const sent = await sendMail(buildManualRequestEmail(data, product));
     return sent.sent ? json({ ok: true, sent: true }) : json({ error: "mail" }, 502);
   } catch (error) {

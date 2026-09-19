@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { copyFor, formatEur, tierFor, type Lang, type ProductOffer } from "./pricing";
+import { copyFor, formatEur, quote, type Lang, type ProductOffer } from "./pricing";
 import { adminEmail, type MailPayload } from "./mailer";
 import { normalizePhone } from "./request";
 import { isValidTaxCode } from "./codice-fiscale";
@@ -12,7 +12,9 @@ export const manualRequestSchema = z.object({
   representativePhone: z.string().max(40).transform(normalizePhone).refine(s => /^\+[1-9]\d{7,14}$/.test(s), "invalid-phone"),
   representativeTaxCode: z.string().trim().min(1).max(40).refine(isValidTaxCode, "invalid-tax-code"),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  months: z.coerce.number().int(), notes: z.string().trim().max(1000).optional().default(""),
+  months: z.union([z.coerce.number().int().positive(), z.literal("smart3x24"), z.literal("smart6x24")]),
+  newActivation: z.coerce.boolean().default(false), additionalDomiciliation: z.coerce.boolean().default(false),
+  notes: z.string().trim().max(1000).optional().default(""),
   consent: z.literal(true), website: z.string().max(0).optional(),
 }).superRefine((v, ctx) => {
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Rome" });
@@ -22,11 +24,16 @@ export type ManualRequestInput = z.infer<typeof manualRequestSchema>;
 
 export function buildManualRequestEmail(input: ManualRequestInput, product: ProductOffer): MailPayload {
   const { lang } = input; const it = lang === "it"; const copy = copyFor(product.code, lang);
-  const tier = tierFor(product, input.months);
-  const rate = tier ? `${copy.months(tier.months)}: ${formatEur(tier.offerCents ?? tier.listCents, lang)} ${it ? "+ IVA" : "+ VAT"}` : (it ? "durata non disponibile" : "duration not available");
+  let rate: string;
+  if (input.months === "smart3x24") rate = "Smart 3+24";
+  else if (input.months === "smart6x24") rate = "Smart 6+24";
+  else {
+    const priced = quote(product, { months: input.months, newActivation: input.newActivation, additionalDomiciliation: input.additionalDomiciliation });
+    rate = priced ? `${copy.months(priced.months)}: ${formatEur(priced.netCents, lang)} ${it ? "+ IVA" : "+ VAT"}` : (it ? "durata non disponibile" : "duration not available");
+  }
   const greeting = it ? `Gentile ${input.representativeName},` : `Dear ${input.representativeName},`;
   const rows = [
-    [it ? "Denominazione" : "Company name", input.companyName],
+    [it ? "Ragione Sociale" : "Company name", input.companyName],
     [it ? "Partita IVA" : "VAT number", input.vatNumber],
     [it ? "Codice Fiscale" : "Tax code", input.taxCode],
     [it ? "Rappresentante/Titolare" : "Representative/Owner", input.representativeName],
@@ -36,6 +43,8 @@ export function buildManualRequestEmail(input: ManualRequestInput, product: Prod
     [it ? "Data prevista di attivazione" : "Expected activation date", input.startDate],
     [it ? "Servizio" : "Service", copy.name],
     [it ? "Durata/tariffa" : "Duration/rate", rate],
+    [it ? "Nuova attivazione" : "New activation", input.newActivation ? (it ? "Sì" : "Yes") : "No"],
+    [it ? "Domiciliazione aggiuntiva" : "Additional address service", input.additionalDomiciliation ? (it ? "Sì" : "Yes") : "No"],
     ["Email", input.email],
     ...(input.notes ? [[it ? "Note" : "Notes", input.notes]] : []),
   ];

@@ -82,6 +82,14 @@ export default async function AdminDashboardPage() {
                 <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "#232f3e" }}>
                   <input type="checkbox" name="active" defaultChecked={service.active} /> Servizio attivo
                 </label>
+                {service.code === "legal_unit" && <>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "#232f3e" }}>
+                    <input type="checkbox" name="smart3x24Active" defaultChecked={service.smart3x24Active} /> Smart 3+24 attivo
+                  </label>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "#232f3e" }}>
+                    <input type="checkbox" name="smart6x24Active" defaultChecked={service.smart6x24Active} /> Smart 6+24 attivo
+                  </label>
+                </>}
                 <button type="submit" className="gestione-btn gestione-btn-blue">Salva</button>
               </form>
 
@@ -91,7 +99,7 @@ export default async function AdminDashboardPage() {
                   <table className="gestione-table">
                     <thead>
                       <tr>
-                        <th>Mesi</th><th>Listino (€)</th><th>Offerta (€)</th><th>Nuova attiv.</th><th>Attivo</th><th></th>
+                        <th>Mesi</th><th>Listino (€)</th><th>Offerta (€)</th><th>Nuova attiv.</th><th>Dom. aggiuntiva</th><th>Attivo</th><th></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -106,6 +114,7 @@ export default async function AdminDashboardPage() {
                           <td><input form={`tier-${tier.id}`} name="listCents" type="number" step="0.01" min="0" defaultValue={euro(tier.listCents)} style={inputStyle} /></td>
                           <td><input form={`tier-${tier.id}`} name="offerCents" type="number" step="0.01" min="0" defaultValue={euro(tier.offerCents)} style={inputStyle} /></td>
                           <td style={{ textAlign: "center" }}><input form={`tier-${tier.id}`} name="newActivation" type="checkbox" defaultChecked={tier.newActivation} /></td>
+                          <td style={{ textAlign: "center" }}><input form={`tier-${tier.id}`} name="additionalDomiciliation" type="checkbox" defaultChecked={tier.additionalDomiciliation} /></td>
                           <td style={{ textAlign: "center" }}><input form={`tier-${tier.id}`} name="active" type="checkbox" defaultChecked={tier.active} /></td>
                           <td><button form={`tier-${tier.id}`} type="submit" className="gestione-btn gestione-btn-blue">Salva</button></td>
                         </tr>
@@ -121,6 +130,7 @@ export default async function AdminDashboardPage() {
                     <div className="gestione-field" style={{ width: 140 }}><label>Listino (€)</label><input name="listCents" type="number" step="0.01" min="0" required /></div>
                     <div className="gestione-field" style={{ width: 140 }}><label>Offerta (€)</label><input name="offerCents" type="number" step="0.01" min="0" /></div>
                     <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 600 }}><input type="checkbox" name="newActivation" /> Nuova attiv.</label>
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 600 }}><input type="checkbox" name="additionalDomiciliation" /> Dom. aggiuntiva</label>
                     <button type="submit" className="gestione-btn gestione-btn-blue">Aggiungi</button>
                   </form>
                 </details>
