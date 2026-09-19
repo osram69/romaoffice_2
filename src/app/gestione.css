@@ -133,9 +133,9 @@ tr.gestione-letter-row { scroll-margin-top: 70px; }
    scrolls (overflow-y:auto below), so a modal taller than the viewport scrolls the whole page
    instead of a cramped nested scrollbar. */
 .gestione-modal-box { background: #fff; border-radius: 12px; width: 100%; max-width: 960px; position: relative; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
-.gestione-modal-box .gestione-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px 6px; }
-.gestione-modal-box .gestione-modal-header h2 { font-size: 1.1rem; font-weight: 700; color: #232f3e; margin: 0; }
-.gestione-modal-close { background: none; border: none; font-size: 22px; line-height: 1; color: #888; cursor: pointer; padding: 4px; }
+.gestione-modal-box .gestione-modal-header { position: relative; text-align: center; padding: 16px 44px 8px; }
+.gestione-modal-box .gestione-modal-header h2 { font-size: 1.3rem; font-weight: 700; color: #232f3e; margin: 0; }
+.gestione-modal-close { position: absolute; top: 10px; right: 14px; background: none; border: none; font-size: 22px; line-height: 1; color: #888; cursor: pointer; padding: 4px; }
 .gestione-modal-close:hover { color: #232f3e; }
 .gestione-modal-body { padding: 4px 20px 16px; }
 .gestione-modal-footer { padding: 8px 20px 16px; display: flex; justify-content: flex-end; }

@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
 import { setAreaClientiPasswordAction } from "@/app/gestione-domiciliazioni-x9k2m7/actions";
+import { passwordMeetsPolicy } from "@/lib/password-policy";
+import { PasswordRequirementsList } from "./PasswordRequirementsList";
 
 export function AreaClientiPasswordReset({ id, hasPassword }: { id: number; hasPassword: boolean }) {
   const [open, setOpen] = useState(false);
@@ -30,11 +32,14 @@ export function AreaClientiPasswordReset({ id, hasPassword }: { id: number; hasP
   }
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-      <input type="text" value={password} onChange={e => setPassword(e.target.value)} placeholder="Nuova password (min. 12 caratteri)" style={{ maxWidth: 220 }} />
-      <button type="button" className="gestione-btn gestione-btn-blue" disabled={busy || password.length < 12} onClick={save}>Salva</button>
-      <button type="button" className="gestione-btn gestione-btn-outline" disabled={busy} onClick={() => { setOpen(false); setPassword(""); setStatus(null); }}>Annulla</button>
-      {status && <span style={{ fontSize: 12, color: status.color }}>{status.text}</span>}
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <input type="text" value={password} onChange={e => setPassword(e.target.value)} placeholder="Nuova password" style={{ maxWidth: 220 }} />
+        <button type="button" className="gestione-btn gestione-btn-blue" disabled={busy || !passwordMeetsPolicy(password)} onClick={save}>Salva</button>
+        <button type="button" className="gestione-btn gestione-btn-outline" disabled={busy} onClick={() => { setOpen(false); setPassword(""); setStatus(null); }}>Annulla</button>
+        {status && <span style={{ fontSize: 12, color: status.color }}>{status.text}</span>}
+      </div>
+      <PasswordRequirementsList password={password} lang="it" />
     </div>
   );
 }

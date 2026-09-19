@@ -8,6 +8,7 @@ import { CHALLENGE_COOKIE, SESSION_COOKIE, OTP_SECONDS, SESSION_SECONDS, Custome
 import { readDecrypted } from "@/lib/dom-archive";
 import { PRESENZA_FILE_BITS } from "@/lib/dom-status";
 import { normalizePhone } from "@/lib/request";
+import { PASSWORD_MAX_LENGTH, passwordMeetsPolicy } from "@/lib/password-policy";
 
 type Props = { params: Promise<{ action: string }> };
 export const dynamic = "force-dynamic";
@@ -110,7 +111,7 @@ export async function POST(req: NextRequest, { params }: Props) {
     }
     if (action === "set-password") {
       const client = await getDomCustomer(req);
-      const data = z.object({ password: z.string().min(12).max(128) }).safeParse(body);
+      const data = z.object({ password: z.string().max(PASSWORD_MAX_LENGTH).refine(passwordMeetsPolicy) }).safeParse(body);
       if (!data.success) throw new CustomerError("password");
       const passwordHash = await hashPassword(data.data.password);
       await db.update(domClients).set({ areaClientiPasswordHash: passwordHash, mustChangePassword: false }).where(eq(domClients.id, client.id));

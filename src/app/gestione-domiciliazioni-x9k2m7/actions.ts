@@ -11,6 +11,7 @@ import { PRESENZA_FILE_BITS, cleanText } from "@/lib/dom-status";
 import { buildScadenzaEmailHtml, defaultScontoApplicabile, scadenzaEmailSubject } from "@/lib/dom-scadenza-email";
 import { sendDomMail } from "@/lib/mailer";
 import { hashPassword } from "@/lib/customer-auth";
+import { passwordMeetsPolicy } from "@/lib/password-policy";
 
 const BASE_PATH = "/gestione-domiciliazioni-x9k2m7";
 
@@ -210,7 +211,7 @@ export async function inviaScadenzaAction(formData: FormData): Promise<{ success
 export async function setAreaClientiPasswordAction(id: number, newPassword: string): Promise<{ success: boolean; message?: string }> {
   "use server";
   await requireStaff();
-  if (newPassword.length < 12 || newPassword.length > 128) return { success: false, message: "La password deve avere tra 12 e 128 caratteri" };
+  if (!passwordMeetsPolicy(newPassword)) return { success: false, message: "La password deve avere almeno 12 caratteri e includere maiuscola, minuscola, numero e carattere speciale" };
   const passwordHash = await hashPassword(newPassword);
   await db.update(domClients).set({ areaClientiPasswordHash: passwordHash, mustChangePassword: true }).where(eq(domClients.id, id));
   await db.delete(domCustomerSessions).where(eq(domCustomerSessions.domClientId, id));

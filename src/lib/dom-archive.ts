@@ -14,6 +14,12 @@ export type DocType = (typeof DOC_TYPES)[number];
 function archiveDir() {
   const dir = process.env.DOM_ARCHIVE_DIR;
   if (!dir) throw new Error("DOM_ARCHIVE_DIR non configurata");
+  // A web address here silently succeeds (Node treats it as a relative filesystem path — e.g.
+  // "http://host/x" becomes a literal "http:/host/x" folder under the process's working
+  // directory) instead of failing loudly, which is exactly how a real archive ended up lost
+  // once. DOM_ARCHIVE_DIR must be the absolute filesystem path on the server, not a URL.
+  if (/^https?:\/\//i.test(dir)) throw new Error("DOM_ARCHIVE_DIR deve essere un percorso assoluto sul filesystem del server (es. /home/utente/domains/tuosito.it/archivio_dmcl), non un indirizzo web");
+  if (!path.isAbsolute(dir)) throw new Error("DOM_ARCHIVE_DIR deve essere un percorso assoluto (deve iniziare con /), non relativo");
   return dir;
 }
 function archiveKey() {

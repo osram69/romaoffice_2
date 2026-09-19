@@ -4,6 +4,8 @@ import Link from "next/link";
 import { ArrowRight, ArrowLeft, Check, Download, Eye, EyeOff, FileCheck2, FileText, FolderLock, IdCard, KeyRound, LayoutDashboard, LoaderCircle, LockKeyhole, LogOut, Mail, Phone, ShieldCheck, Smartphone, UserRound } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { Lang } from "@/lib/site";
+import { passwordMeetsPolicy } from "@/lib/password-policy";
+import { PasswordRequirementsList } from "./PasswordRequirementsList";
 
 const messages = {
   it: {
@@ -12,7 +14,7 @@ const messages = {
     limited: "Troppi tentativi. Attendi 15 minuti prima di riprovare.", wait: "Attendi almeno 60 secondi prima di richiedere un altro codice.",
     smsUnavailable: "Al momento non possiamo inviare l’SMS. Riprova più tardi o contatta la reception.", unavailable: "Il servizio non è disponibile. Riprova tra poco.",
     session: "La sessione è scaduta. Accedi nuovamente.", notFound: "Il documento non è disponibile.", forbidden: "Richiesta non consentita. Ricarica la pagina.",
-    password: "Usa una password di almeno 12 caratteri (massimo 128).",
+    password: "La password non soddisfa tutti i requisiti richiesti.",
     phoneInvalid: "Il cellulare registrato non è in un formato valido. Contatta la reception per aggiornarlo.",
   },
   en: {
@@ -21,7 +23,7 @@ const messages = {
     limited: "Too many attempts. Please wait 15 minutes before trying again.", wait: "Wait at least 60 seconds before requesting another code.",
     smsUnavailable: "We cannot send the SMS right now. Try again later or contact reception.", unavailable: "The service is unavailable. Please try again shortly.",
     session: "Your session has expired. Please sign in again.", notFound: "This document is unavailable.", forbidden: "This request is not permitted. Please reload the page.",
-    password: "Use a password with at least 12 characters (128 maximum).",
+    password: "Your password doesn't meet all the requirements.",
     phoneInvalid: "Your registered mobile number isn't in a valid format. Please contact reception to update it.",
   },
 };
@@ -101,7 +103,7 @@ export function CustomerArea({ lang }: { lang: Lang }) {
   }
   async function changePassword(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); setError(""); setNotice("");
-    if (newPassword.length < 12 || newPassword.length > 128) { setError(textError("password")); return; }
+    if (!passwordMeetsPolicy(newPassword)) { setError(textError("password")); return; }
     setChangingPassword(true);
     try {
       await api("set-password", { password: newPassword });
@@ -134,8 +136,9 @@ export function CustomerArea({ lang }: { lang: Lang }) {
       <section className="dashboard-contracts" id="customer-password">
         <div className="dashboard-section-heading"><div><span className="eyebrow">{it ? "SICUREZZA" : "SECURITY"}</span><h3>{it ? "Cambia password" : "Change password"}</h3></div></div>
         <form onSubmit={changePassword} className="password-change-form">
-          <label htmlFor="new-password">{it ? "Nuova password (almeno 12 caratteri)" : "New password (12 characters minimum)"}<span className="password-input"><input required id="new-password" type={showPassword ? "text" : "password"} minLength={12} maxLength={128} autoComplete="new-password" value={newPassword} onChange={e => setNewPassword(e.target.value)} /><button type="button" aria-label={it ? (showPassword ? "Nascondi password" : "Mostra password") : (showPassword ? "Hide password" : "Show password")} onClick={() => setShowPassword(s => !s)}>{showPassword ? <EyeOff /> : <Eye />}</button></span></label>
-          <button className="button primary" type="submit" disabled={changingPassword}>{changingPassword ? <LoaderCircle className="spin" /> : <KeyRound />}{it ? "Salva nuova password" : "Save new password"}</button>
+          <label htmlFor="new-password">{it ? "Nuova password" : "New password"}<input required id="new-password" type="text" maxLength={128} autoComplete="new-password" value={newPassword} onChange={e => setNewPassword(e.target.value)} /></label>
+          <PasswordRequirementsList password={newPassword} lang={lang} />
+          <button className="button primary" type="submit" disabled={changingPassword || !passwordMeetsPolicy(newPassword)}>{changingPassword ? <LoaderCircle className="spin" /> : <KeyRound />}{it ? "Salva nuova password" : "Save new password"}</button>
         </form>
       </section>
       <div className="future-documents" id="customer-future"><section><FolderLock /><span className="coming-soon">{it ? "PROSSIMAMENTE" : "COMING SOON"}</span><h3>{it ? "Altri download" : "Other downloads"}</h3><p>{it ? "Uno spazio dedicato a modulistica e documenti relativi ai tuoi servizi." : "A dedicated space for forms and documents relating to your services."}</p><span className="future-state"><LockKeyhole />{it ? "Non ancora disponibile" : "Not available yet"}</span></section><section><IdCard /><span className="coming-soon">{it ? "PROSSIMAMENTE" : "COMING SOON"}</span><h3>{it ? "Documenti d’identità" : "Identity documents"}</h3><p>{it ? "Qui potrai caricare i documenti richiesti in modo sicuro. Il caricamento non è ancora attivo." : "You will be able to securely upload the documents we need here. Uploads are not enabled yet."}</p><span className="future-state"><LockKeyhole />{it ? "Caricamento non attivo" : "Uploads not enabled"}</span></section></div>
