@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
       const captures = payment.purchase_units?.[0]?.payments?.captures as { status: string; amount: { currency_code: string; value: string } }[] | undefined;
       paid = payment.status === "COMPLETED" && !!captures?.some(c => c.status === "COMPLETED" && c.amount.currency_code === "EUR" && Math.round(Number(c.amount.value) * 100) === order.amountCents);
     }
-    let confirmation: { customerSent: boolean; adminSent: boolean; pdf: Buffer } | undefined;
+    let confirmation: { customerSent: boolean; adminSent: boolean; pdf: Buffer; shortRef: string } | undefined;
     if (paid) {
       const justPaid = await db.transaction(async tx => {
         const [current] = await tx.select().from(orders).where(and(eq(orders.id, order.id), eq(orders.status, "filled"))).for("update");
@@ -61,6 +61,6 @@ export async function POST(req: NextRequest) {
         }
       }
     }
-    return json({ paid, emailSent: confirmation?.customerSent, pdfBase64: confirmation?.pdf.toString("base64") });
+    return json({ paid, emailSent: confirmation?.customerSent, pdfBase64: confirmation?.pdf.toString("base64"), shortRef: confirmation?.shortRef });
   } catch (error) { return error instanceof CustomerError ? json({ paid: false, error: error.code }, error.status) : json({ paid: false, error: "verify-failed" }, 400); }
 }

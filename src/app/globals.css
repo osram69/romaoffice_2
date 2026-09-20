@@ -55,6 +55,10 @@
 .payment-options label{font-weight:700}
 .activation .success-panel{text-align:left;align-items:flex-start}
 .bank-details p{margin:.4rem 0}
+.bank-details-list{display:grid;grid-template-columns:auto 1fr;gap:.3rem 1rem;background:#fff;border:1px solid var(--border,#e2ddd3);border-radius:8px;padding:1rem 1.2rem;margin:.6rem 0}
+.bank-details-list div{display:contents}
+.bank-details-list dt{color:var(--ink-soft,#5b6a63);font-size:.85rem}
+.bank-details-list dd{margin:0}
 @media(max-width:1000px){
   .offer-head{grid-template-columns:1fr;gap:1.2rem}
   .offer-head .button{justify-self:start}

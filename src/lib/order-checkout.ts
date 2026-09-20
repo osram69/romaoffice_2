@@ -23,7 +23,8 @@ export async function checkoutOrder(req: NextRequest, orderId: string, provider:
     // "https://site.it/it") would otherwise get baked into the payment-provider return URL and
     // 404 on redirect back, since returnPath() already supplies the full path itself.
     const origin = new URL(process.env.NEXT_PUBLIC_SITE_URL || req.nextUrl.origin).origin;
-    const session = await createPaymentSession({ provider, service: snapshot.product.code, orderId, lang: data.lang, origin, email: order.email, totalCents: order.amountCents, description: `${copy.name} — ${copy.months(order.durationMonths)}` });
+    const description = `${copy.name} — ${copy.months(order.durationMonths)} — ${data.representativeName} (CF ${data.representativeTaxCode})`;
+    const session = await createPaymentSession({ provider, service: snapshot.product.code, orderId, lang: data.lang, origin, email: order.email, totalCents: order.amountCents, description });
     if (!("url" in session)) return { paymentUnavailable: true, message: session.message };
     await tx.update(orders).set({ provider, providerReference: session.providerRef, paymentMethod: provider, checkoutUrl: session.url, updatedAt: new Date() }).where(eq(orders.id, order.id));
     return { url: session.url, orderRef: orderId };

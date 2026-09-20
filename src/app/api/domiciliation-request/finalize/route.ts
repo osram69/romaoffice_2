@@ -9,6 +9,7 @@ import { sendRequestConfirmation } from "@/lib/order-confirmation";
 import { CustomerError, json, protectMutation } from "@/lib/customer-auth";
 import { paymentMethodSchema } from "@/lib/request";
 import { paymentMethodEnabled } from "@/lib/payment-settings";
+import { shortOrderRef } from "@/lib/order-ref";
 const input = z.object({ orderId: z.string().uuid(), paymentMethod: paymentMethodSchema });
 const ONLINE_METHODS = ["stripe", "paypal", "sumup"] as const;
 export async function POST(req: NextRequest) {
@@ -26,16 +27,17 @@ export async function POST(req: NextRequest) {
       if (current.status === "paid" || current.status === "signed") throw new CustomerError("already-paid", 409);
       await tx.update(orders).set({ status: "filled", paymentMethod, updatedAt: new Date() }).where(eq(orders.id, order.id));
     });
+    const shortRef = shortOrderRef(data.representativeTaxCode, order.createdAt);
     if (isOnline) {
       // The request PDF is built and emailed only once the online payment actually succeeds
       // (see /api/verify-payment) — not here, since the customer hasn't paid yet at this point.
       const checkout = await checkoutOrder(req, orderId, paymentMethod as "stripe" | "paypal" | "sumup");
-      return json({ paymentMethod, orderRef: orderId, totalCents: priced.totalCents,
+      return json({ paymentMethod, orderRef: orderId, shortRef, totalCents: priced.totalCents,
         message: it ? "Procedi al pagamento online per completare la pratica. Il modulo compilato ti sarà inviato via email dopo la conferma del pagamento." : "Proceed with online payment to complete the application. The completed form will be emailed to you once payment is confirmed.",
         ...checkout });
     }
     const sent = await sendRequestConfirmation(order, data, snapshot, paymentMethod);
-    return json({ paymentMethod, orderRef: orderId, emailSent: sent.customerSent, adminMailSent: sent.adminSent, totalCents: priced.totalCents, pdfBase64: sent.pdf.toString("base64"), bankTransferDetails: paymentMethod === "bank_transfer" ? sent.bankLines : undefined,
+    return json({ paymentMethod, orderRef: orderId, shortRef: sent.shortRef, emailSent: sent.customerSent, adminMailSent: sent.adminSent, totalCents: priced.totalCents, pdfBase64: sent.pdf.toString("base64"), bankTransferDetails: paymentMethod === "bank_transfer" ? sent.bankDetails : undefined,
       message: sent.customerSent ? (it ? "La richiesta è registrata e l’email è stata inviata. Controlla la tua casella di posta." : "Your application is recorded and the email has been sent. Please check your inbox.") : (it ? "La richiesta è registrata, ma l’email non è stata inviata. Scarica il riepilogo e contatta la reception." : "Your application is recorded, but the email was not sent. Download the summary and contact reception.") });
   } catch (error) {
     if (error instanceof CustomerError) { console.error("Request finalization rejected", error.code, error.status); return json({ error: error.code }, error.status); }

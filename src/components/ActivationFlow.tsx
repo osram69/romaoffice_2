@@ -4,15 +4,16 @@ import { CheckCircle2, LoaderCircle, RefreshCw, ShieldCheck } from "lucide-react
 import { useEffect, useMemo, useState } from "react";
 import { copyFor, activationHref, validity, formatEur, quote, offerActive, type Catalog, type ServiceCode, type SelectedAddon, type Lang } from "@/lib/pricing";
 import type { PaymentSettings } from "@/lib/payment-settings";
+import { isValidTaxCode } from "@/lib/codice-fiscale";
 import { OfferTermsConsent } from "./OfferTerms";
-import { SignaturePad } from "./Interactive";
 type FormState = {
   companyExists: boolean; companyName: string; companyVat: string; companyTaxCode: string; companyAddress: string; companyRegister: string;
   representativeName: string; representativeRole: string; representativeTaxCode: string; email: string; phone: string;
   months: number; startDate: string; newActivation: boolean; additionalDomiciliation: boolean; consent: boolean; website: string; termsAccepted: boolean; addons: SelectedAddon[];
 };
 
-type FinalizeResult = { paymentMethod: string; orderRef: string; emailSent: boolean; pdfBase64?: string; message?: string; totalCents?: number; bankTransferDetails?: string; paymentUnavailable?: boolean };
+type BankDetails = { holder: string; iban: string; bic: string; bank: string; causale: string; amount: string };
+type FinalizeResult = { paymentMethod: string; orderRef: string; shortRef?: string; emailSent: boolean; pdfBase64?: string; message?: string; totalCents?: number; bankTransferDetails?: BankDetails; paymentUnavailable?: boolean; paymentConfirmed?: boolean };
 
 export function ActivationFlow({ lang, catalog: initialCatalog, initialService, paymentSettings }: { lang: Lang; catalog: Catalog; initialService: ServiceCode; paymentSettings: PaymentSettings }) {
   const it = lang === "it";
@@ -70,6 +71,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
     invalidEmail: it ? "Inserisci un indirizzo email valido" : "Enter a valid email address",
     invalidPhone: it ? "Inserisci un cellulare valido con prefisso internazionale, ad esempio +39." : "Enter a valid mobile number with an international prefix, for example +39.",
     invalidDate: it ? "Inserisci una data valida (non nel passato, entro 24 mesi)" : "Enter a valid date (not in the past, within 24 months)",
+    invalidTaxCode: it ? "Codice fiscale non valido." : "Invalid tax code.",
   };
 
   const priced = useMemo(() => quote(product, { months: form.months, newActivation: form.newActivation, additionalDomiciliation: form.additionalDomiciliation, addons: form.addons }), [product, form.months, form.newActivation, form.additionalDomiciliation, form.addons]);
@@ -83,18 +85,25 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
     window.history.replaceState({}, "", window.location.pathname);
     if (state === "return" && provider) {
       setStatus(it ? "Verifica del pagamento in corso…" : "Verifying payment…");
+      // The page reloaded fresh on the way back from the payment provider, so the finalize()
+      // result saved just before redirecting (in sessionStorage) never had a pdfBase64/email
+      // status — those are only produced now, by verify-payment, once payment is confirmed.
+      // Merge them in rather than trusting whatever (if anything) was stashed pre-redirect.
+      const stored = sessionStorage.getItem(`ros-order-${order}`);
+      let base: FinalizeResult = { paymentMethod: provider, orderRef: order, emailSent: true };
+      if (stored) { try { base = JSON.parse(stored); } catch { /* keep fallback */ } sessionStorage.removeItem(`ros-order-${order}`); }
       fetch("/api/verify-payment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ order, provider, sessionId: params.get("session_id") }) })
         .then(r => r.json()).then(d => {
-          if (!d.paid) { setStatus(it ? "Pagamento non ancora confermato: riceverai conferma via email oppure puoi riprovare." : "Payment not confirmed yet: you will receive an email confirmation, or try again."); return; }
+          if (!d.paid) {
+            const ref = base.shortRef || order.slice(0, 8);
+            setStatus(it
+              ? `Non siamo riusciti a confermare subito il pagamento. Se lo hai completato, riceverai comunque la conferma via email a breve; in caso contrario riprova oppure contattaci indicando il riferimento ${ref}.`
+              : `We could not confirm the payment right away. If you completed it, you will still receive email confirmation shortly; otherwise try again or contact us quoting reference ${ref}.`);
+            return;
+          }
           setStatus("");
-          // The page reloaded fresh on the way back from the payment provider, so the finalize()
-          // result saved just before redirecting (in sessionStorage) never had a pdfBase64/email
-          // status — those are only produced now, by verify-payment, once payment is confirmed.
-          // Merge them in rather than trusting whatever (if anything) was stashed pre-redirect.
-          const stored = sessionStorage.getItem(`ros-order-${order}`);
-          let base: FinalizeResult = { paymentMethod: provider, orderRef: order, emailSent: true };
-          if (stored) { try { base = JSON.parse(stored); } catch { /* keep fallback */ } sessionStorage.removeItem(`ros-order-${order}`); }
-          setResult({ ...base, emailSent: d.emailSent ?? base.emailSent, pdfBase64: d.pdfBase64 ?? base.pdfBase64 });
+          setResult({ ...base, paymentMethod: provider, shortRef: d.shortRef ?? base.shortRef, emailSent: d.emailSent ?? base.emailSent, pdfBase64: d.pdfBase64 ?? base.pdfBase64, paymentConfirmed: true,
+            message: it ? "Riceverai a breve un’email con il contratto, l’autorizzazione e tutte le informazioni per la compilazione." : "You will shortly receive an email with the agreement, the authorization and all the information needed to complete it." });
           setStep(4);
         }).catch(() => setStatus(it ? "Verifica non riuscita." : "Verification failed."));
     } else if (state === "cancelled") setStatus(it ? "Pagamento annullato. Puoi riprendere la procedura quando vuoi." : "Payment cancelled. You can resume whenever you like.");
@@ -111,11 +120,13 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
     return dateValue < today || dateValue > max ? t.invalidDate : "";
   }
   function validateCompanyNameField(value: string) { return (postal || form.companyExists) && value.trim().length < 2 ? t.required : ""; }
+  function validateTaxCodeField(value: string) { return isValidTaxCode(value) ? "" : t.invalidTaxCode; }
   function setFieldError(key: string, message: string) { setErrors(prev => { if (!message) { if (!(key in prev)) return prev; const { [key]: _drop, ...rest } = prev; return rest; } return { ...prev, [key]: message }; }); }
 
   function validate() {
     const next: Record<string, string> = {};
     const nameErr = validateRepresentativeName(form.representativeName); if (nameErr) next.representativeName = nameErr;
+    const taxCodeErr = validateTaxCodeField(form.representativeTaxCode); if (taxCodeErr) next.representativeTaxCode = taxCodeErr;
     const emailErr = validateEmailField(form.email); if (emailErr) next.email = emailErr;
     const phoneErr = validatePhoneField(form.phone); if (phoneErr) next.phone = phoneErr;
     if (!product.tiers.some(x => x.months === form.months)) next.months = t.required;
@@ -212,7 +223,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
               <label>{t.repRole}<select value={form.representativeRole} onChange={e => setForm({ ...form, representativeRole: e.target.value })}>
                 {[it ? "Legale rappresentante" : "Legal representative", it ? "Amministratore" : "Administrator", it ? "Titolare" : "Owner", it ? "Delegato" : "Delegate"].map(r => <option key={r} value={r}>{r}</option>)}
               </select></label>
-              <label>{t.repTaxCode}<input value={form.representativeTaxCode} onChange={e => setForm({ ...form, representativeTaxCode: e.target.value })} /></label>
+              <label>{t.repTaxCode}*<input id="field-representativeTaxCode" value={form.representativeTaxCode} onChange={e => setForm({ ...form, representativeTaxCode: e.target.value.toUpperCase() })} onBlur={e => setFieldError("representativeTaxCode", validateTaxCodeField(e.target.value))} required {...aria("representativeTaxCode")} />{err("representativeTaxCode")}</label>
             </div>
             <div className="form-grid">
               <label>{t.email}*<input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} onBlur={e => setFieldError("email", validateEmailField(e.target.value))} autoComplete="email" {...aria("email")} />{err("email")}</label>
@@ -273,16 +284,23 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
 
         {step === 4 && result && <div className="success-panel">
           <CheckCircle2 />
-          <b>{it ? "Richiesta registrata" : "Request recorded"}</b>
-          <p>{it ? `Riferimento pratica: ${result.orderRef}` : `Reference: ${result.orderRef}`}</p>
-          {result.paymentMethod === "bank_transfer" && <div className="bank-details">
+          <b>{result.paymentConfirmed ? (it ? "Pagamento confermato!" : "Payment confirmed!") : it ? "Richiesta registrata" : "Request recorded"}</b>
+          <p>{it ? `Riferimento pratica: ${result.shortRef || result.orderRef}` : `Reference: ${result.shortRef || result.orderRef}`}</p>
+          {result.paymentMethod === "bank_transfer" && result.bankTransferDetails && <div className="bank-details">
             <p>{it ? "Email inviata con i dati di pagamento: " : "Payment details email sent: "}<b>{result.emailSent ? (it ? "sì" : "yes") : it ? "non inviata (vedi PDF)" : "not sent (see PDF)"}</b></p>
             <p className="form-note">{it ? "Se non hai ricevuto l’email, scarica qui il riepilogo con i dati di pagamento." : "If you did not receive the email, download the payment summary here."}</p>
+            <dl className="bank-details-list">
+              <div><dt>{it ? "Intestatario" : "Account holder"}</dt><dd><b>{result.bankTransferDetails.holder}</b></dd></div>
+              <div><dt>IBAN</dt><dd><b>{result.bankTransferDetails.iban}</b></dd></div>
+              <div><dt>BIC/SWIFT</dt><dd>{result.bankTransferDetails.bic}</dd></div>
+              <div><dt>{it ? "Banca" : "Bank"}</dt><dd>{result.bankTransferDetails.bank}</dd></div>
+              <div><dt>{it ? "Causale" : "Reason"}</dt><dd><b>{result.bankTransferDetails.causale}</b></dd></div>
+              <div><dt>{it ? "Importo" : "Amount"}</dt><dd><b>{result.bankTransferDetails.amount}</b></dd></div>
+            </dl>
           </div>}
-          {result.pdfBase64 && <a className="button secondary" href={`data:application/pdf;base64,${result.pdfBase64}`} download={`richiesta-${result.orderRef}.pdf`}>{it ? "SCARICA IL MODULO PDF" : "DOWNLOAD PDF FORM"}</a>}
+          {result.pdfBase64 && <a className="button secondary" href={`data:application/pdf;base64,${result.pdfBase64}`} download={`richiesta-${result.shortRef || result.orderRef}.pdf`}>{it ? "SCARICA IL MODULO PDF" : "DOWNLOAD PDF FORM"}</a>}
           {result.message && <p className="form-note">{result.message}</p>}
-          {!postal && <SignaturePad lang={lang} orderId={result.orderRef} />}
-          {result.bankTransferDetails && <pre className="payment-instructions">{result.bankTransferDetails}</pre>}
+          {!result.paymentUnavailable && <p className="form-note">{it ? "Riceverai anche un’email con il contratto, l’autorizzazione e tutte le informazioni per la compilazione." : "You will also receive an email with the agreement, the authorization and all the information needed to complete it."}</p>}
           {result.paymentUnavailable && <button className="button secondary" onClick={() => setStep(3)}>{it ? "Scegli un’altra modalità di pagamento" : "Choose another payment method"}</button>}
           <p className="form-note"><ShieldCheck /> {it ? "I tuoi dati sono trattati secondo l’informativa privacy." : "Your data is processed according to our privacy notice."}</p>
         </div>}

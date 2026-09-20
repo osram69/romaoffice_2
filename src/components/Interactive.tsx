@@ -1,8 +1,8 @@
 "use client";
 
-import { CheckCircle2, LoaderCircle, RefreshCw, ShieldCheck } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import Link from "next/link";
-import { FormEvent, PointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useState } from "react";
 import type { Lang } from "@/lib/site";
 
 export function ContactForm({ lang }: { lang: Lang }) {
@@ -47,43 +47,4 @@ export function ContactForm({ lang }: { lang: Lang }) {
     <button className="button primary" disabled={state === "loading"}>{state === "loading" && <LoaderCircle className="spin" />}{labels.submit}</button>
     <div aria-live="polite" className={`form-status ${state}`}>{state === "success" ? (it ? "Grazie! La richiesta è stata inviata." : "Thank you! Your enquiry has been sent.") : state === "error" ? (it ? "Invio non riuscito. Riprova o chiamaci." : "Submission failed. Please retry or call us.") : ""}</div>
   </form>;
-}
-
-export function SignaturePad({ lang, orderId }: { lang: Lang; orderId: string }) {
-  const it = lang === "it";
-  const canvas = useRef<HTMLCanvasElement>(null);
-  const drawing = useRef(false);
-  const [state, setState] = useState<"idle" | "busy" | "done" | "error">("idle");
-  useEffect(() => {
-    const c = canvas.current; if (!c) return;
-    const ratio = window.devicePixelRatio || 1;
-    c.width = c.offsetWidth * ratio; c.height = 180 * ratio;
-    const ctx = c.getContext("2d"); if (ctx) ctx.scale(ratio, ratio);
-  }, []);
-  const point = (e: PointerEvent<HTMLCanvasElement>) => { const c = canvas.current!; const r = c.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top] as const; };
-  function start(e: PointerEvent<HTMLCanvasElement>) { drawing.current = true; const ctx = canvas.current!.getContext("2d")!; const [x, y] = point(e); ctx.beginPath(); ctx.moveTo(x, y); e.currentTarget.setPointerCapture(e.pointerId); }
-  function move(e: PointerEvent<HTMLCanvasElement>) { if (!drawing.current) return; const ctx = canvas.current!.getContext("2d")!; const [x, y] = point(e); ctx.lineWidth = 2; ctx.lineCap = "round"; ctx.strokeStyle = "#183229"; ctx.lineTo(x, y); ctx.stroke(); }
-  async function save() {
-    const c = canvas.current; if (!c) return;
-    setState("busy");
-    try {
-      const res = await fetch("/api/save-signature", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId, signature: c.toDataURL("image/png") }) });
-      if (!res.ok) throw new Error();
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a"); link.href = url; link.download = `signed-${orderId}.pdf`; link.click();
-      URL.revokeObjectURL(url);
-      setState("done");
-    } catch { setState("error"); }
-  }
-  return <div className="signature-flow">
-    <h3>{it ? "Firma la richiesta (opzionale)" : "Sign the request (optional)"}</h3>
-    <p className="form-note">{it ? "Disegna la firma e scarica il PDF firmato. Per la piena validità legale è consigliato un provider di firma elettronica qualificata." : "Draw your signature and download the signed PDF. For full legal validity a qualified e-signature provider is recommended."}</p>
-    <canvas ref={canvas} className="signature-canvas" aria-label={it ? "Area firma" : "Signature area"} onPointerDown={start} onPointerMove={move} onPointerUp={() => (drawing.current = false)} />
-    <div className="inline-actions">
-      <button className="text-button" onClick={() => { const c = canvas.current; c?.getContext("2d")?.clearRect(0, 0, c.width, c.height); setState("idle"); }}>{it ? "Cancella" : "Clear"}</button>
-      <button className="button primary" onClick={save} disabled={state === "busy"}>{state === "busy" && <LoaderCircle className="spin" />}{it ? "FIRMA E SCARICA PDF" : "SIGN & DOWNLOAD PDF"}</button>
-    </div>
-    <div aria-live="polite" className={`form-status ${state === "done" ? "success" : state === "error" ? "error" : ""}`}>{state === "done" ? (it ? "PDF firmato generato." : "Signed PDF generated.") : state === "error" ? (it ? "Generazione non riuscita." : "Generation failed.") : ""}</div>
-  </div>;
 }

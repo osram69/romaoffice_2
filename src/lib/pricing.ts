@@ -49,13 +49,16 @@ export function validity(product: ProductOffer, lang: Lang) {
   return `${lang === "it" ? "Offerte valide fino al" : "Offers valid until"} ${new Date(product.offerValidUntil).toLocaleDateString(lang === "it" ? "it-IT" : "en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Rome" })}`;
 }
 export function activationHref(service: ServiceCode, lang: Lang) { return `${lang === "it" ? "/attiva.html" : "/en/activate.html"}?service=${service}`; }
-export function bankTransfer(lang: Lang, service: ServiceCode = "legal_unit") {
+export function bankTransfer(lang: Lang, service: ServiceCode = "legal_unit", representativeName?: string, orderRef?: string) {
+  const it = lang === "it";
+  const serviceLabel = service === "postal" ? (it ? "Domiciliazione Postale" : "Business Mailing Address") : (it ? "Domiciliazione Sede Legale" : "Registered Office Address");
+  const reason = representativeName && orderRef ? `${serviceLabel} - ${representativeName} - ${it ? "Rif." : "Ref."} ${orderRef}` : serviceLabel;
   return {
     holder: process.env.BANK_HOLDER || "Cube Engineering s.r.l.",
     iban: process.env.BANK_IBAN || (lang === "it" ? "[IBAN da configurare]" : "[IBAN to be configured]"),
     bic: process.env.BANK_BIC || (lang === "it" ? "[BIC/SWIFT da configurare]" : "[BIC/SWIFT to be configured]"),
     bank: process.env.BANK_NAME || (lang === "it" ? "[Banca da configurare]" : "[Bank to be configured]"),
-    reason: copyFor(service, lang).name,
+    reason,
   };
 }
 export const offerCopy = {

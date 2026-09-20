@@ -4,14 +4,14 @@ import type { RequestData } from "./request";
 import { termsText } from "./offer-terms";
 
 /** Human-readable PDF attachment/download filename — word order differs by language, not just the noun. */
-export function requestPdfFilename(serviceCode: string, lang: Lang, orderRef: string, opts: { signed?: boolean } = {}): string {
+export function requestPdfFilename(serviceCode: string, lang: Lang, orderRef: string): string {
   const id = orderRef.slice(0, 8);
   if (lang === "it") {
     const slug = serviceCode === "legal_unit" ? "sede_legale" : serviceCode === "postal" ? "domiciliazione_postale" : serviceCode;
-    return `Richiesta${opts.signed ? "_firmata" : ""}_${slug}_${id}.pdf`;
+    return `Richiesta_${slug}_${id}.pdf`;
   }
   const slug = serviceCode === "legal_unit" ? "Legal_address_request" : serviceCode === "postal" ? "Postal_address_request" : `${serviceCode}_request`;
-  return `${opts.signed ? "Signed_" : ""}${slug}_${id}.pdf`;
+  return `${slug}_${id}.pdf`;
 }
 
 const INK = rgb(0.09, 0.2, 0.16);
@@ -87,12 +87,12 @@ class Writer {
 }
 
 /** Builds the domiciliation request module (modulo di richiesta) as a PDF. */
-export async function buildRequestPdf(opts: { data: RequestData; lang: Lang; orderRef: string; paymentMethod: string; product: ProductOffer; priced: Quote; signature?: { png: Uint8Array; signedAt: Date } }): Promise<Uint8Array> {
-  const { data, lang, orderRef } = opts;
+export async function buildRequestPdf(opts: { data: RequestData; lang: Lang; shortRef: string; paymentMethod: string; product: ProductOffer; priced: Quote }): Promise<Uint8Array> {
+  const { data, lang, shortRef } = opts;
   const it = lang === "it";
   const product = opts.product; const postal = product.code === "postal"; const copy = copyFor(product.code, lang);
   const priced = opts.priced;
-  const bank = bankTransfer(lang, product.code);
+  const bank = bankTransfer(lang, product.code, data.representativeName, shortRef);
   const pdf = await PDFDocument.create();
   const writer = new Writer(pdf, await pdf.embedFont(StandardFonts.Helvetica), await pdf.embedFont(StandardFonts.HelveticaBold));
   pdf.setTitle(it ? "Modulo di richiesta domiciliazione" : "Registered office address application");
@@ -105,7 +105,7 @@ export async function buildRequestPdf(opts: { data: RequestData; lang: Lang; ord
   writer.page.drawText(it ? "Business Center — Via Venti Settembre, 118 int.1 - 00187 Roma" : "Business Centre — Via Venti Settembre, 118 int.1 - 00187 Rome", { x: MARGIN, y: PAGE_H - 60, size: 8, font: writer.font, color: rgb(0.85, 0.89, 0.87) });
   writer.page.drawText((it ? "RICHIESTA — " : "APPLICATION — ") + copy.name.toUpperCase(), { x: MARGIN, y: PAGE_H - 80, size: 8.5, font: writer.bold, color: GOLD });
   writer.y = PAGE_H - 116;
-  writer.row(it ? `Riferimento pratica: ${orderRef}` : `Reference: ${orderRef}`, new Date().toLocaleString(it ? "it-IT" : "en-GB"));
+  writer.row(it ? `Riferimento pratica: ${shortRef}` : `Reference: ${shortRef}`, new Date().toLocaleString(it ? "it-IT" : "en-GB", { timeZone: "Europe/Rome" }));
 
   writer.section(it ? "1. Dati dell'azienda / ditta individuale (se già esistente)" : "1. Company / sole proprietorship data (if already existing)");
   if (data.companyExists) {
@@ -158,7 +158,7 @@ export async function buildRequestPdf(opts: { data: RequestData; lang: Lang; ord
     writer.field("IBAN", bank.iban);
     writer.field("BIC / SWIFT", bank.bic);
     writer.field(it ? "Istituto bancario" : "Bank", bank.bank);
-    writer.field(it ? "Causale" : "Payment reason", `${bank.reason} — ${orderRef}`);
+    writer.field(it ? "Causale" : "Payment reason", bank.reason);
     if (priced) writer.field(it ? "Importo da versare" : "Amount to transfer", `${formatEur(priced.totalCents, lang)} (${it ? "IVA inclusa" : "VAT included"})`);
   }
 
@@ -174,19 +174,8 @@ export async function buildRequestPdf(opts: { data: RequestData; lang: Lang; ord
   writer.y -= 10;
   const signatureBoxTop = writer.y;
   writer.page.drawRectangle({ x: MARGIN, y: signatureBoxTop - 66, width: 230, height: 66, borderColor: GREY, borderWidth: 0.7 });
-  if (opts.signature) {
-    const png = await pdf.embedPng(opts.signature.png);
-    const maxW = 210, maxH = 48;
-    const scale = Math.min(maxW / png.width, maxH / png.height, 1);
-    const w = png.width * scale, h = png.height * scale;
-    writer.page.drawImage(png, { x: MARGIN + (230 - w) / 2, y: signatureBoxTop - 12 - h, width: w, height: h });
-  }
   writer.page.drawText(it ? "Firma del Legale Rappresentante" : "Legal representative signature", { x: MARGIN, y: signatureBoxTop - 80, size: 7.5, font: writer.font, color: GREY });
   writer.page.drawRectangle({ x: PAGE_W - MARGIN - 160, y: signatureBoxTop - 66, width: 160, height: 66, borderColor: GREY, borderWidth: 0.7 });
-  if (opts.signature) {
-    const dateLabel = (it ? "Roma, " : "Rome, ") + opts.signature.signedAt.toLocaleDateString(it ? "it-IT" : "en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Rome" });
-    for (const line of writer.wrap(dateLabel, 9.5, writer.font)) writer.page.drawText(line, { x: PAGE_W - MARGIN - 150, y: signatureBoxTop - 30, size: 9.5, font: writer.font, color: INK });
-  }
   writer.page.drawText(it ? "Luogo e data" : "Place and date", { x: PAGE_W - MARGIN - 160, y: signatureBoxTop - 80, size: 7.5, font: writer.font, color: GREY });
 
   if (postal) {
