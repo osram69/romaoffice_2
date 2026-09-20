@@ -3,6 +3,17 @@ import { bankTransfer, formatEur, copyFor, validity, type Lang, type ProductOffe
 import type { RequestData } from "./request";
 import { termsText } from "./offer-terms";
 
+/** Human-readable PDF attachment/download filename — word order differs by language, not just the noun. */
+export function requestPdfFilename(serviceCode: string, lang: Lang, orderRef: string, opts: { signed?: boolean } = {}): string {
+  const id = orderRef.slice(0, 8);
+  if (lang === "it") {
+    const slug = serviceCode === "legal_unit" ? "sede_legale" : serviceCode === "postal" ? "domiciliazione_postale" : serviceCode;
+    return `Richiesta${opts.signed ? "_firmata" : ""}_${slug}_${id}.pdf`;
+  }
+  const slug = serviceCode === "legal_unit" ? "Legal_address_request" : serviceCode === "postal" ? "Postal_address_request" : `${serviceCode}_request`;
+  return `${opts.signed ? "Signed_" : ""}${slug}_${id}.pdf`;
+}
+
 const INK = rgb(0.09, 0.2, 0.16);
 const GREY = rgb(0.4, 0.45, 0.43);
 const GOLD = rgb(0.62, 0.43, 0.19);
@@ -48,10 +59,9 @@ class Writer {
   section(title: string) {
     this.ensure(46);
     this.y -= 12;
-    this.page.drawRectangle({ x: MARGIN, y: this.y - 3, width: 34, height: 2, color: GOLD });
-    this.y -= 12;
     this.text(title, { size: 12, bold: true });
-    this.y -= 4;
+    this.page.drawRectangle({ x: MARGIN, y: this.y + 6, width: 34, height: 2, color: GOLD });
+    this.y -= 8;
   }
   field(label: string, value: string) {
     if (!value) return;

@@ -48,10 +48,17 @@ export async function POST(req: NextRequest) {
       });
       // The request PDF + confirmation emails are sent here, on the transition into "paid",
       // rather than at finalize time — that's the whole point: for online providers, nothing
-      // is sent to the customer until the payment has actually gone through.
+      // is sent to the customer until the payment has actually gone through. This must never
+      // turn a genuinely successful payment into a reported failure: if PDF/email generation
+      // throws (slow SMTP, transient DB error...), the customer still sees their paid
+      // confirmation immediately, and we just log the delivery failure for follow-up.
       if (justPaid) {
-        const data = justPaid.formData as RequestData; const snapshot = justPaid.quoteData as OrderSnapshot;
-        confirmation = await sendRequestConfirmation(justPaid, data, snapshot, justPaid.paymentMethod || parsed.data.provider);
+        try {
+          const data = justPaid.formData as RequestData; const snapshot = justPaid.quoteData as OrderSnapshot;
+          confirmation = await sendRequestConfirmation(justPaid, data, snapshot, justPaid.paymentMethod || parsed.data.provider);
+        } catch (error) {
+          console.error("Post-payment confirmation failed (payment itself succeeded)", justPaid.publicId, error instanceof Error ? `${error.name}: ${error.message}` : error);
+        }
       }
     }
     return json({ paid, emailSent: confirmation?.customerSent, pdfBase64: confirmation?.pdf.toString("base64") });

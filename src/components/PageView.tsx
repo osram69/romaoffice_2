@@ -8,13 +8,14 @@ import { CustomerArea } from "./CustomerArea";
 import { AddressServiceDetails, hasAddressDetail } from "./AddressServices";
 import { type ServiceCode } from "@/lib/pricing";
 import { getCatalog } from "@/lib/catalog";
-import { getPaymentSettings } from "@/lib/payment-settings";
+import { getPaymentSettings, pricingPageDescription } from "@/lib/payment-settings";
 import { PricingOffer } from "./PricingOffers";
 import { alternateFor, contact, hrefFor, pages, privacySections, services, ui, type Lang } from "@/lib/site";
 
 const icons = { desk: Building2, building: BadgeCheck, mail: Mail, monitor: MonitorSmartphone };
-export function PageView({ pageKey, lang, initialService = "legal_unit" }: { pageKey: string; lang: Lang; initialService?: ServiceCode }) {
+export async function PageView({ pageKey, lang, initialService = "legal_unit" }: { pageKey: string; lang: Lang; initialService?: ServiceCode }) {
   const page = pages[pageKey]; const t = ui[lang]; const it = lang === "it"; const home = lang === "it" ? "/" : "/en/index.html";
+  const heroDescription = page.kind === "pricing" ? pricingPageDescription(await getPaymentSettings(), lang) : page.description;
   return <main id="main">
     {page.kind === "home" ? <>
       <section className="hero home-hero">
@@ -27,7 +28,7 @@ export function PageView({ pageKey, lang, initialService = "legal_unit" }: { pag
       <GalleryPreview lang={lang} />
       <Cta lang={lang} />
     </> : <>
-      {!hasAddressDetail(pageKey) && <section className={page.kind === "customer" ? "page-hero customer-page-hero" : "page-hero"}><div className="shell"><span className="eyebrow">{page.eyebrow}</span><h1>{page.title}</h1><p>{page.description}</p></div></section>}
+      {!hasAddressDetail(pageKey) && <section className={page.kind === "customer" ? "page-hero customer-page-hero" : "page-hero"}><div className="shell"><span className="eyebrow">{page.eyebrow}</span><h1>{page.title}</h1><p>{heroDescription}</p></div></section>}
       <Breadcrumb lang={lang} title={page.title} home={home} bare={hasAddressDetail(pageKey)} />
       <PageBody kind={page.kind} lang={lang} pageKey={pageKey} initialService={initialService} />
     </>}

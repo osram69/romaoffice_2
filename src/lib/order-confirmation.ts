@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { orders } from "@/db/schema";
 import { adminEmail, sendMail } from "./mailer";
 import { bankTransfer, formatEur, copyFor } from "./pricing";
-import { buildRequestPdf } from "./pdf";
+import { buildRequestPdf, requestPdfFilename } from "./pdf";
 import { escapeHtml } from "./standard-offer";
 import type { OrderSnapshot } from "./order-access";
 import type { RequestData } from "./request";
@@ -23,7 +23,7 @@ export async function sendRequestConfirmation(order: OrderRow, data: RequestData
   const summary = [copy.name, `${it ? "Pratica" : "Reference"}: ${orderId}`, `${copy.months(data.months)} — ${it ? "decorrenza" : "start date"}: ${data.startDate}`, `${data.representativeName} — ${data.email} — ${data.phone}`, ...priced.addonLines.map(line => `${it ? line.titleIt : line.titleEn} × ${line.quantity}: ${formatEur(line.totalCents, lang)} ${it ? "+ IVA" : "+ VAT"}`), `${it ? "Imponibile" : "Net amount"}: ${formatEur(priced.netCents, lang)}`, `${it ? "IVA" : "VAT"} ${product.vatBps / 100}%: ${formatEur(priced.vatCents, lang)}`, `${it ? "Totale" : "Total"}: ${formatEur(priced.totalCents, lang)}`, `${it ? "Pagamento" : "Payment"}: ${methods[paymentMethod] || paymentMethod}`].join("\n");
   const bankLines = `${it ? "Intestatario" : "Account holder"}: ${bank.holder}\nIBAN: ${bank.iban}\nBIC/SWIFT: ${bank.bic}\n${it ? "Banca" : "Bank"}: ${bank.bank}\n${it ? "Causale" : "Reason"}: ${bank.reason} — ${orderId}\n${it ? "Importo" : "Amount"}: ${formatEur(priced.totalCents, lang)}`;
   const pdf = Buffer.from(await buildRequestPdf({ data, lang, orderRef: orderId, paymentMethod, product, priced }));
-  const attachments = [{ filename: `Richiesta_${product.code}_${orderId.slice(0, 8)}.pdf`, content: pdf, contentType: "application/pdf" }];
+  const attachments = [{ filename: requestPdfFilename(product.code, lang, orderId), content: pdf, contentType: "application/pdf" }];
   const instructions = paymentMethod === "bank_transfer" ? bankLines : paymentMethod === "on_site" ? (it ? "Pagamento anticipato in sede. Concorda un appuntamento con la reception prima della decorrenza. Nessun deposito cauzionale." : "Payment in advance on site. Arrange a reception appointment before the start date. No security deposit.") : (it ? "Il pagamento online è stato confermato. Grazie!" : "Your online payment has been confirmed. Thank you!");
   const letter = `${it ? "Gentile" : "Dear"} ${data.representativeName},\n\n${it ? "abbiamo registrato la Sua richiesta. In allegato trova il riepilogo compilato e, per la postale, l’Allegato 1 e le condizioni accettate." : "we have recorded your application. Attached is your completed summary and, for the mailing service, Annex 1 and the accepted terms."}\n\n${summary}\n\n${instructions}\n\n${it ? "L’attivazione è subordinata alla verifica della documentazione e al contratto." : "Activation is subject to document review and agreement."}\nRoma Office Sharing — +39 06 21.11.6268 — info@romaofficesharing.it`;
   const sent = await db.transaction(async tx => {
