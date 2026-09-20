@@ -80,7 +80,7 @@ export const services = {
 
 export type PageDef = { title: string; eyebrow: string; description: string; kind: PageKind; intro?: string; bullets?: string[]; noIndex?: boolean };
 const itPages: Record<string, PageDef> = {
-  "gallery.html": { title: "Dentro Roma Office Sharing", eyebrow: "GALLERY", description: "Esplora i nostri uffici e le sale corsi e riunioni. Spazi per lavorare, incontrarsi e far crescere la tua attività a Roma.", kind: "gallery" },
+  "gallery.html": { title: "Dentro il Roma Office Sharing", eyebrow: "GALLERY", description: "Esplora i nostri uffici e le sale corsi e riunioni. Spazi per lavorare, incontrarsi e far crescere la tua attività a Roma.", kind: "gallery" },
   "area-clienti.html": { title: "Area Clienti", eyebrow: "IL TUO SPAZIO RISERVATO", description: "Accedi con email, password e codice SMS per scaricare i tuoi contratti in modo sicuro.", kind: "customer", noIndex: true },
   "index.html": { title: "Uffici e domiciliazione nel cuore di Roma", eyebrow: "ROMA OFFICE SHARING", description: "Business Center a due passi dalla Stazione Roma Termini... Ubicato al primo piano del palazzo Gentiloni, dotato di ampi uffici e tecnologie all’avanguardia, sale riunioni, sale corsi e aree relax.", kind: "home" },
   "uffici-arredati.html": { title: "Uffici arredati a Roma", eyebrow: "SPAZI DI LAVORO", description: "Il tuo ufficio pronto, nel centro di Roma", kind: "service", intro: "Postazioni e uffici privati completamente arredati, con connessione veloce, reception e utenze incluse.", bullets: ["Soluzioni flessibili da una postazione a un intero ufficio", "Wi‑Fi, climatizzazione e pulizia inclusi", "Reception e gestione ospiti"] },
@@ -98,7 +98,7 @@ const itPages: Record<string, PageDef> = {
   "attiva.html": { title: "Attiva la domiciliazione", eyebrow: "ATTIVAZIONE ONLINE", description: "Compila il modulo di richiesta, verifica il tuo numero di telefono con il codice SMS e paga con PayPal, Stripe, SumUp o bonifico bancario.", kind: "activation" },
   "contatti.html": { title: "Parliamo del tuo prossimo ufficio", eyebrow: "CONTATTI", description: "Scrivici o chiamaci: il nostro team ti risponderà al più presto.", kind: "contact" },
   "dove-siamo.html": { title: "Nel cuore di Roma", eyebrow: "DOVE SIAMO", description: "A pochi minuti da Termini, facilmente raggiungibili da tutta la città.", kind: "location" },
-  "chi-siamo.html": { title: "Lo spazio dove le imprese crescono", eyebrow: "CHI SIAMO", description: "Dal 2014 siamo parte della crescita dei nostri clienti.", kind: "about" },
+  "chi-siamo.html": { title: "Lo spazio dove le imprese crescono", eyebrow: "CHI SIAMO", description: "Cube Engineering s.r.l., la società che gestisce uffici, domiciliazione e servizi di Roma Office Sharing.", kind: "about" },
   "privacy.html": { title: "Informativa Privacy", eyebrow: "PRIVACY", description: "Informativa sul trattamento dei dati personali ai sensi del Regolamento UE 2016/679.", kind: "privacy" },
   "cookie-policy.html": { title: "Cookie Policy", eyebrow: "PRIVACY", description: "Informazioni sui cookie utilizzati da questo sito e sulle tue scelte.", kind: "cookies" },
   "dicono-di-noi.html": { title: "Dicono di noi", eyebrow: "TESTIMONIANZE", description: "Le esperienze di professionisti e aziende che lavorano con noi.", kind: "testimonials" },
@@ -123,7 +123,7 @@ const translations: Record<string, PageDef> = {
   "en/activate.html": { title: "Activate your business address service", eyebrow: "ONLINE ACTIVATION", description: "Complete the request form, verify your phone number with an SMS code and pay by PayPal, Stripe, SumUp or bank transfer.", kind: "activation" },
   "en/contact.html": { title: "Let’s discuss your next office", eyebrow: "CONTACT", description: "Write or call us—our team will reply as soon as possible.", kind: "contact" },
   "en/where-we-are.html": { title: "In the heart of Rome", eyebrow: "FIND US", description: "Minutes from Termini and easy to reach from across the city.", kind: "location" },
-  "en/about.html": { title: "The place where businesses grow", eyebrow: "ABOUT US", description: "We have been part of our clients’ growth since 2014.", kind: "about" },
+  "en/about.html": { title: "The place where businesses grow", eyebrow: "ABOUT US", description: "Cube Engineering s.r.l., the company behind Roma Office Sharing's offices, registered addresses and services.", kind: "about" },
   "en/privacy.html": { title: "Privacy Notice", eyebrow: "PRIVACY", description: "Information on personal data processing under EU Regulation 2016/679.", kind: "privacy" },
   "en/cookie-policy.html": { title: "Cookie Policy", eyebrow: "PRIVACY", description: "Information about cookies used by this website and your choices.", kind: "cookies" },
   "en/testimonials.html": { title: "What clients say", eyebrow: "TESTIMONIALS", description: "Experiences from professionals and companies who work with us.", kind: "testimonials" },
