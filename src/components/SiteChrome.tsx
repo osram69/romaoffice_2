@@ -5,7 +5,6 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { ArrowUpRight, LockKeyhole, Menu, Phone, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { alternateFor, contact, hrefFor, resolvePath, ui, type Lang } from "@/lib/site";
-import { BrandWords } from "./BrandWords";
 
 function useLocale(fallback: Lang) {
   const pathname = usePathname();
@@ -48,11 +47,16 @@ export function Header({ lang: initialLang }: { lang: Lang; alternate: string })
 export function Footer({ lang: initialLang }: { lang: Lang }) {
   const { lang } = useLocale(initialLang); const it = lang === "it"; const t = ui[lang]; const prefix = it ? "" : "/en";
   return <footer className="site-footer"><div className="footer-grid shell">
-    <div><div className="footer-brand"><BrandWords /></div><p>{t.trademark}</p><p>Via San Martino Della Battaglia, 31 - 00185 - Roma<br />{it ? "P. IVA / REA" : "VAT / REA"}: <span className="placeholder">{it ? "[inserire dati societari]" : "[company details to be added]"}</span></p></div>
-    <div><h2>{t.contact}</h2><address>{contact.address}<br /><a href={`tel:${contact.phoneHref}`}>{contact.phone}</a><br />Fax: {contact.fax}<br /><a href={`mailto:${contact.email}`}>{contact.email}</a></address></div>
-    <div><h2>{t.hours}</h2><p>{t.center}<br />{t.weekdays}<br />{t.saturday}</p><Link href={it ? "/dove-siamo.html" : "/en/where-we-are.html"}>{it ? "Come raggiungerci" : "How to get here"}</Link><br /><Link href={it ? "/gallery.html" : "/en/gallery.html"}>Gallery</Link><br /><Link href={it ? "/area-clienti.html" : "/en/customer-area.html"}>{t.customer}</Link></div>
+    <div><h2>{t.contact}</h2><address>{contact.address}<br /><a href={`tel:${contact.phoneHref}`}>{contact.phone}</a><br />Fax: {contact.fax}<br /><a href={`mailto:${contact.email}`}>{contact.email}</a></address><Link href={it ? "/dove-siamo.html" : "/en/where-we-are.html"}>{it ? "Come raggiungerci" : "How to get here"}</Link></div>
+    <div><h2>{t.hours}</h2><p><span className="footer-hours-label">{t.hoursCenter}</span><br />{t.weekdays}<br />{t.saturday}</p><p><span className="footer-hours-label">{t.hoursSecretary}</span><br />{t.weekdays}<br />{t.saturday}</p></div>
     <div><h2>{it ? "Informazioni" : "Information"}</h2><p><Link href={`${prefix}/privacy.html`}>{it ? "Privacy" : "Privacy notice"}</Link><br /><Link href={`${prefix}/cookie-policy.html`}>Cookie Policy</Link><br /><button className="text-button" data-cookie-settings>{t.settings}</button></p><p className="small">{t.revoke}</p></div>
-  </div><div className="footer-bottom shell">© {new Date().getFullYear()} Cube Engineering s.r.l. — {t.rights}</div></footer>;
+  </div><div className="footer-bottom footer-bottom-centered shell">
+    <Image className="footer-bottom-logo" src="/LogoFull_trasp.svg" alt="ROMA OFFICESHARING" width={580} height={100} unoptimized />
+    <p>{t.trademark}</p>
+    <p>Via San Martino Della Battaglia, 31 - 00185 - Roma</p>
+    <p>{t.regInfo}</p>
+    <p>© {new Date().getFullYear()} Cube Engineering s.r.l. — {t.rights}</p>
+  </div></footer>;
 }
 
 type Consent = { necessary: true; analytics: boolean; marketing: boolean; savedAt?: number };
