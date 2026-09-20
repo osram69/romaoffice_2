@@ -77,7 +77,7 @@ class Writer {
 }
 
 /** Builds the domiciliation request module (modulo di richiesta) as a PDF. */
-export async function buildRequestPdf(opts: { data: RequestData; lang: Lang; orderRef: string; paymentMethod: string; product: ProductOffer; priced: Quote }): Promise<Uint8Array> {
+export async function buildRequestPdf(opts: { data: RequestData; lang: Lang; orderRef: string; paymentMethod: string; product: ProductOffer; priced: Quote; signature?: { png: Uint8Array; signedAt: Date } }): Promise<Uint8Array> {
   const { data, lang, orderRef } = opts;
   const it = lang === "it";
   const product = opts.product; const postal = product.code === "postal"; const copy = copyFor(product.code, lang);
@@ -162,10 +162,22 @@ export async function buildRequestPdf(opts: { data: RequestData; lang: Lang; ord
 
   writer.ensure(110);
   writer.y -= 10;
-  writer.page.drawRectangle({ x: MARGIN, y: writer.y - 66, width: 230, height: 66, borderColor: GREY, borderWidth: 0.7 });
-  writer.page.drawText(it ? "Firma del Legale Rappresentante" : "Legal representative signature", { x: MARGIN, y: writer.y - 80, size: 7.5, font: writer.font, color: GREY });
-  writer.page.drawRectangle({ x: PAGE_W - MARGIN - 160, y: writer.y - 66, width: 160, height: 66, borderColor: GREY, borderWidth: 0.7 });
-  writer.page.drawText(it ? "Luogo e data" : "Place and date", { x: PAGE_W - MARGIN - 160, y: writer.y - 80, size: 7.5, font: writer.font, color: GREY });
+  const signatureBoxTop = writer.y;
+  writer.page.drawRectangle({ x: MARGIN, y: signatureBoxTop - 66, width: 230, height: 66, borderColor: GREY, borderWidth: 0.7 });
+  if (opts.signature) {
+    const png = await pdf.embedPng(opts.signature.png);
+    const maxW = 210, maxH = 48;
+    const scale = Math.min(maxW / png.width, maxH / png.height, 1);
+    const w = png.width * scale, h = png.height * scale;
+    writer.page.drawImage(png, { x: MARGIN + (230 - w) / 2, y: signatureBoxTop - 12 - h, width: w, height: h });
+  }
+  writer.page.drawText(it ? "Firma del Legale Rappresentante" : "Legal representative signature", { x: MARGIN, y: signatureBoxTop - 80, size: 7.5, font: writer.font, color: GREY });
+  writer.page.drawRectangle({ x: PAGE_W - MARGIN - 160, y: signatureBoxTop - 66, width: 160, height: 66, borderColor: GREY, borderWidth: 0.7 });
+  if (opts.signature) {
+    const dateLabel = (it ? "Roma, " : "Rome, ") + opts.signature.signedAt.toLocaleDateString(it ? "it-IT" : "en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Rome" });
+    for (const line of writer.wrap(dateLabel, 9.5, writer.font)) writer.page.drawText(line, { x: PAGE_W - MARGIN - 150, y: signatureBoxTop - 30, size: 9.5, font: writer.font, color: INK });
+  }
+  writer.page.drawText(it ? "Luogo e data" : "Place and date", { x: PAGE_W - MARGIN - 160, y: signatureBoxTop - 80, size: 7.5, font: writer.font, color: GREY });
 
   if (postal) {
     writer.section(it ? "Allegato 1 — Servizi aggiuntivi richiesti" : "Annex 1 — Requested additional services");

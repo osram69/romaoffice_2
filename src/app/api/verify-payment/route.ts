@@ -4,8 +4,10 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { orders } from "@/db/schema";
-import { ownedOrder } from "@/lib/order-access";
+import { ownedOrder, type OrderSnapshot } from "@/lib/order-access";
+import { sendRequestConfirmation } from "@/lib/order-confirmation";
 import { CustomerError, json, protectMutation } from "@/lib/customer-auth";
+import type { RequestData } from "@/lib/request";
 const input = z.object({ order: z.string().uuid(), provider: z.enum(["stripe", "sumup", "paypal"]) });
 export async function POST(req: NextRequest) {
   try {
@@ -36,7 +38,22 @@ export async function POST(req: NextRequest) {
       const captures = payment.purchase_units?.[0]?.payments?.captures as { status: string; amount: { currency_code: string; value: string } }[] | undefined;
       paid = payment.status === "COMPLETED" && !!captures?.some(c => c.status === "COMPLETED" && c.amount.currency_code === "EUR" && Math.round(Number(c.amount.value) * 100) === order.amountCents);
     }
-    if (paid) await db.update(orders).set({ status: "paid", updatedAt: new Date() }).where(and(eq(orders.id, order.id), eq(orders.status, "filled")));
-    return json({ paid });
+    let confirmation: { customerSent: boolean; adminSent: boolean; pdf: Buffer } | undefined;
+    if (paid) {
+      const justPaid = await db.transaction(async tx => {
+        const [current] = await tx.select().from(orders).where(and(eq(orders.id, order.id), eq(orders.status, "filled"))).for("update");
+        if (!current) return null;
+        await tx.update(orders).set({ status: "paid", updatedAt: new Date() }).where(eq(orders.id, order.id));
+        return current;
+      });
+      // The request PDF + confirmation emails are sent here, on the transition into "paid",
+      // rather than at finalize time — that's the whole point: for online providers, nothing
+      // is sent to the customer until the payment has actually gone through.
+      if (justPaid) {
+        const data = justPaid.formData as RequestData; const snapshot = justPaid.quoteData as OrderSnapshot;
+        confirmation = await sendRequestConfirmation(justPaid, data, snapshot, justPaid.paymentMethod || parsed.data.provider);
+      }
+    }
+    return json({ paid, emailSent: confirmation?.customerSent, pdfBase64: confirmation?.pdf.toString("base64") });
   } catch (error) { return error instanceof CustomerError ? json({ paid: false, error: error.code }, error.status) : json({ paid: false, error: "verify-failed" }, 400); }
 }

@@ -88,12 +88,13 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
           if (!d.paid) { setStatus(it ? "Pagamento non ancora confermato: riceverai conferma via email oppure puoi riprovare." : "Payment not confirmed yet: you will receive an email confirmation, or try again."); return; }
           setStatus("");
           // The page reloaded fresh on the way back from the payment provider, so the finalize()
-          // result (PDF, email status...) saved just before redirecting is only in sessionStorage,
-          // not component state. Fall back to a minimal confirmation if it's missing (e.g. a
-          // different browser/tab, or storage cleared) rather than showing nothing at all.
+          // result saved just before redirecting (in sessionStorage) never had a pdfBase64/email
+          // status — those are only produced now, by verify-payment, once payment is confirmed.
+          // Merge them in rather than trusting whatever (if anything) was stashed pre-redirect.
           const stored = sessionStorage.getItem(`ros-order-${order}`);
-          if (stored) { try { setResult(JSON.parse(stored)); sessionStorage.removeItem(`ros-order-${order}`); } catch { setResult({ paymentMethod: provider, orderRef: order, emailSent: true }); } }
-          else setResult({ paymentMethod: provider, orderRef: order, emailSent: true });
+          let base: FinalizeResult = { paymentMethod: provider, orderRef: order, emailSent: true };
+          if (stored) { try { base = JSON.parse(stored); } catch { /* keep fallback */ } sessionStorage.removeItem(`ros-order-${order}`); }
+          setResult({ ...base, emailSent: d.emailSent ?? base.emailSent, pdfBase64: d.pdfBase64 ?? base.pdfBase64 });
           setStep(4);
         }).catch(() => setStatus(it ? "Verifica non riuscita." : "Verification failed."));
     } else if (state === "cancelled") setStatus(it ? "Pagamento annullato. Puoi riprendere la procedura quando vuoi." : "Payment cancelled. You can resume whenever you like.");
@@ -280,7 +281,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
           </div>}
           {result.pdfBase64 && <a className="button secondary" href={`data:application/pdf;base64,${result.pdfBase64}`} download={`richiesta-${result.orderRef}.pdf`}>{it ? "SCARICA IL MODULO PDF" : "DOWNLOAD PDF FORM"}</a>}
           {result.message && <p className="form-note">{result.message}</p>}
-          {!postal && <SignaturePad lang={lang} orderId={result.orderRef} name={form.representativeName} />}
+          {!postal && <SignaturePad lang={lang} orderId={result.orderRef} />}
           {result.bankTransferDetails && <pre className="payment-instructions">{result.bankTransferDetails}</pre>}
           {result.paymentUnavailable && <button className="button secondary" onClick={() => setStep(3)}>{it ? "Scegli un’altra modalità di pagamento" : "Choose another payment method"}</button>}
           <p className="form-note"><ShieldCheck /> {it ? "I tuoi dati sono trattati secondo l’informativa privacy." : "Your data is processed according to our privacy notice."}</p>

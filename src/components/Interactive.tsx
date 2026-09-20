@@ -49,7 +49,7 @@ export function ContactForm({ lang }: { lang: Lang }) {
   </form>;
 }
 
-export function SignaturePad({ lang, orderId, name }: { lang: Lang; orderId: string; name: string }) {
+export function SignaturePad({ lang, orderId }: { lang: Lang; orderId: string }) {
   const it = lang === "it";
   const canvas = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
@@ -67,7 +67,7 @@ export function SignaturePad({ lang, orderId, name }: { lang: Lang; orderId: str
     const c = canvas.current; if (!c) return;
     setState("busy");
     try {
-      const res = await fetch("/api/save-signature", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId, name, signature: c.toDataURL("image/png") }) });
+      const res = await fetch("/api/save-signature", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId, signature: c.toDataURL("image/png") }) });
       if (!res.ok) throw new Error();
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
