@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CheckCircle2, LoaderCircle, RefreshCw, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { copyFor, activationHref, validity, formatEur, quote, offerActive, type Catalog, type ServiceCode, type SelectedAddon, type Lang } from "@/lib/pricing";
+import type { PaymentSettings } from "@/lib/payment-settings";
 import { OfferTermsConsent } from "./OfferTerms";
 import { SignaturePad } from "./Interactive";
 type FormState = {
@@ -13,7 +14,7 @@ type FormState = {
 
 type FinalizeResult = { paymentMethod: string; orderRef: string; emailSent: boolean; pdfBase64?: string; message?: string; totalCents?: number; bankTransferDetails?: string; paymentUnavailable?: boolean };
 
-export function ActivationFlow({ lang, catalog: initialCatalog, initialService }: { lang: Lang; catalog: Catalog; initialService: ServiceCode }) {
+export function ActivationFlow({ lang, catalog: initialCatalog, initialService, paymentSettings }: { lang: Lang; catalog: Catalog; initialService: ServiceCode; paymentSettings: PaymentSettings }) {
   const it = lang === "it";
   const [catalog, setCatalog] = useState(initialCatalog);
   const service = initialService; const product = catalog[service]; const postal = service === "postal";
@@ -26,7 +27,14 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService }
   const [otp, setOtp] = useState("");
   const [status, setStatus] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [payment, setPayment] = useState<"stripe" | "paypal" | "sumup" | "bank_transfer" | "on_site">("stripe");
+  const firstAvailablePayment = () => {
+    if (paymentSettings.stripeEnabled) return "stripe";
+    if (paymentSettings.paypalEnabled) return "paypal";
+    if (paymentSettings.sumupEnabled) return "sumup";
+    if (paymentSettings.bankTransferEnabled) return "bank_transfer";
+    return postal ? "on_site" : "stripe";
+  };
+  const [payment, setPayment] = useState<"stripe" | "paypal" | "sumup" | "bank_transfer" | "on_site">(firstAvailablePayment);
   const [result, setResult] = useState<FinalizeResult | null>(null);
   const [form, setForm] = useState<FormState>({
     companyExists: false, companyName: "", companyVat: "", companyTaxCode: "", companyAddress: "", companyRegister: "",
@@ -247,10 +255,10 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService }
           <p className="form-note">{t.payHint}</p>
           <fieldset><legend>{it ? "Modalità di pagamento" : "Payment method"}</legend>
             <div className="option-grid payment-options">
-              <label className={payment === "stripe" ? "selected" : ""}><input type="radio" name="payment" checked={payment === "stripe"} onChange={() => setPayment("stripe")} />Stripe</label>
-              <label className={payment === "paypal" ? "selected" : ""}><input type="radio" name="payment" checked={payment === "paypal"} onChange={() => setPayment("paypal")} />PayPal</label>
-              <label className={payment === "sumup" ? "selected" : ""}><input type="radio" name="payment" checked={payment === "sumup"} onChange={() => setPayment("sumup")} />SumUp</label>
-              <label className={payment === "bank_transfer" ? "selected" : ""}><input type="radio" name="payment" checked={payment === "bank_transfer"} onChange={() => setPayment("bank_transfer")} />{it ? "Bonifico bancario" : "Bank transfer"}</label>
+              {paymentSettings.stripeEnabled && <label className={payment === "stripe" ? "selected" : ""}><input type="radio" name="payment" checked={payment === "stripe"} onChange={() => setPayment("stripe")} />Stripe</label>}
+              {paymentSettings.paypalEnabled && <label className={payment === "paypal" ? "selected" : ""}><input type="radio" name="payment" checked={payment === "paypal"} onChange={() => setPayment("paypal")} />PayPal</label>}
+              {paymentSettings.sumupEnabled && <label className={payment === "sumup" ? "selected" : ""}><input type="radio" name="payment" checked={payment === "sumup"} onChange={() => setPayment("sumup")} />SumUp</label>}
+              {paymentSettings.bankTransferEnabled && <label className={payment === "bank_transfer" ? "selected" : ""}><input type="radio" name="payment" checked={payment === "bank_transfer"} onChange={() => setPayment("bank_transfer")} />{it ? "Bonifico bancario" : "Bank transfer"}</label>}
               {postal && <label className={payment === "on_site" ? "selected" : ""}><input type="radio" name="payment" checked={payment === "on_site"} onChange={() => setPayment("on_site")} />{it ? "In sede: contanti / Bancomat / carta" : "On site: cash / debit card / credit card"}</label>}
             </div>
           </fieldset>

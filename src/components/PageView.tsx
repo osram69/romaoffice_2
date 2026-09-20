@@ -8,6 +8,7 @@ import { CustomerArea } from "./CustomerArea";
 import { AddressServiceDetails, hasAddressDetail } from "./AddressServices";
 import { type ServiceCode } from "@/lib/pricing";
 import { getCatalog } from "@/lib/catalog";
+import { getPaymentSettings } from "@/lib/payment-settings";
 import { PricingOffer } from "./PricingOffers";
 import { alternateFor, contact, hrefFor, pages, privacySections, services, ui, type Lang } from "@/lib/site";
 
@@ -70,7 +71,7 @@ async function PageBody({kind,lang,pageKey,initialService}:{kind:string;lang:Lan
   if(kind==="activation") return <>
   <section className="section shell">
     <div className="section-heading"><div><span className="eyebrow">{it?"MODULO DI RICHIESTA":"REQUEST FORM"}</span><h2>{it?"I tuoi dati":"Your details"}</h2></div><p>{it?"I campi contrassegnati con * sono obbligatori. Il numero di cellulare viene verificato con un codice SMS prima dell’invio.":"Fields marked * are mandatory. Your mobile number is verified with an SMS code before submission."}</p></div>
-    <ActivationFlow key={`${lang}-${initialService}`} lang={lang} catalog={catalog!} initialService={initialService}/>
+    <ActivationFlow key={`${lang}-${initialService}`} lang={lang} catalog={catalog!} initialService={initialService} paymentSettings={await getPaymentSettings()}/>
   </section>
   <Cta lang={lang}/>
   </>;

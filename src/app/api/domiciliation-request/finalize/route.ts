@@ -12,6 +12,7 @@ import { termsText } from "@/lib/offer-terms";
 import { buildRequestPdf } from "@/lib/pdf";
 import { escapeHtml } from "@/lib/standard-offer";
 import { paymentMethodSchema } from "@/lib/request";
+import { paymentMethodEnabled } from "@/lib/payment-settings";
 const input = z.object({ orderId: z.string().uuid(), paymentMethod: paymentMethodSchema });
 export async function POST(req: NextRequest) {
   try {
@@ -21,6 +22,7 @@ export async function POST(req: NextRequest) {
     if (order.status === "paid" || order.status === "signed") return json({ paid: true, orderRef: orderId });
     const { product, quote: priced } = snapshot; const lang = data.lang; const it = lang === "it";
     if (paymentMethod === "on_site" && product.code !== "postal") return json({ error: "invalid-payment-method" }, 400);
+    if (!(await paymentMethodEnabled(paymentMethod))) return json({ error: "invalid-payment-method" }, 400);
     const copy = copyFor(product.code, lang); const bank = bankTransfer(lang, product.code);
     const methods = { stripe: "Stripe", paypal: "PayPal", sumup: "SumUp", bank_transfer: it ? "Bonifico Bancario" : "Bank transfer", on_site: it ? "Contanti / Bancomat / Carta di credito (in sede)" : "Cash / debit card / credit card (on site)" };
     const summary = [copy.name, `${it ? "Pratica" : "Reference"}: ${orderId}`, `${copy.months(data.months)} — ${it ? "decorrenza" : "start date"}: ${data.startDate}`, `${data.representativeName} — ${data.email} — ${data.phone}`, ...priced.addonLines.map(line => `${it ? line.titleIt : line.titleEn} × ${line.quantity}: ${formatEur(line.totalCents, lang)} ${it ? "+ IVA" : "+ VAT"}`), `${it ? "Imponibile" : "Net amount"}: ${formatEur(priced.netCents, lang)}`, `${it ? "IVA" : "VAT"} ${product.vatBps / 100}%: ${formatEur(priced.vatCents, lang)}`, `${it ? "Totale" : "Total"}: ${formatEur(priced.totalCents, lang)}`, `${it ? "Pagamento" : "Payment"}: ${methods[paymentMethod]}`].join("\n");

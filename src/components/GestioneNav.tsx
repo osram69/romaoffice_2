@@ -18,7 +18,7 @@ async function statoCounts() {
   return STATO_TABS.map(tab => ({ ...tab, count: map.get(tab.stato) ?? 0 }));
 }
 
-export async function GestioneShell({ role, active, username, children }: { role: StaffRole; active: "tariffe" | "domiciliazioni"; username: string; children: ReactNode }) {
+export async function GestioneShell({ role, active, username, children }: { role: StaffRole; active: "tariffe" | "domiciliazioni" | "configurazione"; username: string; children: ReactNode }) {
   const tabs = await statoCounts();
   return (
     <div className="gestione-shell">

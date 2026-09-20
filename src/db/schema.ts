@@ -94,6 +94,15 @@ export const serviceCatalog = pgTable("service_catalog", {
   smart3x24Active: boolean("smart_3x24_active").notNull().default(true),
   smart6x24Active: boolean("smart_6x24_active").notNull().default(true),
 });
+// Single-row site-wide toggles (id is always 1) for site behavior that isn't tied to a
+// specific service's pricing — e.g. which payment methods appear at checkout.
+export const siteConfig = pgTable("site_config", {
+  id: integer("id").primaryKey().default(1),
+  stripeEnabled: boolean("stripe_enabled").notNull().default(true),
+  paypalEnabled: boolean("paypal_enabled").notNull().default(true),
+  sumupEnabled: boolean("sumup_enabled").notNull().default(true),
+  bankTransferEnabled: boolean("bank_transfer_enabled").notNull().default(true),
+});
 export const servicePrices = pgTable("service_prices", {
   id: serial("id").primaryKey(), service: varchar("service", { length: 30 }).notNull().references(() => serviceCatalog.code),
   months: integer("months").notNull(), listCents: integer("list_cents").notNull(), offerCents: integer("offer_cents"),

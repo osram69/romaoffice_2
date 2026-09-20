@@ -82,14 +82,6 @@ export default async function AdminDashboardPage() {
                 <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "#232f3e" }}>
                   <input type="checkbox" name="active" defaultChecked={service.active} /> Servizio attivo
                 </label>
-                {service.code === "legal_unit" && <>
-                  <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "#232f3e" }}>
-                    <input type="checkbox" name="smart3x24Active" defaultChecked={service.smart3x24Active} /> Smart 3+24 attivo
-                  </label>
-                  <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "#232f3e" }}>
-                    <input type="checkbox" name="smart6x24Active" defaultChecked={service.smart6x24Active} /> Smart 6+24 attivo
-                  </label>
-                </>}
                 <button type="submit" className="gestione-btn gestione-btn-blue">Salva</button>
               </form>
 

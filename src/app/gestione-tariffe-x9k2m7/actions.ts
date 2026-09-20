@@ -35,8 +35,6 @@ export async function updateServiceAction(formData: FormData) {
     newActivationDiscountBps: Math.round(Number(formData.get("newActivationDiscountBps")) * 100),
     offerValidUntil: offerValidUntilRaw ? new Date(`${offerValidUntilRaw}T23:59:59+02:00`) : null,
     active: formData.get("active") === "on",
-    smart3x24Active: formData.get("smart3x24Active") === "on",
-    smart6x24Active: formData.get("smart6x24Active") === "on",
   }).where(eq(serviceCatalog.code, code));
   revalidatePath(BASE_PATH);
 }

@@ -6,12 +6,13 @@ import { readyOrder } from "./order-access";
 import { CustomerError } from "./customer-auth";
 import { copyFor } from "./pricing";
 import { createPaymentSession, providerConfigured, type ProviderKey } from "./payments";
+import { paymentMethodEnabled } from "./payment-settings";
 export async function checkoutOrder(req: NextRequest, orderId: string, provider: ProviderKey) {
   const { order, data, snapshot } = await readyOrder(req, orderId);
   if (order.status === "paid" || order.status === "signed") return { paid: true, orderRef: orderId };
   if (order.status !== "filled") throw new CustomerError("submit-request-first", 403);
   const it = data.lang === "it";
-  if (!providerConfigured(provider)) return { paymentUnavailable: true, message: it ? "La richiesta è registrata, ma questo pagamento online non è ancora disponibile. Scegli bonifico o contatta la reception. Nessun addebito è stato eseguito." : "Your application is recorded, but this online payment method is not yet available. Choose bank transfer or contact reception. No charge has been made." };
+  if (!providerConfigured(provider) || !(await paymentMethodEnabled(provider))) return { paymentUnavailable: true, message: it ? "La richiesta è registrata, ma questo pagamento online non è ancora disponibile. Scegli bonifico o contatta la reception. Nessun addebito è stato eseguito." : "Your application is recorded, but this online payment method is not yet available. Choose bank transfer or contact reception. No charge has been made." };
   return db.transaction(async tx => {
     const [locked] = await tx.select().from(orders).where(eq(orders.id, order.id)).for("update");
     if (locked.status === "paid" || locked.status === "signed") return { paid: true, orderRef: orderId };
