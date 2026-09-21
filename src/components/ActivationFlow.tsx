@@ -6,6 +6,8 @@ import { copyFor, activationHref, validity, formatEur, quote, offerActive, type 
 import { enabledPaymentMethodsList, type PaymentSettings } from "@/lib/payment-copy";
 import { isValidTaxCode } from "@/lib/codice-fiscale";
 import { OfferTermsConsent } from "./OfferTerms";
+import { LegalLinkModal } from "./LegalLinkModal";
+import { PrivacyNoticeContent } from "./LegalContent";
 type FormState = {
   companyExists: boolean; companyName: string; companyVat: string; companyTaxCode: string; companyAddress: string; companyRegister: string;
   representativeName: string; representativeRole: string; representativeTaxCode: string; email: string; phone: string;
@@ -247,7 +249,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
             {!postal && product.tiers.some(x => x.newActivation) && <label className="check-label"><input type="checkbox" checked={form.newActivation} onChange={e => setForm({ ...form, newActivation: e.target.checked })} /> <span>{t.newActivation}</span></label>}
             {!postal && product.tiers.some(x => x.additionalDomiciliation) && <label className="check-label"><input type="checkbox" checked={form.additionalDomiciliation} onChange={e => setForm({ ...form, additionalDomiciliation: e.target.checked })} /> <span>{t.additional}</span></label>}
             <div className="consent-box">
-              <label className="check-label"><input type="checkbox" checked={form.consent} onChange={e => setForm({ ...form, consent: e.target.checked })} {...aria("consent")} /> <span>{t.consent} <Link className="consent-link" href={it ? "/privacy.html" : "/en/privacy.html"} target="_blank" rel="noopener noreferrer">{it ? "Informativa privacy" : "Privacy notice"}</Link>*</span></label>
+              <label className="check-label"><input type="checkbox" checked={form.consent} onChange={e => setForm({ ...form, consent: e.target.checked })} {...aria("consent")} /> <span>{t.consent} <LegalLinkModal className="consent-link" label={it ? "Informativa privacy" : "Privacy notice"} title={it ? "Informativa Privacy" : "Privacy Notice"}><PrivacyNoticeContent lang={lang}/></LegalLinkModal>*</span></label>
               {err("consent")}
             </div>
           </fieldset>

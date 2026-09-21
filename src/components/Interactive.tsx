@@ -1,9 +1,34 @@
 "use client";
 
 import { LoaderCircle } from "lucide-react";
-import Link from "next/link";
 import { FormEvent, useState } from "react";
 import type { Lang } from "@/lib/site";
+import { LegalLinkModal } from "./LegalLinkModal";
+import { PrivacyNoticeContent } from "./LegalContent";
+
+declare global { interface Window { grecaptcha?: { ready: (cb: () => void) => void; execute: (siteKey: string, opts: { action: string }) => Promise<string> } } }
+const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+let recaptchaScriptPromise: Promise<void> | null = null;
+
+// reCAPTCHA v3 is invisible and only needed where a form has no other verification (this one has
+// no SMS/email confirmation loop) — skipped entirely when the site key isn't configured, so local
+// dev without the key still works exactly as before.
+async function getRecaptchaToken(action: string): Promise<string | undefined> {
+  if (!RECAPTCHA_SITE_KEY) return undefined;
+  if (!window.grecaptcha) {
+    recaptchaScriptPromise ??= new Promise<void>(resolve => {
+      const script = document.createElement("script");
+      script.src = `https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`;
+      script.onload = () => resolve(); script.onerror = () => resolve();
+      document.head.appendChild(script);
+    });
+    await recaptchaScriptPromise;
+  }
+  if (!window.grecaptcha) return undefined;
+  return new Promise<string | undefined>(resolve => {
+    window.grecaptcha!.ready(() => { window.grecaptcha!.execute(RECAPTCHA_SITE_KEY, { action }).then(resolve).catch(() => resolve(undefined)); });
+  });
+}
 
 export function ContactForm({ lang }: { lang: Lang }) {
   const it = lang === "it";
@@ -29,7 +54,8 @@ export function ContactForm({ lang }: { lang: Lang }) {
     setState("loading");
     try {
       const body = Object.fromEntries(fd.entries());
-      const res = await fetch("/api/contact", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, lang }) });
+      const recaptchaToken = await getRecaptchaToken("contact");
+      const res = await fetch("/api/contact", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, lang, recaptchaToken }) });
       if (!res.ok) throw new Error(); setState("success"); form.reset();
     } catch { setState("error"); }
   }
@@ -44,7 +70,7 @@ export function ContactForm({ lang }: { lang: Lang }) {
     <label>{labels.message}<textarea name="message" rows={6} onBlur={e => setFieldError("message", validateMessage(e.target.value))} aria-invalid={!!errors.message} aria-describedby={errors.message ? "err-message" : undefined} />{err("message")}</label>
 <div className="honeypot" aria-hidden="true"><label>Website<input name="website" tabIndex={-1} autoComplete="off" /></label></div>
     <div className="consent-box">
-      <label className="check-label"><input name="consent" type="checkbox" value="true" /> <span>{labels.consent} <Link className="consent-link" href={it ? "/privacy.html" : "/en/privacy.html"} target="_blank" rel="noopener noreferrer">{it ? "(leggi l’informativa privacy)" : "(read the privacy notice)"}</Link>*</span></label>
+      <label className="check-label"><input name="consent" type="checkbox" value="true" /> <span>{labels.consent} <LegalLinkModal className="consent-link" label={it ? "(leggi l’informativa privacy)" : "(read the privacy notice)"} title={it ? "Informativa Privacy" : "Privacy Notice"}><PrivacyNoticeContent lang={lang}/></LegalLinkModal>*</span></label>
       {err("consent")}
     </div>
     <button className="button primary" disabled={state === "loading"}>{state === "loading" && <LoaderCircle className="spin" />}{labels.submit}</button>

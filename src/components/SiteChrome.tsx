@@ -5,6 +5,8 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { ArrowUpRight, LockKeyhole, Menu, Phone, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { alternateFor, contact, hrefFor, resolvePath, ui, type Lang } from "@/lib/site";
+import { LegalLinkModal } from "./LegalLinkModal";
+import { CookiePolicyContent, PrivacyNoticeContent } from "./LegalContent";
 
 function useLocale(fallback: Lang) {
   const pathname = usePathname();
@@ -45,12 +47,12 @@ export function Header({ lang: initialLang }: { lang: Lang; alternate: string })
   </>;
 }
 export function Footer({ lang: initialLang }: { lang: Lang }) {
-  const { lang } = useLocale(initialLang); const it = lang === "it"; const t = ui[lang]; const prefix = it ? "" : "/en";
+  const { lang } = useLocale(initialLang); const it = lang === "it"; const t = ui[lang];
   return <footer className="site-footer"><div className="footer-grid shell">
     <div><Image className="footer-logo" src="/LogoFull_trasp.svg" alt="ROMA OFFICESHARING" width={580} height={100} unoptimized /></div>
     <div><h2>{t.contact}</h2><address>{contact.address}<br /><a href={`tel:${contact.phoneHref}`}>{contact.phone}</a><br />Fax: {contact.fax}<br /><a href={`mailto:${contact.email}`}>{contact.email}</a></address><Link href={it ? "/dove-siamo.html" : "/en/where-we-are.html"}>{it ? "Come raggiungerci" : "How to get here"}</Link></div>
     <div><h2>{t.hours}</h2><p><span className="footer-hours-label">{t.hoursCenter}</span><br />{t.weekdays}<br />{t.saturday}</p><p><span className="footer-hours-label">{t.hoursSecretary}</span><br />{t.weekdays}<br />{t.saturday}</p></div>
-    <div><h2>{it ? "Informazioni" : "Information"}</h2><p><Link href={`${prefix}/privacy.html`}>{it ? "Privacy" : "Privacy notice"}</Link><br /><Link href={`${prefix}/cookie-policy.html`}>Cookie Policy</Link><br /><button className="text-button" data-cookie-settings>{t.settings}</button></p><p className="small">{t.revoke}</p></div>
+    <div><h2>{it ? "Informazioni" : "Information"}</h2><p><LegalLinkModal label={it ? "Privacy" : "Privacy notice"} title={it ? "Informativa Privacy" : "Privacy Notice"}><PrivacyNoticeContent lang={lang}/></LegalLinkModal><br /><LegalLinkModal label="Cookie Policy" title="Cookie Policy"><CookiePolicyContent lang={lang}/></LegalLinkModal><br /><button className="text-button" data-cookie-settings>{t.settings}</button></p><p className="small">{t.revoke}</p></div>
   </div><div className="footer-bottom footer-bottom-centered shell">
     <p>{t.trademark}</p>
     <p>Via San Martino Della Battaglia, 31 - 00185 - Roma</p>

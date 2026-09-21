@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import { LegalLinkModal } from "./LegalLinkModal";
+import { PrivacyNoticeContent } from "./LegalContent";
 import { ArrowRight, ArrowLeft, Check, Download, Eye, EyeOff, FileCheck2, FileText, FolderLock, IdCard, KeyRound, LayoutDashboard, LoaderCircle, LockKeyhole, LogOut, Mail, Phone, ShieldCheck, Smartphone, UserRound } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { Lang } from "@/lib/site";
@@ -164,7 +165,7 @@ export function CustomerArea({ lang }: { lang: Lang }) {
       {view === "sms" && <div className="login-resend"><span>{it ? "Non hai ricevuto il codice?" : "Didn’t receive your code?"}</span><button className="text-button" disabled={busy || cooldown > 0} onClick={resend}>{cooldown ? (it ? `Invia di nuovo tra ${cooldown}s` : `Resend in ${cooldown}s`) : (it ? "Invia un nuovo codice" : "Send a new code")}</button></div>}
       {view !== "login" && <button className="login-back text-button" onClick={() => { setView("login"); setError(""); setNotice(""); setPassword(""); setOtp(""); }}><ArrowLeft />{it ? "Torna all’accesso" : "Back to sign-in"}</button>}
       <div className="login-note"><LockKeyhole /><p>{it ? "L’accesso è riservato ai clienti registrati dalla reception. Password dimenticata o non ricevuta?" : "Access is for customers registered by reception. Forgot your password or never received one?"} <a href="mailto:info@romaofficesharing.it">{it ? "Contattaci" : "Contact us"}</a>.</p></div>
-      <p className="login-privacy"><Link href={it ? "/privacy.html" : "/en/privacy.html"}>{it ? "Informativa privacy" : "Privacy notice"}</Link><span>·</span><a href="tel:+390621116268"><Phone />+39 06 21.11.6268</a></p>
+      <p className="login-privacy"><LegalLinkModal label={it ? "Informativa privacy" : "Privacy notice"} title={it ? "Informativa Privacy" : "Privacy Notice"}><PrivacyNoticeContent lang={lang}/></LegalLinkModal><span>·</span><a href="tel:+390621116268"><Phone />+39 06 21.11.6268</a></p>
     </div>
   </div>;
 }
