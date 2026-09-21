@@ -8,6 +8,12 @@
 .consent-link{color:var(--accent-orange);font-weight:800;text-decoration:underline}
 .consent-link:hover{color:var(--accent-orange-600)}
 .link-button{background:none;border:0;padding:0;margin:0;font:inherit;cursor:pointer;text-align:left}
+.online-discount-banner{display:flex;align-items:center;gap:.6rem;background:var(--accent-orange);color:var(--brand-charcoal);font-weight:800;font-size:.85rem;letter-spacing:.01em;padding:.85rem 1.1rem;border-radius:2px;margin-bottom:1.2rem}
+.online-discount-banner svg{width:20px;flex-shrink:0}
+.online-discount-line span{display:flex;align-items:center;gap:.4rem;color:var(--accent-orange-600);font-weight:700}
+.online-discount-line svg{width:15px;flex-shrink:0}
+.online-discount-line b{color:var(--accent-orange-600)}
+.online-discount-badge{background:var(--accent-orange);color:var(--brand-charcoal);margin-left:.5rem}
 .legal-modal-body{padding:22px 30px 30px;max-height:70dvh;overflow-y:auto}
 .legal-modal-body h2{font-family:var(--font-display);font-weight:300;font-size:1.4rem;color:var(--ink);margin:0 0 1rem}
 .legal-modal-body h3{font-size:1.05rem;color:var(--ink);margin:1.5rem 0 .6rem}

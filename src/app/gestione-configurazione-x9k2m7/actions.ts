@@ -26,6 +26,18 @@ export async function updateSmartFlagsAction(formData: FormData) {
   revalidatePath(BASE_PATH);
 }
 
+export async function updateOnlineDiscountAction(formData: FormData) {
+  "use server";
+  await requireAdmin();
+  const bps = Math.round(Number(String(formData.get("onlineDiscountBps") ?? "0").replace(",", ".")) * 100);
+  await db.update(siteConfig).set({
+    onlineDiscountEnabled: formData.get("onlineDiscountEnabled") === "on",
+    onlineDiscountBps: Number.isFinite(bps) && bps >= 0 ? bps : 0,
+  }).where(eq(siteConfig.id, 1));
+  revalidatePath(BASE_PATH);
+  revalidatePath("/attiva.html"); revalidatePath("/en/activate.html"); revalidatePath("/tariffe.html"); revalidatePath("/en/pricing.html");
+}
+
 export async function updatePaymentSettingsAction(formData: FormData) {
   "use server";
   await requireAdmin();

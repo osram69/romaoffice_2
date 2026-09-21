@@ -16,7 +16,9 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) return json({ error: "invalid-data", fields: parsed.error.issues.map(i => String(i.path[0])) }, 400);
     const data = parsed.data; const catalog = await getCatalog(); const product = catalog[data.service];
     if (data.catalogVersion !== product.version || data.termsVersion !== product.version) return json({ error: "prices-changed", catalog }, 409);
-    const priced = quote(product, data); if (!priced) return json({ error: "invalid-duration-or-addons" }, 400);
+    // /api/domiciliation-request is only ever called from ActivationFlow's self-service online
+    // flow, so the online-activation discount (if enabled) always applies here.
+    const priced = quote(product, { ...data, onlineActivation: true }); if (!priced) return json({ error: "invalid-duration-or-addons" }, 400);
     const publicId = data.orderId || randomUUID(); const now = new Date();
     if (data.orderId) {
       const old = await ownedOrder(req, data.orderId); if (old.status !== "pending") return json({ error: "already-submitted" }, 409);

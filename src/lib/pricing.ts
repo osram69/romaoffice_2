@@ -5,18 +5,18 @@ export type PaymentMethod = "stripe" | "paypal" | "sumup" | "bank_transfer" | "o
 export type PriceTier = { months: number; listCents: number; offerCents: number | null; newActivation: boolean; additionalDomiciliation: boolean };
 export type Addon = { code: string; titleIt: string; titleEn: string; priceCents: number; annualCents: number; billing: string; maxQuantity: number; selectable: boolean };
 export type SelectedAddon = { code: string; quantity: number };
-export type ProductOffer = { code: ServiceCode; vatBps: number; additionalDiscountBps: number; newActivationDiscountBps: number; offerValidUntil: string | null; termsRevision: string; version: string; tiers: PriceTier[]; addons: Addon[]; smart3x24Active: boolean; smart6x24Active: boolean };
+export type ProductOffer = { code: ServiceCode; vatBps: number; additionalDiscountBps: number; newActivationDiscountBps: number; offerValidUntil: string | null; termsRevision: string; version: string; tiers: PriceTier[]; addons: Addon[]; smart3x24Active: boolean; smart6x24Active: boolean; onlineDiscountEnabled: boolean; onlineDiscountBps: number };
 export type Catalog = Record<ServiceCode, ProductOffer>;
 export type Quote = {
   service: ServiceCode; catalogVersion: string; months: number; listCents: number; baseCents: number; offerApplied: boolean;
-  newActivationDiscountCents: number; additionalDomiciliationDiscountCents: number; serviceNetCents: number;
+  newActivationDiscountCents: number; additionalDomiciliationDiscountCents: number; onlineDiscountCents: number; serviceNetCents: number;
   addonLines: (SelectedAddon & { titleIt: string; titleEn: string; monthlyCents: number; annualCents: number; totalCents: number })[];
-  addonsCents: number; netCents: number; vatBps: number; vatCents: number; totalCents: number; renewalBaseCents: number; newActivationEligible: boolean; additionalDomiciliationEligible: boolean;
+  addonsCents: number; netCents: number; vatBps: number; vatCents: number; totalCents: number; renewalBaseCents: number; newActivationEligible: boolean; additionalDomiciliationEligible: boolean; onlineDiscountApplied: boolean;
 };
 export const flag = (v: boolean | string | undefined) => v === true || v === "true";
 export function offerActive(product: ProductOffer, now = new Date()) { return !product.offerValidUntil || now.getTime() <= new Date(product.offerValidUntil).getTime(); }
 export function tierFor(product: ProductOffer, months: number) { return product.tiers.find(t => t.months === months); }
-export function quote(product: ProductOffer, input: { months: number; newActivation?: boolean | string; additionalDomiciliation?: boolean | string; addons?: SelectedAddon[]; now?: Date }): Quote | null {
+export function quote(product: ProductOffer, input: { months: number; newActivation?: boolean | string; additionalDomiciliation?: boolean | string; onlineActivation?: boolean | string; addons?: SelectedAddon[]; now?: Date }): Quote | null {
   const tier = tierFor(product, input.months); if (!tier) return null;
   const offerApplied = offerActive(product, input.now) && tier.offerCents !== null;
   const baseCents = offerApplied ? tier.offerCents! : tier.listCents;
@@ -26,7 +26,11 @@ export function quote(product: ProductOffer, input: { months: number; newActivat
   // which historically defaulted to true for every service including postal.
   const additionalDomiciliationEligible = product.code !== "postal" && tier.additionalDomiciliation;
   const additionalDomiciliationDiscountCents = additionalDomiciliationEligible && flag(input.additionalDomiciliation) ? Math.round((baseCents - newActivationDiscountCents) * product.additionalDiscountBps / 10000) : 0;
-  const serviceNetCents = baseCents - newActivationDiscountCents - additionalDomiciliationDiscountCents;
+  // Only granted when the caller explicitly marks this as the self-service online flow
+  // (ActivationFlow) — a manually-quoted or staff-processed request never gets it, by design.
+  const onlineDiscountApplied = product.onlineDiscountEnabled && flag(input.onlineActivation);
+  const onlineDiscountCents = onlineDiscountApplied ? Math.round((baseCents - newActivationDiscountCents - additionalDomiciliationDiscountCents) * product.onlineDiscountBps / 10000) : 0;
+  const serviceNetCents = baseCents - newActivationDiscountCents - additionalDomiciliationDiscountCents - onlineDiscountCents;
   const seen = new Set<string>(); const addonLines: Quote["addonLines"] = [];
   for (const selection of input.addons || []) {
     const addon = product.addons.find(a => a.code === selection.code && a.selectable);
@@ -36,7 +40,7 @@ export function quote(product: ProductOffer, input: { months: number; newActivat
   }
   const addonsCents = addonLines.reduce((sum, line) => sum + line.totalCents, 0);
   const netCents = serviceNetCents + addonsCents; const vatCents = Math.round(netCents * product.vatBps / 10000);
-  return { service: product.code, catalogVersion: product.version, months: tier.months, listCents: tier.listCents, baseCents, offerApplied, newActivationDiscountCents, additionalDomiciliationDiscountCents, serviceNetCents, addonLines, addonsCents, netCents, vatBps: product.vatBps, vatCents, totalCents: netCents + vatCents, renewalBaseCents: baseCents, newActivationEligible, additionalDomiciliationEligible };
+  return { service: product.code, catalogVersion: product.version, months: tier.months, listCents: tier.listCents, baseCents, offerApplied, newActivationDiscountCents, additionalDomiciliationDiscountCents, onlineDiscountCents, serviceNetCents, addonLines, addonsCents, netCents, vatBps: product.vatBps, vatCents, totalCents: netCents + vatCents, renewalBaseCents: baseCents, newActivationEligible, additionalDomiciliationEligible, onlineDiscountApplied };
 }
 export function formatEur(cents: number, lang: Lang = "it") { return new Intl.NumberFormat(lang === "it" ? "it-IT" : "en-GB", { style: "currency", currency: "EUR" }).format(cents / 100); }
 export function monthlyEquivalent(cents: number, months: number, lang: Lang = "it") { return formatEur(Math.round(cents / months), lang); }

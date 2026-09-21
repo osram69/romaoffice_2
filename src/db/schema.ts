@@ -102,6 +102,10 @@ export const siteConfig = pgTable("site_config", {
   paypalEnabled: boolean("paypal_enabled").notNull().default(true),
   sumupEnabled: boolean("sumup_enabled").notNull().default(true),
   bankTransferEnabled: boolean("bank_transfer_enabled").notNull().default(true),
+  // Extra discount granted only when the customer completes the self-service online activation
+  // flow (ActivationFlow) — not when staff quote or process a request manually.
+  onlineDiscountEnabled: boolean("online_discount_enabled").notNull().default(false),
+  onlineDiscountBps: integer("online_discount_bps").notNull().default(1000),
 });
 export const servicePrices = pgTable("service_prices", {
   id: serial("id").primaryKey(), service: varchar("service", { length: 30 }).notNull().references(() => serviceCatalog.code),

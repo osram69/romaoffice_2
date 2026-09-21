@@ -4,8 +4,9 @@ import { asc } from "drizzle-orm";
 import { db } from "@/db";
 import { domRinnovoPrezzi, serviceAddons, serviceCatalog, servicePrices } from "@/db/schema";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
-import { addPriceAction, updateAddonAction, updatePriceAction, updateRinnovoPrezzoAction, updateServiceAction } from "./actions";
+import { addPriceAction, deletePriceAction, updateAddonAction, updatePriceAction, updateRinnovoPrezzoAction, updateServiceAction } from "./actions";
 import { GestioneShell } from "@/components/GestioneNav";
+import { DeleteIconButton } from "@/components/DeleteIconButton";
 
 const SERVICE_LABELS: Record<string, string> = { legal_unit: "Domiciliazione Sede Legale / Unità Locale", postal: "Domiciliazione Postale" };
 const euro = (cents: number | null) => cents === null ? "" : (cents / 100).toFixed(2);
@@ -108,7 +109,7 @@ export default async function AdminDashboardPage() {
                           <td style={{ textAlign: "center" }}><input form={`tier-${tier.id}`} name="newActivation" type="checkbox" defaultChecked={tier.newActivation} /></td>
                           <td style={{ textAlign: "center" }}><input form={`tier-${tier.id}`} name="additionalDomiciliation" type="checkbox" defaultChecked={tier.additionalDomiciliation} /></td>
                           <td style={{ textAlign: "center" }}><input form={`tier-${tier.id}`} name="active" type="checkbox" defaultChecked={tier.active} /></td>
-                          <td><button form={`tier-${tier.id}`} type="submit" className="gestione-btn gestione-btn-blue">Salva</button></td>
+                          <td style={{ display: "flex", gap: 6 }}><button form={`tier-${tier.id}`} type="submit" className="gestione-btn gestione-btn-blue">Salva</button><DeleteIconButton id={tier.id} action={deletePriceAction} label={`durata ${tier.months} mesi`} /></td>
                         </tr>
                       ))}
                     </tbody>

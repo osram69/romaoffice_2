@@ -24,7 +24,9 @@ export async function readyOrder(req: NextRequest, orderId: string) {
   const [verified] = await db.select().from(otpVerifications).where(and(eq(otpVerifications.orderPublicId, orderId), eq(otpVerifications.phone, order.phone!), isNotNull(otpVerifications.verifiedAt), gt(otpVerifications.expiresAt, new Date()))).limit(1);
   if (!verified) throw new CustomerError("otp-required", 403);
   if (order.status !== "paid" && order.status !== "signed") {
-    const current = await getOffer(order.service as ServiceCode); const fresh = quote(current, data);
+    // Must mirror /api/domiciliation-request's quote() call exactly (including onlineActivation),
+    // or a live online discount would make every order look like its price had changed.
+    const current = await getOffer(order.service as ServiceCode); const fresh = quote(current, { ...data, onlineActivation: true });
     if (!fresh || current.version !== snapshot.product.version || fresh.totalCents !== order.amountCents) throw new CustomerError("prices-changed", 409);
   }
   return { order, snapshot, data };

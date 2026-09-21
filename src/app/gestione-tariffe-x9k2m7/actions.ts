@@ -54,6 +54,14 @@ export async function updatePriceAction(formData: FormData) {
   revalidatePath(BASE_PATH);
 }
 
+export async function deletePriceAction(formData: FormData) {
+  "use server";
+  await requireAdmin();
+  const id = Number(formData.get("id"));
+  await db.delete(servicePrices).where(eq(servicePrices.id, id));
+  revalidatePath(BASE_PATH);
+}
+
 export async function addPriceAction(formData: FormData) {
   "use server";
   await requireAdmin();

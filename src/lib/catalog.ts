@@ -1,17 +1,20 @@
 import { createHash } from "node:crypto";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { serviceCatalog, servicePrices, serviceAddons } from "@/db/schema";
+import { serviceCatalog, servicePrices, serviceAddons, siteConfig } from "@/db/schema";
 import { termsText } from "./offer-terms";
 import type { Catalog, ProductOffer, ServiceCode } from "./pricing";
 
 /** Fresh database reads: publishing a rate never requires a frontend rebuild. */
 export async function getCatalog(): Promise<Catalog> {
-  const [services, tiers, addons] = await Promise.all([
+  const [services, tiers, addons, [config]] = await Promise.all([
     db.select().from(serviceCatalog).where(eq(serviceCatalog.active, true)),
     db.select().from(servicePrices).where(eq(servicePrices.active, true)).orderBy(asc(servicePrices.months)),
     db.select().from(serviceAddons).orderBy(asc(serviceAddons.sortOrder)),
+    db.select().from(siteConfig).limit(1),
   ]);
+  const onlineDiscountEnabled = config?.onlineDiscountEnabled ?? false;
+  const onlineDiscountBps = config?.onlineDiscountBps ?? 1000;
   const products: Partial<Catalog> = {};
   for (const code of ["legal_unit", "postal"] as ServiceCode[]) {
     const row = services.find(s => s.code === code);
@@ -21,6 +24,7 @@ export async function getCatalog(): Promise<Catalog> {
       newActivationDiscountBps: row.newActivationDiscountBps, offerValidUntil: row.offerValidUntil?.toISOString() ?? null,
       termsRevision: row.termsRevision, version: "",
       smart3x24Active: row.smart3x24Active, smart6x24Active: row.smart6x24Active,
+      onlineDiscountEnabled, onlineDiscountBps,
       tiers: tiers.filter(t => t.service === code).map(t => ({ months: t.months, listCents: t.listCents, offerCents: t.offerCents, newActivation: t.newActivation, additionalDomiciliation: t.additionalDomiciliation })),
       addons: addons.filter(a => a.service === code).map(a => ({ code: a.code, titleIt: a.titleIt, titleEn: a.titleEn, priceCents: a.priceCents, annualCents: a.annualCents, billing: a.billing, maxQuantity: a.maxQuantity, selectable: a.selectable })),
     };

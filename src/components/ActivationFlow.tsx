@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { CheckCircle2, LoaderCircle, RefreshCw, ShieldCheck } from "lucide-react";
+import { BadgePercent, CheckCircle2, LoaderCircle, RefreshCw, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { copyFor, activationHref, validity, formatEur, quote, offerActive, type Catalog, type ServiceCode, type SelectedAddon, type Lang } from "@/lib/pricing";
 import { enabledPaymentMethodsList, type PaymentSettings } from "@/lib/payment-copy";
@@ -76,7 +76,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
     invalidTaxCode: it ? "Codice fiscale non valido." : "Invalid tax code.",
   };
 
-  const priced = useMemo(() => quote(product, { months: form.months, newActivation: form.newActivation, additionalDomiciliation: form.additionalDomiciliation, addons: form.addons }), [product, form.months, form.newActivation, form.additionalDomiciliation, form.addons]);
+  const priced = useMemo(() => quote(product, { months: form.months, newActivation: form.newActivation, additionalDomiciliation: form.additionalDomiciliation, onlineActivation: true, addons: form.addons }), [product, form.months, form.newActivation, form.additionalDomiciliation, form.addons]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -205,6 +205,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
 
   return <div className="activation" data-service={service}>
     <div className="activation-service-selector" role="group" aria-label={it ? "Servizio da attivare" : "Service to activate"}>{(["legal_unit", "postal"] as ServiceCode[]).map(s => <Link key={s} href={activationHref(s, lang)} className={s === service ? "selected" : ""} aria-current={s === service ? "page" : undefined}>{copyFor(s, lang).nameShort}</Link>)}</div>
+    {product.onlineDiscountEnabled && <div className="online-discount-banner"><BadgePercent/>{it ? `Sconto extra del ${product.onlineDiscountBps / 100}% attivando qui, online.` : `Extra ${product.onlineDiscountBps / 100}% discount for activating here, online.`}</div>}
     <ol className="activation-steps">
       {t.steps.map((label, index) => <li key={label} className={step >= index + 1 ? "active" : ""} aria-current={step === index + 1 ? "step" : undefined}><span>{index + 1}</span>{label}</li>)}
     </ol>
@@ -330,6 +331,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
             {priced.offerApplied && <p className="offer-line"><span>{it ? "Offerta" : "Offer"}</span><b>{formatEur(priced.baseCents, lang)} {it ? "+ IVA" : "+ VAT"}</b></p>}
             {priced.newActivationDiscountCents > 0 && <p><span>{it ? "Sconto nuove attivazioni (10%)" : "New activation discount (10%)"}</span><b>-{formatEur(priced.newActivationDiscountCents, lang)}</b></p>}
             {priced.additionalDomiciliationDiscountCents > 0 && <p><span>{it ? "Sconto domiciliazioni aggiuntive (10%)" : "Additional address service discount (10%)"}</span><b>-{formatEur(priced.additionalDomiciliationDiscountCents, lang)}</b></p>}
+            {priced.onlineDiscountCents > 0 && <p className="online-discount-line"><span><BadgePercent/>{it ? `Sconto attivazione online (${product.onlineDiscountBps / 100}%)` : `Online activation discount (${product.onlineDiscountBps / 100}%)`}</span><b>-{formatEur(priced.onlineDiscountCents, lang)}</b></p>}
             {priced.addonLines.map(line => <p key={line.code}><span>{it ? line.titleIt : line.titleEn} × {line.quantity}</span><b>{formatEur(line.totalCents, lang)}</b></p>)}
             <p><span>{it ? "Imponibile" : "Net amount"}</span><b>{formatEur(priced.netCents, lang)}</b></p>
             <p><span>{it ? "IVA" : "VAT"} {product.vatBps / 100}%</span><b>{formatEur(priced.vatCents, lang)}</b></p>

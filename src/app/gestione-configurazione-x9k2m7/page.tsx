@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { serviceCatalog, siteConfig } from "@/db/schema";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
-import { updatePaymentSettingsAction, updateSmartFlagsAction } from "./actions";
+import { updateOnlineDiscountAction, updatePaymentSettingsAction, updateSmartFlagsAction } from "./actions";
 import { GestioneShell } from "@/components/GestioneNav";
 
 const checkboxRow = { display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "#232f3e" } as const;
@@ -37,6 +37,21 @@ export default async function ConfigurazioneWebPage() {
           <label style={checkboxRow}><input type="checkbox" name="paypalEnabled" defaultChecked={payments?.paypalEnabled ?? true} /> PayPal</label>
           <label style={checkboxRow}><input type="checkbox" name="sumupEnabled" defaultChecked={payments?.sumupEnabled ?? true} /> SumUp</label>
           <label style={checkboxRow}><input type="checkbox" name="bankTransferEnabled" defaultChecked={payments?.bankTransferEnabled ?? true} /> Bonifico bancario</label>
+          <button type="submit" className="gestione-btn gestione-btn-blue">Salva</button>
+        </form>
+      </section>
+
+      <section className="gestione-card" style={{ padding: 24, marginBottom: 24 }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: "#232f3e", marginTop: 0 }}>Sconto attivazione online</h2>
+        <p style={{ fontSize: 12, color: "#666", marginTop: -6 }}>
+          Sconto extra applicato solo a chi completa l&apos;attivazione da sé sul sito (pagina &quot;Attiva online&quot;) — non su richieste inviate via &quot;Compila il modulo online&quot; o &quot;Richiedi offerta standard&quot;, che restano gestite manualmente. Quando attivo, un banner lo segnala in evidenza sulla pagina di attivazione e sulla pagina Tariffe.
+        </p>
+        <form action={updateOnlineDiscountAction} style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "center" }}>
+          <label style={checkboxRow}><input type="checkbox" name="onlineDiscountEnabled" defaultChecked={payments?.onlineDiscountEnabled ?? false} /> Attivo</label>
+          <div className="gestione-field" style={{ width: 160 }}>
+            <label>Sconto (%)</label>
+            <input name="onlineDiscountBps" type="number" step="0.01" min="0" max="100" defaultValue={(payments?.onlineDiscountBps ?? 1000) / 100} />
+          </div>
           <button type="submit" className="gestione-btn gestione-btn-blue">Salva</button>
         </form>
       </section>
