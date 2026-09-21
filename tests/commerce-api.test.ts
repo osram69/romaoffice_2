@@ -53,7 +53,7 @@ test("database offers, immutable attachments and postal checkout", async t => {
       assert.equal(quote(catalog.legal_unit, { months: 12, newActivation: true, now: new Date("2026-09-01T12:00:00Z") })!.netCents, 49500);
     });
     const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-    const body = { lang: "it", service: "postal", representativeName: "QA Mario Rossi", representativeRole: "Titolare", representativeTaxCode: "RSSMRA80A01H501U", email, phone, companyExists: false, months: 6, startDate: tomorrow, newActivation: false, additionalDomiciliation: false, addons: [{ code: "virtual_secretary", quantity: 1 }], consent: true, termsAccepted: true, catalogVersion: product.version, termsVersion: product.version };
+    const body = { lang: "it", service: "postal", representativeName: "QA Mario Rossi", representativeRole: "Titolare", representativeTaxCode: "RSSMRA80A01H501U", email, phone, companyExists: false, companyName: "QA Rossi Consulting Srl", months: 6, startDate: tomorrow, newActivation: false, additionalDomiciliation: false, addons: [{ code: "virtual_secretary", quantity: 1 }], consent: true, termsAccepted: true, catalogVersion: product.version, termsVersion: product.version };
     await t.test("database changes change the displayed catalogue and reject stale requests", async () => {
       try {
         await db.update(servicePrices).set({ offerCents: 28100 }).where(and(eq(servicePrices.service, "postal"), eq(servicePrices.months, 6)));
@@ -125,7 +125,7 @@ test("database offers, immutable attachments and postal checkout", async t => {
     });
     await t.test("a payment webhook winning the race still gets the customer their PDF and never double-emails", async () => {
       const email2 = `qa-commerce-race-${nonce}@example.invalid`;
-      const raceBody = { lang: "it", service: "legal_unit", representativeName: "QA Race Winner", representativeRole: "Titolare", representativeTaxCode: "RSSMRA80A01H501U", email: email2, phone, companyExists: false, months: 12, startDate: tomorrow, newActivation: false, additionalDomiciliation: false, addons: [], consent: true, termsAccepted: false, catalogVersion: catalog.legal_unit.version, termsVersion: catalog.legal_unit.version };
+      const raceBody = { lang: "it", service: "legal_unit", representativeName: "QA Race Winner", representativeRole: "Titolare", representativeTaxCode: "RSSMRA80A01H501U", email: email2, phone, companyExists: false, companyName: "QA Race Winner Srl (in costituzione)", months: 12, startDate: tomorrow, newActivation: false, additionalDomiciliation: false, addons: [], consent: true, termsAccepted: false, catalogVersion: catalog.legal_unit.version, termsVersion: catalog.legal_unit.version };
       const created = await requestApi(makeRequest("/api/domiciliation-request", raceBody)); assert.equal(created.status, 201);
       const raceOrderId = (await created.json()).orderId; rateKeys.add(`order-verify:${raceOrderId}`);
       const raceCookie = `${ORDER_COOKIE}=${created.headers.get("set-cookie")?.match(new RegExp(`${ORDER_COOKIE}=([^;]+)`))?.[1]}`;

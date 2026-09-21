@@ -4,7 +4,7 @@ export const normalizePhone = (value: string) => value.trim().replace(/^00/, "+"
 export const requestSchema = z.object({
   lang: z.enum(["it", "en"]).default("it"), service: z.enum(["legal_unit", "postal"]).default("legal_unit"),
   orderId: z.string().uuid().optional(), catalogVersion: z.string().regex(/^[a-f\d]{64}$/), termsVersion: z.string().regex(/^[a-f\d]{64}$/), termsAccepted: z.boolean().default(false),
-  companyExists: z.boolean().default(false), companyName: z.string().trim().max(200).default(""),
+  companyExists: z.boolean().default(false), companyName: z.string().trim().min(2).max(200),
   companyVat: z.string().trim().max(30).default(""), companyTaxCode: z.string().trim().max(30).default(""),
   companyAddress: z.string().trim().max(240).default(""), companyRegister: z.string().trim().max(120).default(""),
   representativeName: z.string().trim().min(2).max(200), representativeRole: z.string().trim().max(80).default(""),
@@ -20,7 +20,6 @@ export const requestSchema = z.object({
   const today = now.toLocaleDateString("en-CA", { timeZone: "Europe/Rome" });
   const max = new Date(now); max.setFullYear(max.getFullYear() + 2);
   if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== v.startDate || v.startDate < today || date > max) ctx.addIssue({ code: "custom", path: ["startDate"], message: "invalid-date" });
-  if (v.companyExists && v.companyName.length < 2) ctx.addIssue({ code: "custom", path: ["companyName"], message: "required" });
   if (v.service === "postal" && (![6, 12].includes(v.months) || !v.termsAccepted || v.newActivation)) ctx.addIssue({ code: "custom", path: ["termsAccepted"], message: "postal-terms-required" });
   if (v.service === "legal_unit" && v.addons.length) ctx.addIssue({ code: "custom", path: ["addons"], message: "invalid-addons" });
 });

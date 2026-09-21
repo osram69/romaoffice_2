@@ -46,7 +46,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
   const t = {
     steps: [it ? "Dati richiesta" : "Request data", it ? "Verifica SMS" : "SMS verification", it ? "Invio e pagamento" : "Submit & payment", it ? "Conferma" : "Confirmation"],
     companyTitle: postal ? (it ? "Dati del richiedente (persona o società già esistente)" : "Applicant data (already-existing individual or company)") : (it ? "Dati azienda / ditta individuale (se già esistente)" : "Company / sole proprietorship data (if already existing)"),
-    companyHint: postal ? (it ? "La domiciliazione postale è riservata a un soggetto già esistente: non è prevista per società in fase di costituzione." : "The mailing address service is only available to an already-existing individual or company: it is not available during company formation.") : (it ? "Compila solo se la società o la ditta è già costituita." : "Fill in only if the company or business already exists."),
+    companyHint: postal ? (it ? "La domiciliazione postale è riservata a un soggetto già esistente: non è prevista per società in fase di costituzione." : "The mailing address service is only available to an already-existing individual or company: it is not available during company formation.") : (it ? "Indica la denominazione anche se la società è ancora in fase di costituzione. Gli altri campi vanno compilati solo se è già costituita." : "Enter the company name even if it is still being incorporated. The other fields are only needed if it already exists."),
     companyExists: it ? "L’azienda è già costituita" : "The company is already incorporated",
     companyName: it ? "Denominazione / Ragione sociale" : "Company name",
     companyVat: it ? "Partita IVA" : "VAT number", companyTaxCode: it ? "Codice fiscale" : "Tax code",
@@ -119,7 +119,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
     const max = new Date(today.getFullYear() + 2, today.getMonth(), today.getDate());
     return dateValue < today || dateValue > max ? t.invalidDate : "";
   }
-  function validateCompanyNameField(value: string) { return (postal || form.companyExists) && value.trim().length < 2 ? t.required : ""; }
+  function validateCompanyNameField(value: string) { return value.trim().length < 2 ? t.required : ""; }
   function validateTaxCodeField(value: string) { return isValidTaxCode(value) ? "" : t.invalidTaxCode; }
   function setFieldError(key: string, message: string) { setErrors(prev => { if (!message) { if (!(key in prev)) return prev; const { [key]: _drop, ...rest } = prev; return rest; } return { ...prev, [key]: message }; }); }
 
@@ -206,8 +206,8 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
           <fieldset><legend>{t.companyTitle}</legend>
             <p className="form-note">{t.companyHint}</p>
             {!postal && <label className="check-label"><input type="checkbox" checked={form.companyExists} onChange={e => setForm({ ...form, companyExists: e.target.checked })} /> <span>{t.companyExists}</span></label>}
+            <label>{t.companyName}*<input id="field-companyName" value={form.companyName} onChange={e => setForm({ ...form, companyName: e.target.value })} onBlur={e => setFieldError("companyName", validateCompanyNameField(e.target.value))} required {...aria("companyName")} />{err("companyName")}</label>
             {(postal || form.companyExists) && <>
-              <label>{t.companyName}<input id="field-companyName" value={form.companyName} onChange={e => setForm({ ...form, companyName: e.target.value })} onBlur={e => setFieldError("companyName", validateCompanyNameField(e.target.value))} {...aria("companyName")} />{err("companyName")}</label>
               <div className="form-grid">
                 <label>{t.companyVat}<input value={form.companyVat} onChange={e => setForm({ ...form, companyVat: e.target.value })} /></label>
                 <label>{t.companyTaxCode}<input value={form.companyTaxCode} onChange={e => setForm({ ...form, companyTaxCode: e.target.value })} /></label>

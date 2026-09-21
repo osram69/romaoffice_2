@@ -1,5 +1,7 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
-import { bankTransfer, formatEur, copyFor, validity, type Lang, type ProductOffer, type Quote } from "./pricing";
+import { bankTransfer, formatEur, copyFor, shortServiceLabel, validity, type Lang, type ProductOffer, type Quote } from "./pricing";
 import type { RequestData } from "./request";
 import { termsText } from "./offer-terms";
 
@@ -14,10 +16,12 @@ export function requestPdfFilename(serviceCode: string, lang: Lang, orderRef: st
   return `${slug}_${id}.pdf`;
 }
 
-const INK = rgb(0.09, 0.2, 0.16);
-const GREY = rgb(0.4, 0.45, 0.43);
-const GOLD = rgb(0.62, 0.43, 0.19);
-const PAPER = rgb(0.96, 0.95, 0.92);
+// Palette matches the actual Roma Office Sharing logo (grey "ROMA" + orange "OFFICESHARING"),
+// not the site's green/gold theme — the logo's own colors, sampled directly from the artwork.
+const INK = rgb(0.2, 0.2, 0.2);
+const GREY = rgb(0.42, 0.42, 0.42);
+const ACCENT = rgb(0.976, 0.451, 0);
+const PAPER = rgb(0.965, 0.965, 0.965);
 const PAGE_W = 595.28;
 const PAGE_H = 841.89;
 const MARGIN = 46;
@@ -60,7 +64,7 @@ class Writer {
     this.ensure(46);
     this.y -= 12;
     this.text(title, { size: 12, bold: true });
-    this.page.drawRectangle({ x: MARGIN, y: this.y + 6, width: 34, height: 2, color: GOLD });
+    this.page.drawRectangle({ x: MARGIN, y: this.y + 6, width: 34, height: 2, color: ACCENT });
     this.y -= 8;
   }
   field(label: string, value: string) {
@@ -99,23 +103,32 @@ export async function buildRequestPdf(opts: { data: RequestData; lang: Lang; sho
   pdf.setAuthor("Roma Office Sharing — Cube Engineering s.r.l.");
   pdf.setSubject(copy.name);
 
-  // Header band
-  writer.page.drawRectangle({ x: 0, y: PAGE_H - 92, width: PAGE_W, height: 92, color: INK });
-  writer.page.drawText("ROMA OFFICE SHARING", { x: MARGIN, y: PAGE_H - 44, size: 17, font: writer.bold, color: rgb(1, 1, 1) });
-  writer.page.drawText(it ? "Business Center — Via Venti Settembre, 118 int.1 - 00187 Roma" : "Business Centre — Via Venti Settembre, 118 int.1 - 00187 Rome", { x: MARGIN, y: PAGE_H - 60, size: 8, font: writer.font, color: rgb(0.85, 0.89, 0.87) });
-  writer.page.drawText((it ? "RICHIESTA — " : "APPLICATION — ") + copy.name.toUpperCase(), { x: MARGIN, y: PAGE_H - 80, size: 8.5, font: writer.bold, color: GOLD });
-  writer.y = PAGE_H - 116;
+  // Header: logo top-left over an orange rule, matching the company's own paper form —
+  // white background instead of the site's green, since this is the logo's own palette.
+  const logoBytes = await readFile(join(process.cwd(), "public", "images", "logo-pdf.png"));
+  const logo = await pdf.embedPng(logoBytes);
+  const logoWidth = 168;
+  const logoHeight = logoWidth * (logo.height / logo.width);
+  const logoTop = PAGE_H - MARGIN;
+  writer.page.drawImage(logo, { x: MARGIN, y: logoTop - logoHeight, width: logoWidth, height: logoHeight });
+  const ruleY = logoTop - logoHeight - 10;
+  writer.page.drawRectangle({ x: 0, y: ruleY, width: PAGE_W, height: 2.2, color: ACCENT });
+  writer.y = ruleY - 22;
+  writer.page.drawText(it ? "MODULO RICHIESTA" : "APPLICATION FORM", { x: MARGIN, y: writer.y, size: 15, font: writer.bold, color: INK });
+  writer.y -= 18;
+  writer.page.drawText(shortServiceLabel(product.code, lang).toUpperCase(), { x: MARGIN, y: writer.y, size: 10.5, font: writer.bold, color: ACCENT });
+  writer.y -= 22;
   writer.row(it ? `Riferimento pratica: ${shortRef}` : `Reference: ${shortRef}`, new Date().toLocaleString(it ? "it-IT" : "en-GB", { timeZone: "Europe/Rome" }));
 
-  writer.section(it ? "1. Dati dell'azienda / ditta individuale (se già esistente)" : "1. Company / sole proprietorship data (if already existing)");
+  writer.section(it ? "1. Dati dell'azienda / ditta individuale" : "1. Company / sole proprietorship data");
+  writer.field(it ? "Denominazione / Ragione sociale" : "Company name", data.companyName);
   if (data.companyExists) {
-    writer.field(it ? "Denominazione / Ragione sociale" : "Company name", data.companyName || "-");
     writer.field(it ? "Partita IVA" : "VAT number", data.companyVat || "-");
     writer.field(it ? "Codice fiscale" : "Tax code", data.companyTaxCode || "-");
     writer.field(it ? "Sede attuale" : "Current address", data.companyAddress || "-");
     writer.field(it ? "REA / Registro imprese" : "REA / Company register", data.companyRegister || "-");
   } else {
-    writer.text(it ? "Azienda non ancora costituita: la richiesta è riferita a una nuova attività." : "Company not yet incorporated: this request refers to a new business.", { size: 9.5 });
+    writer.text(it ? "Azienda non ancora costituita: la richiesta è riferita alla futura attività." : "Company not yet incorporated: this request refers to the future business.", { size: 9.5 });
   }
 
   writer.section(it ? "2. Legale rappresentante / Amministratore (dati obbligatori)" : "2. Legal representative / administrator (mandatory data)");
@@ -191,6 +204,7 @@ export async function buildRequestPdf(opts: { data: RequestData; lang: Lang; sho
   const pages = pdf.getPages();
   pages.forEach((page, index) => {
     page.drawRectangle({ x: 0, y: 0, width: PAGE_W, height: 34, color: PAPER });
+    page.drawRectangle({ x: 0, y: 34, width: PAGE_W, height: 1.2, color: ACCENT });
     page.drawText(it
       ? "Cube Engineering s.r.l. — Via San Martino Della Battaglia, 31 - 00185 Roma — info@romaofficesharing.it — +39 06 21.11.6268"
       : "Cube Engineering s.r.l. — Via San Martino Della Battaglia, 31 - 00185 Rome — info@romaofficesharing.it — +39 06 21.11.6268",

@@ -49,9 +49,16 @@ export function validity(product: ProductOffer, lang: Lang) {
   return `${lang === "it" ? "Offerte valide fino al" : "Offers valid until"} ${new Date(product.offerValidUntil).toLocaleDateString(lang === "it" ? "it-IT" : "en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Rome" })}`;
 }
 export function activationHref(service: ServiceCode, lang: Lang) { return `${lang === "it" ? "/attiva.html" : "/en/activate.html"}?service=${service}`; }
+// Short form of the service name, without the "/ Unità Locale" suffix: used wherever space is
+// tight (bank-transfer causale, payment-provider transaction description), since the full
+// copyFor(...).name is too long for those fields.
+export function shortServiceLabel(service: ServiceCode, lang: Lang) {
+  const it = lang === "it";
+  return service === "postal" ? (it ? "Domiciliazione Postale" : "Business Mailing Address") : (it ? "Domiciliazione Sede Legale" : "Registered Office Address");
+}
 export function bankTransfer(lang: Lang, service: ServiceCode = "legal_unit", representativeName?: string, orderRef?: string) {
   const it = lang === "it";
-  const serviceLabel = service === "postal" ? (it ? "Domiciliazione Postale" : "Business Mailing Address") : (it ? "Domiciliazione Sede Legale" : "Registered Office Address");
+  const serviceLabel = shortServiceLabel(service, lang);
   const reason = representativeName && orderRef ? `${serviceLabel} - ${representativeName} - ${it ? "Rif." : "Ref."} ${orderRef}` : serviceLabel;
   return {
     holder: process.env.BANK_HOLDER || "Cube Engineering s.r.l.",
