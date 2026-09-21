@@ -100,12 +100,12 @@ tr.gestione-letter-row { scroll-margin-top: 70px; }
 .gestione-doc-dot.green { background: #4cae4c; }
 .gestione-doc-dot.empty { background: #fff; }
 .gestione-row-actions { display: flex; gap: 3px; align-items: center; }
-.gestione-icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 4px; border: none; cursor: pointer; text-decoration: none; }
+.gestione-icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 4px; border: none; cursor: pointer; text-decoration: none; }
 .gestione-icon-btn.edit { background: #fff; color: #232f3e; border: 1px solid #ced4da; }
 .gestione-icon-btn.edit:hover { background: #f1f3f5; }
 .gestione-icon-btn.delete { background: #f8d7da; color: #dc3545; }
 .gestione-icon-btn.delete:hover { background: #f1b0b7; }
-.gestione-row-actions .gestione-btn { font-weight: 400; font-size: 11px; padding: 4px 9px; }
+.gestione-row-actions .gestione-btn { font-weight: 400; font-size: 10px; padding: 1px 6px; }
 
 .gestione-scheda-table { width: 100%; max-width: 900px; border-collapse: collapse; background: #fff; }
 .gestione-scheda-table th { background: #ff7900; color: #232f3e; text-align: right; font-size: 13px; line-height: 1.2; padding: 6px 12px 6px 8px; border-bottom: 1px solid #eee; width: 220px; white-space: nowrap; vertical-align: top; }
@@ -140,7 +140,7 @@ tr.gestione-letter-row { scroll-margin-top: 70px; }
 .gestione-modal-body { padding: 4px 20px 16px; }
 .gestione-modal-footer { padding: 8px 20px 16px; display: flex; justify-content: flex-end; }
 
-.gestione-action-btn { border: none; border-radius: 4px; padding: 4px 9px; font-size: 11px; font-weight: 400; color: #fff; cursor: pointer; white-space: nowrap; }
+.gestione-action-btn { border: none; border-radius: 4px; padding: 1px 6px; font-size: 10px; font-weight: 400; color: #fff; cursor: pointer; white-space: nowrap; }
 .gestione-action-allega { background: #4cae4c; }
 .gestione-action-invia { background: #007bff; }
 .gestione-action-pec { background: #e75d8d; }
