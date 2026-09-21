@@ -1,11 +1,9 @@
 import Stripe from "stripe";
 import { NextRequest } from "next/server";
-import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { db } from "@/db";
-import { orders } from "@/db/schema";
 import { ownedOrder, type OrderSnapshot } from "@/lib/order-access";
 import { sendRequestConfirmation } from "@/lib/order-confirmation";
+import { markOrderPaidAndNotify } from "@/lib/order-payment";
 import { CustomerError, json, protectMutation } from "@/lib/customer-auth";
 import type { RequestData } from "@/lib/request";
 const input = z.object({ order: z.string().uuid(), provider: z.enum(["stripe", "sumup", "paypal"]) });
@@ -14,7 +12,20 @@ export async function POST(req: NextRequest) {
     protectMutation(req); const parsed = input.safeParse(await req.json()); if (!parsed.success) return json({ error: "invalid" }, 400);
     const order = await ownedOrder(req, parsed.data.order);
     if (order.provider !== parsed.data.provider || !order.providerReference) return json({ paid: false, error: "unmatched-payment" }, 400);
-    if (order.status === "paid" || order.status === "signed") return json({ paid: true });
+    if (order.status === "paid" || order.status === "signed") {
+      // A webhook can win the race and complete the filled->paid transition (and its own
+      // confirmation attempt) before the customer's browser gets here. sendRequestConfirmation
+      // is idempotent (it checks requestEmailSentAt/adminEmailSentAt), so retrying it here is
+      // safe and also gives this response the pdfBase64/emailSent status to show the customer.
+      let confirmation;
+      try {
+        const data = order.formData as RequestData; const snapshot = order.quoteData as OrderSnapshot;
+        confirmation = await sendRequestConfirmation(order, data, snapshot, order.paymentMethod || parsed.data.provider);
+      } catch (error) {
+        console.error("Post-payment confirmation retry failed", order.publicId, error instanceof Error ? `${error.name}: ${error.message}` : error);
+      }
+      return json({ paid: true, emailSent: confirmation?.customerSent, pdfBase64: confirmation?.pdf.toString("base64"), shortRef: confirmation?.shortRef });
+    }
     if (order.status !== "filled" || (order.service === "postal" && !order.termsAcceptedAt)) return json({ paid: false }, 403);
     let paid = false;
     if (order.provider === "stripe" && process.env.STRIPE_SECRET) {
@@ -38,29 +49,14 @@ export async function POST(req: NextRequest) {
       const captures = payment.purchase_units?.[0]?.payments?.captures as { status: string; amount: { currency_code: string; value: string } }[] | undefined;
       paid = payment.status === "COMPLETED" && !!captures?.some(c => c.status === "COMPLETED" && c.amount.currency_code === "EUR" && Math.round(Number(c.amount.value) * 100) === order.amountCents);
     }
-    let confirmation: { customerSent: boolean; adminSent: boolean; pdf: Buffer; shortRef: string } | undefined;
-    if (paid) {
-      const justPaid = await db.transaction(async tx => {
-        const [current] = await tx.select().from(orders).where(and(eq(orders.id, order.id), eq(orders.status, "filled"))).for("update");
-        if (!current) return null;
-        await tx.update(orders).set({ status: "paid", updatedAt: new Date() }).where(eq(orders.id, order.id));
-        return current;
-      });
-      // The request PDF + confirmation emails are sent here, on the transition into "paid",
-      // rather than at finalize time — that's the whole point: for online providers, nothing
-      // is sent to the customer until the payment has actually gone through. This must never
-      // turn a genuinely successful payment into a reported failure: if PDF/email generation
-      // throws (slow SMTP, transient DB error...), the customer still sees their paid
-      // confirmation immediately, and we just log the delivery failure for follow-up.
-      if (justPaid) {
-        try {
-          const data = justPaid.formData as RequestData; const snapshot = justPaid.quoteData as OrderSnapshot;
-          confirmation = await sendRequestConfirmation(justPaid, data, snapshot, justPaid.paymentMethod || parsed.data.provider);
-        } catch (error) {
-          console.error("Post-payment confirmation failed (payment itself succeeded)", justPaid.publicId, error instanceof Error ? `${error.name}: ${error.message}` : error);
-        }
-      }
-    }
+    // The request PDF + confirmation emails are sent here, on the transition into "paid" (via
+    // markOrderPaidAndNotify, shared with the Stripe/PayPal webhooks), rather than at finalize
+    // time — that's the whole point: for online providers, nothing is sent to the customer
+    // until the payment has actually gone through. This must never turn a genuinely successful
+    // payment into a reported failure: if PDF/email generation throws (slow SMTP, transient DB
+    // error...), the customer still sees their paid confirmation immediately, and we just log
+    // the delivery failure for follow-up.
+    const confirmation = paid ? await markOrderPaidAndNotify(order.publicId, parsed.data.provider, order.providerReference) : undefined;
     return json({ paid, emailSent: confirmation?.customerSent, pdfBase64: confirmation?.pdf.toString("base64"), shortRef: confirmation?.shortRef });
   } catch (error) { return error instanceof CustomerError ? json({ paid: false, error: error.code }, error.status) : json({ paid: false, error: "verify-failed" }, 400); }
 }

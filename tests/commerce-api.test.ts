@@ -14,6 +14,7 @@ import { quote } from "@/lib/pricing";
 import { termsText } from "@/lib/offer-terms";
 import { buildStandardOfferEmail, MODULE_FILENAME } from "@/lib/standard-offer";
 import { ORDER_COOKIE } from "@/lib/order-access";
+import { markOrderPaidAndNotify } from "@/lib/order-payment";
 import { POST as offerApi } from "@/app/api/standard-offer/route";
 import { POST as requestApi } from "@/app/api/domiciliation-request/route";
 import { POST as finalizeApi } from "@/app/api/domiciliation-request/finalize/route";
@@ -121,6 +122,37 @@ test("database offers, immutable attachments and postal checkout", async t => {
       assert.equal(paymentBody.amount, 695.4); assert.equal(paymentBody.checkout_reference, orderId); assert.ok(paymentBody.redirect_url?.includes("service=postal"));
       const verified = await verifyPayment(makeRequest("/api/verify-payment", { order: orderId, provider: "sumup", sessionId: "untrusted" }, cookie)); assert.equal((await verified.json()).paid, true);
       const [order] = await db.select().from(orders).where(eq(orders.publicId, orderId)); assert.equal(order.status, "paid"); assert.equal(order.amountCents, 69540);
+    });
+    await t.test("a payment webhook winning the race still gets the customer their PDF and never double-emails", async () => {
+      const email2 = `qa-commerce-race-${nonce}@example.invalid`;
+      const raceBody = { lang: "it", service: "legal_unit", representativeName: "QA Race Winner", representativeRole: "Titolare", representativeTaxCode: "RSSMRA80A01H501U", email: email2, phone, companyExists: false, months: 12, startDate: tomorrow, newActivation: false, additionalDomiciliation: false, addons: [], consent: true, termsAccepted: false, catalogVersion: catalog.legal_unit.version, termsVersion: catalog.legal_unit.version };
+      const created = await requestApi(makeRequest("/api/domiciliation-request", raceBody)); assert.equal(created.status, 201);
+      const raceOrderId = (await created.json()).orderId; rateKeys.add(`order-verify:${raceOrderId}`);
+      const raceCookie = `${ORDER_COOKIE}=${created.headers.get("set-cookie")?.match(new RegExp(`${ORDER_COOKIE}=([^;]+)`))?.[1]}`;
+      try {
+        assert.equal((await sendOtp(makeRequest("/api/send-otp", { orderId: raceOrderId, phone }, raceCookie))).status, 200);
+        assert.equal((await verifyOtp(makeRequest("/api/verify-otp", { orderId: raceOrderId, code }, raceCookie))).status, 200);
+        const finalized = await finalizeApi(makeRequest("/api/domiciliation-request/finalize", { orderId: raceOrderId, paymentMethod: "stripe" }, raceCookie));
+        assert.equal(finalized.status, 200);
+        const [filled] = await db.select().from(orders).where(eq(orders.publicId, raceOrderId)); assert.equal(filled.status, "filled");
+        // Simulate the Stripe webhook winning the race: it completes filled->paid and sends the
+        // confirmation on its own, before the customer's browser ever calls verify-payment.
+        const confirmation = await markOrderPaidAndNotify(raceOrderId, "stripe", "sess_test_race");
+        assert.ok(confirmation); assert.equal(confirmation!.customerSent, true);
+        const messagesBefore = smtp.messages.length;
+        // The customer's browser now calls verify-payment as usual. The order is already "paid",
+        // so this must retry sendRequestConfirmation (a no-op here, already sent) and still
+        // return the PDF so the success page can render its "download the form" button.
+        const verified = await verifyPayment(makeRequest("/api/verify-payment", { order: raceOrderId, provider: "stripe", sessionId: "sess_test_race" }, raceCookie));
+        const verifiedData = await verified.json();
+        assert.equal(verifiedData.paid, true);
+        assert.ok(verifiedData.pdfBase64, "pdfBase64 must be present so the success panel can render the download button");
+        const pdf = await PDFDocument.load(Buffer.from(verifiedData.pdfBase64, "base64")); assert.ok(pdf.getPageCount() >= 1);
+        assert.equal(smtp.messages.length, messagesBefore, "no duplicate email should be sent on the retry");
+      } finally {
+        await db.delete(otpVerifications).where(eq(otpVerifications.orderPublicId, raceOrderId));
+        await db.delete(orders).where(eq(orders.publicId, raceOrderId));
+      }
     });
   } finally {
     globalThis.fetch = originalFetch;

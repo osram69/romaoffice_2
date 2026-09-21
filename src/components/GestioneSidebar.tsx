@@ -8,7 +8,7 @@ import { BrandWords } from "./BrandWords";
 import { DomForm } from "./DomForm";
 
 export function GestioneSidebar({ role, active, username, tabs, newDomiciliazioneAction }: {
-  role: StaffRole; active: "tariffe" | "domiciliazioni" | "configurazione"; username: string;
+  role: StaffRole; active: "tariffe" | "domiciliazioni" | "configurazione" | "ordini"; username: string;
   tabs: { stato: number; label: string; count: number }[];
   newDomiciliazioneAction?: (formData: FormData) => void;
 }) {
@@ -36,6 +36,9 @@ export function GestioneSidebar({ role, active, username, tabs, newDomiciliazion
         <ul>
           <li className={active === "domiciliazioni" ? "active" : ""}>
             <Link href="/gestione-domiciliazioni-x9k2m7" onClick={() => setOpen(false)}>Domiciliazioni</Link>
+          </li>
+          <li className={active === "ordini" ? "active" : ""}>
+            <Link href="/gestione-ordini-x9k2m7" onClick={() => setOpen(false)}>Ordini Online</Link>
           </li>
           {tabs.map(tab => (
             <li key={tab.stato} className="sidebar-sub">
