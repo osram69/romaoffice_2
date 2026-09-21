@@ -48,7 +48,7 @@ export default async function OrdiniPage({ searchParams }: { searchParams: Promi
           <tbody>
             {rows.map(order => {
               const data = order.formData as RequestData | null;
-              const ref = data?.representativeTaxCode ? shortOrderRef(data.representativeTaxCode, order.createdAt) : order.publicId.slice(0, 8);
+              const ref = data?.representativeTaxCode ? shortOrderRef(data.representativeTaxCode, order.createdAt, order.service as "legal_unit" | "postal") : order.publicId.slice(0, 8);
               return (
                 <tr key={order.publicId}>
                   <td>{ref}</td>

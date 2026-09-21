@@ -144,7 +144,7 @@ export async function buildRequestPdf(opts: { data: RequestData; lang: Lang; sho
   writer.field(it ? "Durata" : "Duration", copy.months(data.months));
   writer.field(it ? "Data di inizio contratto" : "Contract start date", data.startDate);
   writer.field(it ? "Nuova attivazione (nuovo cliente/società)" : "New activation (new client/company)", data.newActivation ? (it ? "Sì" : "Yes") : it ? "No" : "No");
-  writer.field(it ? "Domiciliazione aggiuntiva (stesso referente/amministratore)" : "Additional address service (same contact/administrator)", data.additionalDomiciliation ? (it ? "Sì" : "Yes") : it ? "No" : "No");
+  if (!postal) writer.field(it ? "Domiciliazione aggiuntiva (stesso referente/amministratore)" : "Additional address service (same contact/administrator)", data.additionalDomiciliation ? (it ? "Sì" : "Yes") : it ? "No" : "No");
 
   if (priced) {
     writer.section(it ? "4. Preventivo" : "4. Quotation");
@@ -183,23 +183,13 @@ export async function buildRequestPdf(opts: { data: RequestData; lang: Lang; sho
     ? "Il consenso può essere revocato in qualsiasi momento scrivendo a cubeng@pec.it o chiamando il +39 06 21116268."
     : "Consent may be withdrawn at any time by writing to cubeng@pec.it or calling +39 06 21116268.", { size: 8.5, gap: 10 });
 
-  writer.ensure(110);
-  writer.y -= 10;
-  const signatureBoxTop = writer.y;
-  writer.page.drawRectangle({ x: MARGIN, y: signatureBoxTop - 66, width: 230, height: 66, borderColor: GREY, borderWidth: 0.7 });
-  writer.page.drawText(it ? "Firma del Legale Rappresentante" : "Legal representative signature", { x: MARGIN, y: signatureBoxTop - 80, size: 7.5, font: writer.font, color: GREY });
-  writer.page.drawRectangle({ x: PAGE_W - MARGIN - 160, y: signatureBoxTop - 66, width: 160, height: 66, borderColor: GREY, borderWidth: 0.7 });
-  writer.page.drawText(it ? "Luogo e data" : "Place and date", { x: PAGE_W - MARGIN - 160, y: signatureBoxTop - 80, size: 7.5, font: writer.font, color: GREY });
-
-  if (postal) {
-    writer.section(it ? "Allegato 1 — Servizi aggiuntivi richiesti" : "Annex 1 — Requested additional services");
-    if (!priced.addonLines.length) writer.text(it ? "Nessun servizio opzionale a canone selezionato." : "No optional recurring services selected.");
-    for (const line of priced.addonLines) writer.text(`${it ? line.titleIt : line.titleEn} x ${line.quantity}: ${formatEur(line.monthlyCents, lang)}/${it ? "mese" : "month"}${line.annualCents ? ` + ${formatEur(line.annualCents, lang)}/${it ? "anno numero VoIP" : "year VoIP number"}` : ""}. ${it ? "Totale periodo" : "Period total"}: ${formatEur(line.totalCents, lang)} ${it ? "+ IVA" : "+ VAT"}.`);
-    writer.text(it ? "I costi a consumo, postali e di spedizione sono esclusi dal totale iniziale e si applicano solo ai servizi richiesti." : "Usage, postage and shipping charges are excluded from the initial total and apply only to requested services.");
-    writer.section(it ? "Condizioni dell’offerta postale accettate" : "Accepted business mailing offer terms");
-    writer.text(`${it ? "Versione" : "Version"}: ${product.termsRevision} / ${product.version.slice(0, 16)}`, {size: 8});
-    for (const paragraph of termsText(product, lang).split("\n")) writer.text(paragraph, { size: 9, gap: 4 });
-  }
+  writer.section(it ? "Allegato 1 — Servizi aggiuntivi richiesti" : "Annex 1 — Requested additional services");
+  if (!priced.addonLines.length) writer.text(it ? "Nessun servizio opzionale a canone selezionato." : "No optional recurring services selected.");
+  for (const line of priced.addonLines) writer.text(`${it ? line.titleIt : line.titleEn} x ${line.quantity}: ${formatEur(line.monthlyCents, lang)}/${it ? "mese" : "month"}${line.annualCents ? ` + ${formatEur(line.annualCents, lang)}/${it ? "anno numero VoIP" : "year VoIP number"}` : ""}. ${it ? "Totale periodo" : "Period total"}: ${formatEur(line.totalCents, lang)} ${it ? "+ IVA" : "+ VAT"}.`);
+  if (postal) writer.text(it ? "I costi a consumo, postali e di spedizione sono esclusi dal totale iniziale e si applicano solo ai servizi richiesti." : "Usage, postage and shipping charges are excluded from the initial total and apply only to requested services.");
+  writer.section(it ? `Condizioni dell’offerta di ${shortServiceLabel(product.code, lang).toLowerCase()} accettate` : `Accepted ${shortServiceLabel(product.code, lang).toLowerCase()} offer terms`);
+  writer.text(`${it ? "Versione" : "Version"}: ${product.termsRevision} / ${product.version.slice(0, 16)}`, {size: 8});
+  for (const paragraph of termsText(product, lang).split("\n")) writer.text(paragraph, { size: 9, gap: 4 });
   // Footer on every page
   const pages = pdf.getPages();
   pages.forEach((page, index) => {

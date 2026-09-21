@@ -20,7 +20,7 @@ export async function readyOrder(req: NextRequest, orderId: string) {
   if (order.status === "cancelled") throw new CustomerError("cancelled", 409);
   const snapshot = order.quoteData as OrderSnapshot | null; const data = order.formData as RequestData | null;
   if (!snapshot || !data || !data.consent) throw new CustomerError("invalid-order", 400);
-  if (order.service === "postal" && (!order.termsAcceptedAt || order.termsVersion !== snapshot.product.version || !data.termsAccepted)) throw new CustomerError("terms-required", 403);
+  if (!order.termsAcceptedAt || order.termsVersion !== snapshot.product.version || !data.termsAccepted) throw new CustomerError("terms-required", 403);
   const [verified] = await db.select().from(otpVerifications).where(and(eq(otpVerifications.orderPublicId, orderId), eq(otpVerifications.phone, order.phone!), isNotNull(otpVerifications.verifiedAt), gt(otpVerifications.expiresAt, new Date()))).limit(1);
   if (!verified) throw new CustomerError("otp-required", 403);
   if (order.status !== "paid" && order.status !== "signed") {

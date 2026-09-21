@@ -21,7 +21,7 @@ export function ManualRequestModal({ product, lang }: { product: ProductOffer; l
   const err = (key: string) => fieldErrors[key] ? <span id={`${id}-err-${key}`} className="field-error" role="alert">{fieldErrors[key]}</span> : null;
   const aria = (key: string) => ({ "aria-invalid": fieldErrors[key] ? true : undefined, "aria-describedby": fieldErrors[key] ? `${id}-err-${key}` : undefined });
   const showNewActivation = !postal && product.tiers.some(t => t.newActivation);
-  const showAdditionalDomiciliation = product.tiers.some(t => t.additionalDomiciliation);
+  const showAdditionalDomiciliation = !postal && product.tiers.some(t => t.additionalDomiciliation);
   const showSmart3x24 = !postal && product.smart3x24Active;
   const showSmart6x24 = !postal && product.smart6x24Active;
   useEffect(() => {

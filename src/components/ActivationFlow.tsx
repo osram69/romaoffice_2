@@ -3,7 +3,7 @@ import Link from "next/link";
 import { CheckCircle2, LoaderCircle, RefreshCw, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { copyFor, activationHref, validity, formatEur, quote, offerActive, type Catalog, type ServiceCode, type SelectedAddon, type Lang } from "@/lib/pricing";
-import type { PaymentSettings } from "@/lib/payment-settings";
+import { enabledPaymentMethodsList, type PaymentSettings } from "@/lib/payment-copy";
 import { isValidTaxCode } from "@/lib/codice-fiscale";
 import { OfferTermsConsent } from "./OfferTerms";
 type FormState = {
@@ -38,7 +38,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
   const [payment, setPayment] = useState<"stripe" | "paypal" | "sumup" | "bank_transfer" | "on_site">(firstAvailablePayment);
   const [result, setResult] = useState<FinalizeResult | null>(null);
   const [form, setForm] = useState<FormState>({
-    companyExists: false, companyName: "", companyVat: "", companyTaxCode: "", companyAddress: "", companyRegister: "",
+    companyExists: postal, companyName: "", companyVat: "", companyTaxCode: "", companyAddress: "", companyRegister: "",
     representativeName: "", representativeRole: it ? "Legale rappresentante" : "Legal representative", representativeTaxCode: "", email: "", phone: "",
     months: postal ? 6 : 12, startDate: "", newActivation: !postal, additionalDomiciliation: false, consent: false, website: "", termsAccepted: false, addons: [],
   });
@@ -121,6 +121,12 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
   }
   function validateCompanyNameField(value: string) { return value.trim().length < 2 ? t.required : ""; }
   function validateTaxCodeField(value: string) { return isValidTaxCode(value) ? "" : t.invalidTaxCode; }
+  // The company's own tax code is mandatory for postal (always an already-existing entity) so we
+  // can verify the declared company is real; for legal_unit it's only validated if filled in.
+  function validateCompanyTaxCodeField(value: string) {
+    if (!value.trim()) return postal ? t.required : "";
+    return isValidTaxCode(value) ? "" : t.invalidTaxCode;
+  }
   function setFieldError(key: string, message: string) { setErrors(prev => { if (!message) { if (!(key in prev)) return prev; const { [key]: _drop, ...rest } = prev; return rest; } return { ...prev, [key]: message }; }); }
 
   function validate() {
@@ -132,8 +138,9 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
     if (!product.tiers.some(x => x.months === form.months)) next.months = t.required;
     const dateErr = validateStartDateField(form.startDate); if (dateErr) next.startDate = dateErr;
     const companyErr = validateCompanyNameField(form.companyName); if (companyErr) next.companyName = companyErr;
+    const companyTaxCodeErr = validateCompanyTaxCodeField(form.companyTaxCode); if (companyTaxCodeErr) next.companyTaxCode = companyTaxCodeErr;
     if (!form.consent) next.consent = t.required;
-    if (postal && !form.termsAccepted) next.terms = it ? "Leggi e accetta integralmente le condizioni dell’offerta postale prima di proseguire." : "Read and accept the full mailing-service offer terms before continuing.";
+    if (!form.termsAccepted) next.terms = it ? "Leggi e accetta integralmente le condizioni dell’offerta prima di proseguire." : "Read and accept the full offer terms before continuing.";
     return next;
   }
 
@@ -210,7 +217,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
             {(postal || form.companyExists) && <>
               <div className="form-grid">
                 <label>{t.companyVat}<input value={form.companyVat} onChange={e => setForm({ ...form, companyVat: e.target.value })} /></label>
-                <label>{t.companyTaxCode}<input value={form.companyTaxCode} onChange={e => setForm({ ...form, companyTaxCode: e.target.value })} /></label>
+                <label>{t.companyTaxCode}{postal && "*"}<input id="field-companyTaxCode" value={form.companyTaxCode} onChange={e => setForm({ ...form, companyTaxCode: e.target.value.toUpperCase() })} onBlur={e => setFieldError("companyTaxCode", validateCompanyTaxCodeField(e.target.value))} required={postal} {...aria("companyTaxCode")} />{err("companyTaxCode")}</label>
               </div>
               <label>{t.companyAddress}<input value={form.companyAddress} onChange={e => setForm({ ...form, companyAddress: e.target.value })} /></label>
               <label>{t.companyRegister}<input value={form.companyRegister} onChange={e => setForm({ ...form, companyRegister: e.target.value })} /></label>
@@ -238,7 +245,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
             </select></label>
             <label>{t.startDate}*<input type="date" value={form.startDate} min={new Date().toISOString().slice(0, 10)} onChange={e => setForm({ ...form, startDate: e.target.value })} onBlur={e => setFieldError("startDate", validateStartDateField(e.target.value))} {...aria("startDate")} />{err("startDate")}</label>
             {!postal && product.tiers.some(x => x.newActivation) && <label className="check-label"><input type="checkbox" checked={form.newActivation} onChange={e => setForm({ ...form, newActivation: e.target.checked })} /> <span>{t.newActivation}</span></label>}
-            {product.tiers.some(x => x.additionalDomiciliation) && <label className="check-label"><input type="checkbox" checked={form.additionalDomiciliation} onChange={e => setForm({ ...form, additionalDomiciliation: e.target.checked })} /> <span>{t.additional}</span></label>}
+            {!postal && product.tiers.some(x => x.additionalDomiciliation) && <label className="check-label"><input type="checkbox" checked={form.additionalDomiciliation} onChange={e => setForm({ ...form, additionalDomiciliation: e.target.checked })} /> <span>{t.additional}</span></label>}
             <div className="consent-box">
               <label className="check-label"><input type="checkbox" checked={form.consent} onChange={e => setForm({ ...form, consent: e.target.checked })} {...aria("consent")} /> <span>{t.consent} <Link className="consent-link" href={it ? "/privacy.html" : "/en/privacy.html"} target="_blank" rel="noopener noreferrer">{it ? "Informativa privacy" : "Privacy notice"}</Link>*</span></label>
               {err("consent")}
@@ -249,7 +256,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
             const unit = addon.billing === "per_hour" ? (it ? "/ora" : "/hour") : `/${it ? "mese" : "month"}`;
             return <div className="postal-addon" key={addon.code}><label className="check-label"><input type="checkbox" checked={!!selected} onChange={e => setForm(f => ({ ...f, addons: e.target.checked ? [...f.addons, { code: addon.code, quantity: 1 }] : f.addons.filter(a => a.code !== addon.code) }))} /><span><b>{it ? addon.titleIt : addon.titleEn}</b><small>{formatEur(addon.priceCents, lang)}{unit}{addon.code.endsWith("archive") ? (it ? " per faldone" : " per binder") : ""}{addon.annualCents > 0 ? ` + ${formatEur(addon.annualCents, lang)}/${it ? "anno numero VoIP" : "year for the VoIP number"}` : ""} {it ? "+ IVA" : "+ VAT"}</small></span></label>{selected && addon.maxQuantity > 1 && <label>{it ? (addon.billing === "per_hour" ? "Numero di ore" : "Numero di faldoni") : (addon.billing === "per_hour" ? "Number of hours" : "Number of binders")}<select value={selected.quantity} onChange={e => setForm(f => ({ ...f, addons: f.addons.map(a => a.code === addon.code ? { ...a, quantity: Number(e.target.value) } : a) }))}>{Array.from({length: addon.maxQuantity}, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}</select></label>}</div>;
           })}<p className="form-note">{it ? "Il canone annuo del numero VoIP è dovuto anche per il contratto semestrale. Aperture extra, invii e spedizioni sono esclusi dal pagamento iniziale e applicati a consumo." : "The annual VoIP number fee is also due on a six-month contract. Extra openings, outgoing items and shipping are excluded from the initial payment and charged on use."}</p></fieldset>}
-          {postal && <><OfferTermsConsent product={product} lang={lang} accepted={form.termsAccepted} onAccept={() => setForm(f => ({ ...f, termsAccepted: true }))}/>{err("terms")}<p className="form-note">{it ? "La procedura online sostituisce la restituzione del modulo via email: i dati e l’accettazione vengono inviati al centro. Attivazione soggetta a verifica e contratto." : "The online process replaces returning the form by email: your details and acceptance are sent to the centre. Activation is subject to review and agreement."}</p></>}
+          <OfferTermsConsent product={product} lang={lang} accepted={form.termsAccepted} onAccept={() => setForm(f => ({ ...f, termsAccepted: true }))}/>{err("terms")}<p className="form-note">{it ? "La procedura online sostituisce la restituzione del modulo via email: i dati e l’accettazione vengono inviati al centro. Attivazione soggetta a verifica e contratto." : "The online process replaces returning the form by email: your details and acceptance are sent to the centre. Activation is subject to review and agreement."}</p>
 <div className="honeypot" aria-hidden="true"><label>Website<input value={form.website} onChange={e => setForm({ ...form, website: e.target.value })} tabIndex={-1} autoComplete="off" /></label></div>
           <button className="button primary" disabled={busy}>{busy && <LoaderCircle className="spin" />}{t.sendCode}</button>
         </form>}
@@ -291,7 +298,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
           <p>{it ? `Riferimento pratica: ${result.shortRef || result.orderRef}` : `Reference: ${result.shortRef || result.orderRef}`}</p>
           {result.paymentMethod === "bank_transfer" && result.bankTransferDetails && <div className="bank-details">
             <p>{it ? "Email inviata con i dati di pagamento: " : "Payment details email sent: "}<b>{result.emailSent ? (it ? "sì" : "yes") : it ? "non inviata (vedi PDF)" : "not sent (see PDF)"}</b></p>
-            <p className="form-note">{it ? "Se non hai ricevuto l’email, scarica qui il riepilogo con i dati di pagamento." : "If you did not receive the email, download the payment summary here."}</p>
+            <p className="form-note"><b>{it ? "Se non hai ricevuto l’email, scarica qui il riepilogo con i dati di pagamento." : "If you did not receive the email, download the payment summary here."}</b></p>
             <dl className="bank-details-list">
               <div><dt>{it ? "Intestatario" : "Account holder"}</dt><dd><b>{result.bankTransferDetails.holder}</b></dd></div>
               <div><dt>IBAN</dt><dd><b>{result.bankTransferDetails.iban}</b></dd></div>
@@ -332,7 +339,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
         {postal && <p className="no-deposit">{it ? "Nessun deposito cauzionale" : "No security deposit"}</p>}
         <ul className="check-list">
           <li><ShieldCheck />{it ? "Verifica del numero via SMS" : "Mobile verification by SMS"}</li>
-          <li><ShieldCheck />{it ? "Pagamento sicuro: PayPal, Stripe, SumUp o bonifico" : "Secure payment: PayPal, Stripe, SumUp or bank transfer"}</li>
+          <li><ShieldCheck />{it ? `Pagamento sicuro: ${enabledPaymentMethodsList(paymentSettings, lang)}` : `Secure payment: ${enabledPaymentMethodsList(paymentSettings, lang)}`}</li>
           <li><ShieldCheck />{it ? "Modulo di richiesta in PDF via email" : "Request form PDF sent by email"}</li>
         </ul>
       </aside>

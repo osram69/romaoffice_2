@@ -20,7 +20,9 @@ export const requestSchema = z.object({
   const today = now.toLocaleDateString("en-CA", { timeZone: "Europe/Rome" });
   const max = new Date(now); max.setFullYear(max.getFullYear() + 2);
   if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== v.startDate || v.startDate < today || date > max) ctx.addIssue({ code: "custom", path: ["startDate"], message: "invalid-date" });
-  if (v.service === "postal" && (![6, 12].includes(v.months) || !v.termsAccepted || v.newActivation)) ctx.addIssue({ code: "custom", path: ["termsAccepted"], message: "postal-terms-required" });
+  if (v.service === "postal" && (![6, 12].includes(v.months) || v.newActivation)) ctx.addIssue({ code: "custom", path: ["months"], message: "postal-duration-invalid" });
+  if (!v.termsAccepted) ctx.addIssue({ code: "custom", path: ["termsAccepted"], message: "terms-required" });
+  if (v.service === "postal" && !isValidTaxCode(v.companyTaxCode)) ctx.addIssue({ code: "custom", path: ["companyTaxCode"], message: "invalid-tax-code" });
   if (v.service === "legal_unit" && v.addons.length) ctx.addIssue({ code: "custom", path: ["addons"], message: "invalid-addons" });
 });
 export type RequestData = z.infer<typeof requestSchema>;

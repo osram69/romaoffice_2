@@ -43,7 +43,10 @@ export function ContactForm({ lang }: { lang: Lang }) {
     </div>
     <label>{labels.message}<textarea name="message" rows={6} onBlur={e => setFieldError("message", validateMessage(e.target.value))} aria-invalid={!!errors.message} aria-describedby={errors.message ? "err-message" : undefined} />{err("message")}</label>
 <div className="honeypot" aria-hidden="true"><label>Website<input name="website" tabIndex={-1} autoComplete="off" /></label></div>
-    <label className="check-label"><input name="consent" type="checkbox" value="true" /> <span>{labels.consent} <Link href={it ? "/privacy.html" : "/en/privacy.html"} target="_blank" rel="noopener noreferrer">{it ? "(leggi l’informativa privacy)" : "(read the privacy notice)"}</Link>*</span></label>{err("consent")}
+    <div className="consent-box">
+      <label className="check-label"><input name="consent" type="checkbox" value="true" /> <span>{labels.consent} <Link className="consent-link" href={it ? "/privacy.html" : "/en/privacy.html"} target="_blank" rel="noopener noreferrer">{it ? "(leggi l’informativa privacy)" : "(read the privacy notice)"}</Link>*</span></label>
+      {err("consent")}
+    </div>
     <button className="button primary" disabled={state === "loading"}>{state === "loading" && <LoaderCircle className="spin" />}{labels.submit}</button>
     <div aria-live="polite" className={`form-status ${state}`}>{state === "success" ? (it ? "Grazie! La richiesta è stata inviata." : "Thank you! Your enquiry has been sent.") : state === "error" ? (it ? "Invio non riuscito. Riprova o chiamaci." : "Submission failed. Please retry or call us.") : ""}</div>
   </form>;

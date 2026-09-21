@@ -20,7 +20,7 @@ export type BankDetails = { holder: string; iban: string; bic: string; bank: str
  */
 export async function sendRequestConfirmation(order: OrderRow, data: RequestData, snapshot: OrderSnapshot, paymentMethod: string) {
   const orderId = order.publicId; const { product, quote: priced } = snapshot; const lang = data.lang; const it = lang === "it";
-  const shortRef = shortOrderRef(data.representativeTaxCode, order.createdAt);
+  const shortRef = shortOrderRef(data.representativeTaxCode, order.createdAt, product.code);
   const copy = copyFor(product.code, lang);
   const bank = bankTransfer(lang, product.code, data.representativeName, shortRef);
   const bankDetails: BankDetails = { holder: bank.holder, iban: bank.iban, bic: bank.bic, bank: bank.bank, causale: bank.reason, amount: formatEur(priced.totalCents, lang) };

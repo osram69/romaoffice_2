@@ -22,7 +22,9 @@ export function quote(product: ProductOffer, input: { months: number; newActivat
   const baseCents = offerApplied ? tier.offerCents! : tier.listCents;
   const newActivationEligible = product.code === "legal_unit" && offerApplied && tier.newActivation;
   const newActivationDiscountCents = newActivationEligible && flag(input.newActivation) ? Math.round(baseCents * product.newActivationDiscountBps / 10000) : 0;
-  const additionalDomiciliationEligible = tier.additionalDomiciliation;
+  // Postal never offers this discount — enforced here regardless of the tier's own DB flag,
+  // which historically defaulted to true for every service including postal.
+  const additionalDomiciliationEligible = product.code !== "postal" && tier.additionalDomiciliation;
   const additionalDomiciliationDiscountCents = additionalDomiciliationEligible && flag(input.additionalDomiciliation) ? Math.round((baseCents - newActivationDiscountCents) * product.additionalDiscountBps / 10000) : 0;
   const serviceNetCents = baseCents - newActivationDiscountCents - additionalDomiciliationDiscountCents;
   const seen = new Set<string>(); const addonLines: Quote["addonLines"] = [];

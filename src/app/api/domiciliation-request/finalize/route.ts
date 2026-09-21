@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       if (current.status === "paid" || current.status === "signed") throw new CustomerError("already-paid", 409);
       await tx.update(orders).set({ status: "filled", paymentMethod, updatedAt: new Date() }).where(eq(orders.id, order.id));
     });
-    const shortRef = shortOrderRef(data.representativeTaxCode, order.createdAt);
+    const shortRef = shortOrderRef(data.representativeTaxCode, order.createdAt, product.code);
     if (isOnline) {
       // The request PDF is built and emailed only once the online payment actually succeeds
       // (see /api/verify-payment) — not here, since the customer hasn't paid yet at this point.

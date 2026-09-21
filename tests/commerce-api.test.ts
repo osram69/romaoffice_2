@@ -45,15 +45,16 @@ test("database offers, immutable attachments and postal checkout", async t => {
     const catalog = await getCatalog(); const product = catalog.postal;
     await t.test("published legal and postal rates come from PostgreSQL", async () => {
       assert.deepEqual(product.tiers.map(t => [t.months, t.listCents, t.offerCents]), [[6, 30000, 28000], [12, 54000, 50000]]);
-      assert.equal(quote(product, { months: 6, additionalDomiciliation: true })!.totalCents, 30744);
-      assert.equal(quote(product, { months: 12, additionalDomiciliation: true })!.totalCents, 54900);
+      // "Domiciliazione aggiuntiva" does not exist for postal — the flag must be a no-op regardless of the tier's own DB default.
+      assert.equal(quote(product, { months: 6, additionalDomiciliation: true })!.totalCents, quote(product, { months: 6 })!.totalCents);
+      assert.equal(quote(product, { months: 12, additionalDomiciliation: true })!.totalCents, quote(product, { months: 12 })!.totalCents);
       assert.equal(quote(product, { months: 6, newActivation: true })!.newActivationDiscountCents, 0);
       assert.equal(quote(product, { months: 6, addons: [{ code: "virtual_secretary", quantity: 1 }] })!.totalCents, 69540);
       assert.equal(quote(product, { months: 6, addons: [{ code: "archive", quantity: 6 }] }), null);
       assert.equal(quote(catalog.legal_unit, { months: 12, newActivation: true, now: new Date("2026-09-01T12:00:00Z") })!.netCents, 49500);
     });
     const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-    const body = { lang: "it", service: "postal", representativeName: "QA Mario Rossi", representativeRole: "Titolare", representativeTaxCode: "RSSMRA80A01H501U", email, phone, companyExists: false, companyName: "QA Rossi Consulting Srl", months: 6, startDate: tomorrow, newActivation: false, additionalDomiciliation: false, addons: [{ code: "virtual_secretary", quantity: 1 }], consent: true, termsAccepted: true, catalogVersion: product.version, termsVersion: product.version };
+    const body = { lang: "it", service: "postal", representativeName: "QA Mario Rossi", representativeRole: "Titolare", representativeTaxCode: "RSSMRA80A01H501U", email, phone, companyExists: false, companyName: "QA Rossi Consulting Srl", companyTaxCode: "12345671009", months: 6, startDate: tomorrow, newActivation: false, additionalDomiciliation: false, addons: [{ code: "virtual_secretary", quantity: 1 }], consent: true, termsAccepted: true, catalogVersion: product.version, termsVersion: product.version };
     await t.test("database changes change the displayed catalogue and reject stale requests", async () => {
       try {
         await db.update(servicePrices).set({ offerCents: 28100 }).where(and(eq(servicePrices.service, "postal"), eq(servicePrices.months, 6)));
@@ -125,7 +126,7 @@ test("database offers, immutable attachments and postal checkout", async t => {
     });
     await t.test("a payment webhook winning the race still gets the customer their PDF and never double-emails", async () => {
       const email2 = `qa-commerce-race-${nonce}@example.invalid`;
-      const raceBody = { lang: "it", service: "legal_unit", representativeName: "QA Race Winner", representativeRole: "Titolare", representativeTaxCode: "RSSMRA80A01H501U", email: email2, phone, companyExists: false, companyName: "QA Race Winner Srl (in costituzione)", months: 12, startDate: tomorrow, newActivation: false, additionalDomiciliation: false, addons: [], consent: true, termsAccepted: false, catalogVersion: catalog.legal_unit.version, termsVersion: catalog.legal_unit.version };
+      const raceBody = { lang: "it", service: "legal_unit", representativeName: "QA Race Winner", representativeRole: "Titolare", representativeTaxCode: "RSSMRA80A01H501U", email: email2, phone, companyExists: false, companyName: "QA Race Winner Srl (in costituzione)", months: 12, startDate: tomorrow, newActivation: false, additionalDomiciliation: false, addons: [], consent: true, termsAccepted: true, catalogVersion: catalog.legal_unit.version, termsVersion: catalog.legal_unit.version };
       const created = await requestApi(makeRequest("/api/domiciliation-request", raceBody)); assert.equal(created.status, 201);
       const raceOrderId = (await created.json()).orderId; rateKeys.add(`order-verify:${raceOrderId}`);
       const raceCookie = `${ORDER_COOKIE}=${created.headers.get("set-cookie")?.match(new RegExp(`${ORDER_COOKIE}=([^;]+)`))?.[1]}`;
