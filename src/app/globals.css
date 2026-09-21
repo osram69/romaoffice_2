@@ -42,8 +42,11 @@
 .activation-steps{list-style:none;display:grid;grid-template-columns:repeat(4,1fr);gap:.7rem;padding:0;margin:0 0 2.5rem}
 .activation-steps li{display:flex;gap:.6rem;align-items:center;font-size:.72rem;font-weight:800;letter-spacing:.05em;color:var(--muted);border-bottom:2px solid var(--line);padding-bottom:.6rem}
 .activation-steps li span{width:24px;height:24px;border-radius:50%;background:var(--line);color:var(--ink);display:grid;place-items:center;font-size:.7rem;flex:none}
-.activation-steps li.active{color:var(--ink);border-color:var(--gold)}
-.activation-steps li.active span{background:var(--ink);color:#fff}
+.activation-steps li.done{color:var(--ink);border-color:var(--gold)}
+.activation-steps li.done span{background:var(--gold-dark);color:#fff}
+.activation-steps li.done span svg{width:13px;height:13px}
+.activation-steps li.current{color:var(--ink);font-weight:900;border-color:var(--ink)}
+.activation-steps li.current span{background:var(--ink);color:#fff;box-shadow:0 0 0 4px rgba(215,173,111,.35)}
 .activation-grid{display:grid;grid-template-columns:1.5fr .9fr;gap:3rem;align-items:start}
 .activation-summary{background:var(--cream);padding:2rem;position:sticky;top:110px}
 .activation-summary h3{font-family:Georgia,serif;color:var(--ink);font-size:1.5rem;margin:0 0 .8rem}

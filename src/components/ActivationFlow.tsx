@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { BadgePercent, CheckCircle2, LoaderCircle, RefreshCw, ShieldCheck } from "lucide-react";
+import { BadgePercent, Check, CheckCircle2, LoaderCircle, RefreshCw, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { copyFor, activationHref, validity, formatEur, quote, offerActive, type Catalog, type ServiceCode, type SelectedAddon, type Lang } from "@/lib/pricing";
 import { enabledPaymentMethodsList, type PaymentSettings } from "@/lib/payment-copy";
@@ -208,7 +208,11 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
     <div className="activation-service-selector" role="group" aria-label={it ? "Servizio da attivare" : "Service to activate"}>{(["legal_unit", "postal"] as ServiceCode[]).map(s => <Link key={s} href={activationHref(s, lang)} className={s === service ? "selected" : ""} aria-current={s === service ? "page" : undefined}>{copyFor(s, lang).nameShort}</Link>)}</div>
     {product.onlineDiscountEnabled && <div className="online-discount-banner"><BadgePercent/>{it ? `Sconto extra del ${product.onlineDiscountBps / 100}% attivando qui, online.` : `Extra ${product.onlineDiscountBps / 100}% discount for activating here, online.`}</div>}
     <ol className="activation-steps">
-      {t.steps.map((label, index) => <li key={label} className={step >= index + 1 ? "active" : ""} aria-current={step === index + 1 ? "step" : undefined}><span>{index + 1}</span>{label}</li>)}
+      {t.steps.map((label, index) => {
+        const n = index + 1;
+        const status = step > n ? "done" : step === n ? "current" : "upcoming";
+        return <li key={label} className={status} aria-current={status === "current" ? "step" : undefined}><span>{status === "done" ? <Check aria-hidden="true" /> : n}</span>{label}</li>;
+      })}
     </ol>
 
     <div className="activation-grid">
