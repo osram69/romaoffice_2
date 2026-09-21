@@ -6,6 +6,7 @@ import { copyFor, activationHref, validity, formatEur, quote, offerActive, type 
 import { enabledPaymentMethodsList, type PaymentSettings } from "@/lib/payment-copy";
 import { isValidTaxCode } from "@/lib/codice-fiscale";
 import { OfferTermsConsent } from "./OfferTerms";
+import { ManualRequestModal } from "./ManualRequestModal";
 import { LegalLinkModal } from "./LegalLinkModal";
 import { PrivacyNoticeContent } from "./LegalContent";
 type FormState = {
@@ -246,6 +247,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
             <label>{t.duration}*<select value={form.months} onChange={e => setForm({ ...form, months: Number(e.target.value) })}>
               {product.tiers.map(tier => <option key={tier.months} value={tier.months}>{copy.months(tier.months)} — {formatEur(offerActive(product) ? (tier.offerCents ?? tier.listCents) : tier.listCents, lang)} {it ? "+ IVA" : "+ VAT"}</option>)}
             </select></label>
+            {!postal && (product.smart3x24Active || product.smart6x24Active) && <div className="smart-start-note form-note">{it ? "Cerchi il contratto Smart-Start (3+24 o 6+24)? Ha una struttura a due tranche non gestibile dal pagamento automatico: richiedilo qui o per telefono." : "Looking for the Smart-Start agreement (3+24 or 6+24)? It has a two-instalment structure the automatic checkout can't handle: request it here or by phone."} <ManualRequestModal product={product} lang={lang} /></div>}
             <label>{t.startDate}*<input type="date" value={form.startDate} min={new Date().toISOString().slice(0, 10)} onChange={e => setForm({ ...form, startDate: e.target.value })} onBlur={e => setFieldError("startDate", validateStartDateField(e.target.value))} {...aria("startDate")} />{err("startDate")}</label>
             {!postal && product.tiers.some(x => x.newActivation) && <label className="check-label"><input type="checkbox" checked={form.newActivation} onChange={e => setForm({ ...form, newActivation: e.target.checked })} /> <span>{t.newActivation}</span></label>}
             {!postal && product.tiers.some(x => x.additionalDomiciliation) && <label className="check-label"><input type="checkbox" checked={form.additionalDomiciliation} onChange={e => setForm({ ...form, additionalDomiciliation: e.target.checked })} /> <span>{t.additional}</span></label>}
