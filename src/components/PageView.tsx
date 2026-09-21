@@ -54,7 +54,7 @@ async function PageBody({kind,lang,pageKey,initialService}:{kind:string;lang:Lan
   if(kind==="pricing") return <>
   <section className="section shell">
     <span className="eyebrow">{it?"TARIFFE":"PRICING"}</span>
-    <p className="pricing-intro">{it?"Completa la richiesta nella pagina di attivazione: nessun addebito avviene prima della conferma dei dati.":"Complete the request on the activation page: no charge is made before your details are confirmed."}</p>
+    <p className="pricing-intro">{it?"Scegli come procedere — attivazione online, richiesta del modulo o preventivo via email: nessun addebito avviene senza la tua conferma.":"Choose how to proceed — activate online, request the form, or ask for a quote by email: no charge is ever made without your confirmation."}</p>
     <PricingOffer product={catalog!.legal_unit} lang={lang}/>
     <PricingOffer product={catalog!.postal} lang={lang}/>
     <OtherOffers lang={lang}/>
