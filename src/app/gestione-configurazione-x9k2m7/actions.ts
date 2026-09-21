@@ -49,3 +49,13 @@ export async function updatePaymentSettingsAction(formData: FormData) {
   }).where(eq(siteConfig.id, 1));
   revalidatePath(BASE_PATH);
 }
+
+export async function updatePaymentsTestModeAction(formData: FormData) {
+  "use server";
+  await requireAdmin();
+  await db.update(siteConfig).set({
+    paymentsTestMode: formData.get("paymentsTestMode") === "on",
+  }).where(eq(siteConfig.id, 1));
+  revalidatePath(BASE_PATH);
+  revalidatePath("/attiva.html"); revalidatePath("/en/activate.html");
+}

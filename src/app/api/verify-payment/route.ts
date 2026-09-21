@@ -5,6 +5,7 @@ import { ownedOrder, type OrderSnapshot } from "@/lib/order-access";
 import { sendRequestConfirmation } from "@/lib/order-confirmation";
 import { markOrderPaidAndNotify } from "@/lib/order-payment";
 import { CustomerError, json, protectMutation } from "@/lib/customer-auth";
+import { paypalCredentials, stripeSecret, sumupCredentials } from "@/lib/payments";
 import type { RequestData } from "@/lib/request";
 const input = z.object({ order: z.string().uuid(), provider: z.enum(["stripe", "sumup", "paypal"]) });
 export async function POST(req: NextRequest) {
@@ -28,15 +29,18 @@ export async function POST(req: NextRequest) {
     }
     if (order.status !== "filled" || (order.service === "postal" && !order.termsAcceptedAt)) return json({ paid: false }, 403);
     let paid = false;
-    if (order.provider === "stripe" && process.env.STRIPE_SECRET) {
-      const s = await new Stripe(process.env.STRIPE_SECRET).checkout.sessions.retrieve(order.providerReference);
+    // The order's own stored test_mode, not the site's live toggle — a later flip must never make
+    // this look up a sandbox session with live credentials, or vice versa.
+    if (order.provider === "stripe" && stripeSecret(order.testMode)) {
+      const s = await new Stripe(stripeSecret(order.testMode)!).checkout.sessions.retrieve(order.providerReference);
       paid = s.payment_status === "paid" && s.metadata?.orderId === order.publicId && s.amount_total === order.amountCents && s.currency === "eur";
-    } else if (order.provider === "sumup" && process.env.SUMUP_API_KEY) {
-      const r = await fetch(`${process.env.SUMUP_API_URL || "https://api.sumup.com"}/v0.1/checkouts/${encodeURIComponent(order.providerReference)}`, { headers: { Authorization: `Bearer ${process.env.SUMUP_API_KEY}` }, signal: AbortSignal.timeout(12000) });
-      if (r.ok) { const s = await r.json(); paid = s.status === "PAID" && s.checkout_reference === order.publicId && s.merchant_code === process.env.SUMUP_MERCHANT_CODE && s.currency === "EUR" && Math.round(Number(s.amount) * 100) === order.amountCents; }
-    } else if (order.provider === "paypal" && process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_SECRET) {
-      const api = process.env.PAYPAL_API_URL || "https://api-m.sandbox.paypal.com";
-      const tokenRes = await fetch(`${api}/v1/oauth2/token`, { method: "POST", headers: { Authorization: `Basic ${Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_SECRET}`).toString("base64")}`, "Content-Type": "application/x-www-form-urlencoded" }, body: "grant_type=client_credentials", signal: AbortSignal.timeout(12000) });
+    } else if (order.provider === "sumup" && sumupCredentials(order.testMode).apiKey) {
+      const { apiKey, merchantCode, api } = sumupCredentials(order.testMode);
+      const r = await fetch(`${api}/v0.1/checkouts/${encodeURIComponent(order.providerReference)}`, { headers: { Authorization: `Bearer ${apiKey}` }, signal: AbortSignal.timeout(12000) });
+      if (r.ok) { const s = await r.json(); paid = s.status === "PAID" && s.checkout_reference === order.publicId && s.merchant_code === merchantCode && s.currency === "EUR" && Math.round(Number(s.amount) * 100) === order.amountCents; }
+    } else if (order.provider === "paypal" && paypalCredentials(order.testMode).clientId && paypalCredentials(order.testMode).secret) {
+      const { clientId, secret, api } = paypalCredentials(order.testMode);
+      const tokenRes = await fetch(`${api}/v1/oauth2/token`, { method: "POST", headers: { Authorization: `Basic ${Buffer.from(`${clientId}:${secret}`).toString("base64")}`, "Content-Type": "application/x-www-form-urlencoded" }, body: "grant_type=client_credentials", signal: AbortSignal.timeout(12000) });
       const access = (await tokenRes.json()).access_token; if (!access) return json({ paid: false }, 502);
       const headers = { Authorization: `Bearer ${access}`, "Content-Type": "application/json" };
       const detail = await fetch(`${api}/v2/checkout/orders/${encodeURIComponent(order.providerReference)}`, { headers, signal: AbortSignal.timeout(12000) });

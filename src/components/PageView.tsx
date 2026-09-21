@@ -15,7 +15,7 @@ import { PricingOffer } from "./PricingOffers";
 import { alternateFor, contact, hrefFor, pages, services, ui, type Lang } from "@/lib/site";
 
 const icons = { desk: Building2, building: BadgeCheck, mail: Mail, monitor: MonitorSmartphone };
-export async function PageView({ pageKey, lang, initialService = "legal_unit" }: { pageKey: string; lang: Lang; initialService?: ServiceCode }) {
+export async function PageView({ pageKey, lang, initialService = "legal_unit", testToken }: { pageKey: string; lang: Lang; initialService?: ServiceCode; testToken?: string }) {
   const page = pages[pageKey]; const t = ui[lang]; const it = lang === "it"; const home = lang === "it" ? "/" : "/en/index.html";
   return <main id="main">
     {page.kind === "home" ? <>
@@ -31,7 +31,7 @@ export async function PageView({ pageKey, lang, initialService = "legal_unit" }:
     </> : <>
       <h1 className="sr-only">{page.title}</h1>
       <Breadcrumb lang={lang} title={page.title} home={home} bare={hasAddressDetail(pageKey)} />
-      <PageBody kind={page.kind} lang={lang} pageKey={pageKey} initialService={initialService} />
+      <PageBody kind={page.kind} lang={lang} pageKey={pageKey} initialService={initialService} testToken={testToken} />
     </>}
   </main>;
 }
@@ -40,7 +40,7 @@ function Breadcrumb({ lang, title, home, bare }: {lang:Lang;title:string;home:st
 function ServiceGrid({lang}:{lang:Lang}) { return <div className="service-grid">{services[lang].map(s=>{const Icon=icons[s.icon as keyof typeof icons];return <article className="service-card" key={s.title}><div className="service-icon"><Icon /></div><h3>{s.title}</h3><p>{s.text}</p><Link href={s.href}>{ui[lang].discover}<ArrowRight/><span className="sr-only">: {s.title}</span></Link></article>})}</div>; }
 function Cta({lang}:{lang:Lang}) {const it=lang==="it";return <section className="cta-band"><div className="shell"><div><span className="eyebrow light">{it?"PARLIAMONE":"LET’S TALK"}</span><h2>{it?"Pronto a dare spazio alla tua attività?":"Ready to give your business room to grow?"}</h2></div><div><Link className="button accent" href={it?"/attiva.html":"/en/activate.html"}>{it?"ATTIVA ONLINE":"ACTIVATE ONLINE"}<ArrowRight/></Link><Link className="button secondary" href={it?"/contatti.html":"/en/contact.html"}>{it?"RICHIEDI INFORMAZIONI":"REQUEST INFORMATION"}</Link><a href={`tel:${contact.phoneHref}`}>{ui[lang].call}</a></div></div></section>}
 
-async function PageBody({kind,lang,pageKey,initialService}:{kind:string;lang:Lang;pageKey:string;initialService:ServiceCode}) {
+async function PageBody({kind,lang,pageKey,initialService,testToken}:{kind:string;lang:Lang;pageKey:string;initialService:ServiceCode;testToken?:string}) {
  const it=lang==="it"; const p=pages[pageKey]; const t=ui[lang];
  const catalog = kind === "pricing" || kind === "activation" || hasAddressDetail(pageKey) ? await getCatalog() : null;
  if(kind==="gallery") return <Gallery lang={lang}/>;
@@ -74,7 +74,7 @@ async function PageBody({kind,lang,pageKey,initialService}:{kind:string;lang:Lan
   if(kind==="activation") return <>
   <section className="section shell">
     <div className="section-heading"><div><span className="eyebrow">{it?"MODULO DI RICHIESTA":"REQUEST FORM"}</span><h2>{it?"I tuoi dati":"Your details"}</h2></div><p>{it?"I campi contrassegnati con * sono obbligatori. Il numero di cellulare viene verificato con un codice SMS prima dell’invio.":"Fields marked * are mandatory. Your mobile number is verified with an SMS code before submission."}</p></div>
-    <ActivationFlow key={`${lang}-${initialService}`} lang={lang} catalog={catalog!} initialService={initialService} paymentSettings={await getPaymentSettings()}/>
+    <ActivationFlow key={`${lang}-${initialService}`} lang={lang} catalog={catalog!} initialService={initialService} paymentSettings={await getPaymentSettings(testToken)} testToken={testToken}/>
   </section>
   <Cta lang={lang}/>
   </>;

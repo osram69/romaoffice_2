@@ -18,7 +18,7 @@ type FormState = {
 type BankDetails = { holder: string; iban: string; bic: string; bank: string; causale: string; amount: string };
 type FinalizeResult = { paymentMethod: string; orderRef: string; shortRef?: string; emailSent: boolean; pdfBase64?: string; message?: string; totalCents?: number; bankTransferDetails?: BankDetails; paymentUnavailable?: boolean; paymentConfirmed?: boolean };
 
-export function ActivationFlow({ lang, catalog: initialCatalog, initialService, paymentSettings }: { lang: Lang; catalog: Catalog; initialService: ServiceCode; paymentSettings: PaymentSettings }) {
+export function ActivationFlow({ lang, catalog: initialCatalog, initialService, paymentSettings, testToken }: { lang: Lang; catalog: Catalog; initialService: ServiceCode; paymentSettings: PaymentSettings; testToken?: string }) {
   const it = lang === "it";
   const [catalog, setCatalog] = useState(initialCatalog);
   const service = initialService; const product = catalog[service]; const postal = service === "postal";
@@ -184,7 +184,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
   async function finalize() {
     setBusy(true); setStatus("");
     try {
-      const res = await fetch("/api/domiciliation-request/finalize", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId, paymentMethod: payment }) });
+      const res = await fetch("/api/domiciliation-request/finalize", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId, paymentMethod: payment, testToken }) });
       const data = await res.json();
       if (!res.ok) {
         if (data.error === "prices-changed") { setStatus(it ? "Tariffe o condizioni aggiornate. Ricarica la pagina e controlla il nuovo riepilogo prima di proseguire." : "Prices or terms have changed. Reload and review the new summary before continuing."); return; }

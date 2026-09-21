@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { serviceCatalog, siteConfig } from "@/db/schema";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
-import { updateOnlineDiscountAction, updatePaymentSettingsAction, updateSmartFlagsAction } from "./actions";
+import { updateOnlineDiscountAction, updatePaymentSettingsAction, updatePaymentsTestModeAction, updateSmartFlagsAction } from "./actions";
 import { GestioneShell } from "@/components/GestioneNav";
 
 const checkboxRow = { display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "#232f3e" } as const;
@@ -19,6 +19,8 @@ export default async function ConfigurazioneWebPage() {
     db.select().from(serviceCatalog).where(eq(serviceCatalog.code, "legal_unit")),
     db.select().from(siteConfig).where(eq(siteConfig.id, 1)),
   ]);
+  const testBypassToken = process.env.PAYMENTS_TEST_BYPASS_TOKEN;
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
 
   return (
     <GestioneShell role={user.role} active="configurazione" username={user.username}>
@@ -39,6 +41,26 @@ export default async function ConfigurazioneWebPage() {
           <label style={checkboxRow}><input type="checkbox" name="bankTransferEnabled" defaultChecked={payments?.bankTransferEnabled ?? true} /> Bonifico bancario</label>
           <button type="submit" className="gestione-btn gestione-btn-blue">Salva</button>
         </form>
+      </section>
+
+      <section className="gestione-card" style={{ padding: 24, marginBottom: 24 }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: "#232f3e", marginTop: 0 }}>Modalità test pagamenti</h2>
+        <p style={{ fontSize: 12, color: "#666", marginTop: -6 }}>
+          Quando attiva, Stripe/PayPal/SumUp scompaiono dalla pagina di attivazione pubblica (il bonifico resta sempre visibile, non passa da un provider). Usa il link con il codice qui sotto per continuare a testare i pagamenti in sandbox: solo chi apre quel link li vede e può usarli.
+        </p>
+        <form action={updatePaymentsTestModeAction} style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "center" }}>
+          <label style={checkboxRow}><input type="checkbox" name="paymentsTestMode" defaultChecked={payments?.paymentsTestMode ?? false} /> Attiva</label>
+          <button type="submit" className="gestione-btn gestione-btn-blue">Salva</button>
+        </form>
+        {testBypassToken ? (
+          <p style={{ fontSize: 12, color: "#666", marginTop: 12, wordBreak: "break-all" }}>
+            Link di test: <code>{siteUrl}/attiva.html?test={testBypassToken}</code> · <code>{siteUrl}/en/activate.html?test={testBypassToken}</code>
+          </p>
+        ) : (
+          <p style={{ fontSize: 12, color: "#A52A2A", marginTop: 12 }}>
+            Imposta la variabile d&apos;ambiente PAYMENTS_TEST_BYPASS_TOKEN per generare il link di test.
+          </p>
+        )}
       </section>
 
       <section className="gestione-card" style={{ padding: 24, marginBottom: 24 }}>

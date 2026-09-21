@@ -10,17 +10,17 @@ import { CustomerError, json, protectMutation } from "@/lib/customer-auth";
 import { paymentMethodSchema } from "@/lib/request";
 import { paymentMethodEnabled } from "@/lib/payment-settings";
 import { shortOrderRef } from "@/lib/order-ref";
-const input = z.object({ orderId: z.string().uuid(), paymentMethod: paymentMethodSchema });
+const input = z.object({ orderId: z.string().uuid(), paymentMethod: paymentMethodSchema, testToken: z.string().optional() });
 const ONLINE_METHODS = ["stripe", "paypal", "sumup"] as const;
 export async function POST(req: NextRequest) {
   try {
     protectMutation(req); const parsed = input.safeParse(await req.json()); if (!parsed.success) return json({ error: "invalid" }, 400);
-    const { orderId, paymentMethod } = parsed.data;
+    const { orderId, paymentMethod, testToken } = parsed.data;
     const { order, data, snapshot } = await readyOrder(req, orderId);
     if (order.status === "paid" || order.status === "signed") return json({ paid: true, orderRef: orderId });
     const { product, quote: priced } = snapshot; const it = data.lang === "it";
     if (paymentMethod === "on_site" && product.code !== "postal") return json({ error: "invalid-payment-method" }, 400);
-    if (!(await paymentMethodEnabled(paymentMethod))) return json({ error: "invalid-payment-method" }, 400);
+    if (!(await paymentMethodEnabled(paymentMethod, testToken))) return json({ error: "invalid-payment-method" }, 400);
     const isOnline = (ONLINE_METHODS as readonly string[]).includes(paymentMethod);
     await db.transaction(async tx => {
       const [current] = await tx.select().from(orders).where(eq(orders.id, order.id)).for("update");
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     if (isOnline) {
       // The request PDF is built and emailed only once the online payment actually succeeds
       // (see /api/verify-payment) — not here, since the customer hasn't paid yet at this point.
-      const checkout = await checkoutOrder(req, orderId, paymentMethod as "stripe" | "paypal" | "sumup");
+      const checkout = await checkoutOrder(req, orderId, paymentMethod as "stripe" | "paypal" | "sumup", testToken);
       return json({ paymentMethod, orderRef: orderId, shortRef, totalCents: priced.totalCents,
         message: it ? "Procedi al pagamento online per completare la pratica. Il modulo compilato ti sarà inviato via email dopo la conferma del pagamento." : "Proceed with online payment to complete the application. The completed form will be emailed to you once payment is confirmed.",
         ...checkout });

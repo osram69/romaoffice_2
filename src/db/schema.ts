@@ -20,6 +20,10 @@ export const orders = pgTable("orders", {
   termsText: text("terms_text"), requestEmailSentAt: timestamp("request_email_sent_at", { withTimezone: true }),
   adminEmailSentAt: timestamp("admin_email_sent_at", { withTimezone: true }), checkoutUrl: text("checkout_url"),
   status: orderStatus("status").notNull().default("pending"), formData: jsonb("form_data"), signaturePath: text("signature_path"),
+  // Set once, at checkout-session creation, from the site's payments-test-mode toggle at that
+  // moment — never re-read live, so flipping the toggle later can't make verification/webhooks
+  // look up a sandbox session with live credentials (or vice versa).
+  testMode: boolean("test_mode").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -106,6 +110,11 @@ export const siteConfig = pgTable("site_config", {
   // flow (ActivationFlow) — not when staff quote or process a request manually.
   onlineDiscountEnabled: boolean("online_discount_enabled").notNull().default(false),
   onlineDiscountBps: integer("online_discount_bps").notNull().default(1000),
+  // When on, Stripe/PayPal/SumUp disappear from the public checkout (bank transfer stays, since it
+  // never touches a payment gateway) so real customers can't pay while payments are being tested —
+  // a request carrying the correct PAYMENTS_TEST_BYPASS_TOKEN still sees them, routed to sandbox
+  // credentials, so staff can keep testing without exposing it publicly.
+  paymentsTestMode: boolean("payments_test_mode").notNull().default(false),
 });
 export const servicePrices = pgTable("service_prices", {
   id: serial("id").primaryKey(), service: varchar("service", { length: 30 }).notNull().references(() => serviceCatalog.code),

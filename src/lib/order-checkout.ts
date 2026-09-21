@@ -6,13 +6,14 @@ import { readyOrder } from "./order-access";
 import { CustomerError } from "./customer-auth";
 import { copyFor, shortServiceLabel } from "./pricing";
 import { createPaymentSession, providerConfigured, type ProviderKey } from "./payments";
-import { paymentMethodEnabled } from "./payment-settings";
-export async function checkoutOrder(req: NextRequest, orderId: string, provider: ProviderKey) {
+import { paymentMethodEnabled, paymentsTestMode } from "./payment-settings";
+export async function checkoutOrder(req: NextRequest, orderId: string, provider: ProviderKey, testToken?: string) {
   const { order, data, snapshot } = await readyOrder(req, orderId);
   if (order.status === "paid" || order.status === "signed") return { paid: true, orderRef: orderId };
   if (order.status !== "filled") throw new CustomerError("submit-request-first", 403);
   const it = data.lang === "it";
-  if (!providerConfigured(provider) || !(await paymentMethodEnabled(provider))) return { paymentUnavailable: true, message: it ? "La richiesta è registrata, ma questo pagamento online non è ancora disponibile. Scegli bonifico o contatta la reception. Nessun addebito è stato eseguito." : "Your application is recorded, but this online payment method is not yet available. Choose bank transfer or contact reception. No charge has been made." };
+  const testMode = await paymentsTestMode();
+  if (!providerConfigured(provider, testMode) || !(await paymentMethodEnabled(provider, testToken))) return { paymentUnavailable: true, message: it ? "La richiesta è registrata, ma questo pagamento online non è ancora disponibile. Scegli bonifico o contatta la reception. Nessun addebito è stato eseguito." : "Your application is recorded, but this online payment method is not yet available. Choose bank transfer or contact reception. No charge has been made." };
   return db.transaction(async tx => {
     const [locked] = await tx.select().from(orders).where(eq(orders.id, order.id)).for("update");
     if (locked.status === "paid" || locked.status === "signed") return { paid: true, orderRef: orderId };
@@ -26,9 +27,9 @@ export async function checkoutOrder(req: NextRequest, orderId: string, provider:
     // Short label (no "/ Unità Locale") — the full copy.name makes this too long on the
     // Stripe/PayPal/SumUp checkout screen.
     const description = `${shortServiceLabel(snapshot.product.code, data.lang)} — ${copy.months(order.durationMonths)} — ${data.representativeName} (CF ${data.representativeTaxCode})`;
-    const session = await createPaymentSession({ provider, service: snapshot.product.code, orderId, lang: data.lang, origin, email: order.email, totalCents: order.amountCents, description });
+    const session = await createPaymentSession({ provider, service: snapshot.product.code, orderId, lang: data.lang, origin, email: order.email, totalCents: order.amountCents, description, testMode });
     if (!("url" in session)) return { paymentUnavailable: true, message: session.message };
-    await tx.update(orders).set({ provider, providerReference: session.providerRef, paymentMethod: provider, checkoutUrl: session.url, updatedAt: new Date() }).where(eq(orders.id, order.id));
+    await tx.update(orders).set({ provider, providerReference: session.providerRef, paymentMethod: provider, checkoutUrl: session.url, testMode, updatedAt: new Date() }).where(eq(orders.id, order.id));
     return { url: session.url, orderRef: orderId };
   });
 }
