@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { headers } from "next/headers";
 import { CookieConsent, Footer, Header } from "@/components/SiteChrome";
 import { Analytics } from "@/components/Analytics";
+import { TawkChat } from "@/components/TawkChat";
 import { alternateFor, BASE_URL, contact, resolvePath } from "@/lib/site";
 import "./globals.css";
 import "./features.css";
@@ -31,5 +32,5 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     geo: { "@type": "GeoCoordinates", latitude: 41.9037423, longitude: 12.4934357 },
     openingHoursSpecification: [{ "@type": "OpeningHoursSpecification", dayOfWeek: ["Monday","Tuesday","Wednesday","Thursday","Friday"], opens: "08:30", closes: "18:00" }, { "@type": "OpeningHoursSpecification", dayOfWeek: "Saturday", opens: "08:30", closes: "13:00", description: lang === "it" ? "Su richiesta" : "On request" }],
   };
-  return <html lang={lang}><body><Analytics /><Header lang={lang} alternate={alternateFor(key)} />{children}<Footer lang={lang}/><CookieConsent lang={lang}/><script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(jsonLd).replace(/</g,"\\u003c")}} /></body></html>;
+  return <html lang={lang}><body><Analytics /><TawkChat /><Header lang={lang} alternate={alternateFor(key)} />{children}<Footer lang={lang}/><CookieConsent lang={lang}/><script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(jsonLd).replace(/</g,"\\u003c")}} /></body></html>;
 }
