@@ -64,8 +64,8 @@ function buildScanSettingsXml(opts: Required<Pick<ScanOptions, "resolution" | "c
   <scan:XResolution>${opts.resolution}</scan:XResolution>
   <scan:YResolution>${opts.resolution}</scan:YResolution>
   <scan:Duplex>${duplex}</scan:Duplex>
-  <pwg:DocumentFormat>application/pdf</pwg:DocumentFormat>
-  <scan:DocumentFormatExt>application/pdf</scan:DocumentFormatExt>
+  <pwg:DocumentFormat>image/jpeg</pwg:DocumentFormat>
+  <scan:DocumentFormatExt>image/jpeg</scan:DocumentFormatExt>
 </scan:ScanSettings>`;
 }
 
@@ -105,10 +105,13 @@ function pageFormat(page: Buffer): ScannedPage["format"] {
 }
 
 /** Scans one document (single page from the flatbed, or every page the feeder holds) and returns
- * each page's raw bytes as the scanner sent them — JPEG/PNG on most real-world eSCL devices
- * despite requesting application/pdf, occasionally a one-page PDF. Kept separate from pagesToPdf
- * so callers that want individual page thumbnails (JPEG/PNG can be shown directly as an <img>,
- * no PDF rendering needed) don't have to re-parse a merged PDF to get them back out. */
+ * each page's raw bytes as the scanner sent them. The scan request asks for image/jpeg (see
+ * buildScanSettingsXml) specifically so real thumbnails can be shown — pdf-lib can only assemble
+ * a PDF, not rasterize one, so if a device ignored that and sent PDF pages anyway there'd be no
+ * cheap way to preview them; the "pdf" branch below exists only as a fallback for that case (a
+ * generic icon is shown instead of a thumbnail — see DomMailScanPanel). Kept separate from
+ * pagesToPdf so callers that want individual page thumbnails don't have to re-parse a merged PDF
+ * to get them back out. */
 export async function scanPages(options: ScanOptions): Promise<ScannedPage[]> {
   const opts = {
     host: options.host, port: options.port, https: options.https,

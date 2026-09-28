@@ -11,9 +11,9 @@
  *   POST /scan   body: { host, port?, https?, resolution?, color?, source?, pageSize? }
  *                -> { success, pdf_base64, filename, pages: [{ base64, isImage, mimeType }] }
  *                   | { success:false, message }
- *                `pages` lets the browser show a thumbnail per scanned page immediately (most
- *                eSCL devices return JPEG per page regardless of the requested format) without
- *                waiting for/re-parsing the merged PDF.
+ *                `pages` lets the browser show a real thumbnail per scanned page (the scan
+ *                request asks the device for image/jpeg — see escl-scanner.ts) without waiting
+ *                for/re-parsing the merged PDF.
  */
 import { createServer } from "node:http";
 import { getScannerCapabilities, pagesToPdf, scanPages, type ScanOptions } from "../src/lib/escl-scanner";
