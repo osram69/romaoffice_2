@@ -322,17 +322,21 @@ export async function sendMailScanAction(domClientId: number, channel: MailScanC
   const bodyHtml = `<p>${text.trim().replace(/\n/g, "<br>\n")}</p>`;
   const html = `<html>\n<head>\n<title>${mailScanPageTitle(channel)}</title>\n</head>\n<body>\n${bodyHtml}\n${mailScanDisclaimerHtml(channel)}\n</body>\n</html>`;
 
-  const safeName = client.ragioneSociale.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "") || String(client.id);
   const result = await sendDomMail(account, {
     to, cc: cc.join(","), bcc, subject, html, text: html.replace(/<[^>]+>/g, " "),
-    attachments: [{ filename: `posta_${safeName}.pdf`, content: pdf, contentType: "application/pdf" }],
+    // Fixed name (legacy: PHPMailer's addAttachment() on the local tmp/scansione.pdf file) rather
+    // than one derived per company — matches ajax_send_mail.php exactly.
+    attachments: [{ filename: "scansione.pdf", content: pdf, contentType: "application/pdf" }],
   });
   if (!result.sent) return { success: false, message: `Invio non riuscito (${result.reason})` };
 
   await db.delete(domMailScans).where(eq(domMailScans.id, scan.id));
   await removeMailScanEncrypted(scan.id);
   revalidatePath(BASE_PATH);
-  return { success: true };
+  // Success wording ported from ajax_send_mail.php's $success_message per case, for the per-row
+  // status message in the dashboard (see DomiciliazioniTable).
+  const successPrefix = channel === "pec" ? "PEC inviata a " : channel === "aperta" ? "Apertura corrispondenza inviata a " : "Mail inviata a ";
+  return { success: true, message: successPrefix + to };
 }
 
 // Draft the scadenza reminder for staff to review/edit before sending — never sent unmodified.

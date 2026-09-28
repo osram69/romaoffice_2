@@ -91,6 +91,7 @@
 
 tr.gestione-letter-row { scroll-margin-top: 70px; }
 .dom-list-table tbody tr.gestione-letter-row td { background: #eaeaea; font-weight: bold; font-size: 26px !important; letter-spacing: 2px; color: #232f3e; padding: 5px 12px; line-height: 1.3 !important; }
+.dom-list-table tbody tr.gestione-row-status-row td { padding: 3px 12px; font-size: 11px; white-space: normal; background: #fbfbfb; border-top: none; }
 .gestione-ragione-link { color: #007bff; text-decoration: none; }
 .gestione-ragione-link:hover { text-decoration: underline; }
 .gestione-ragione-link.revoca { color: #dc3545; }

@@ -97,11 +97,17 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds }: { rows: Dom
     });
   }
 
+  // Shown in a row right under the company's own, exactly like the legacy tool's per-row
+  // statusMsg — "Invio..." while in flight, then the result (green on success, red on error).
+  const [rowStatus, setRowStatus] = useState<Record<number, { text: string; color: string }>>({});
+
   async function handleSendMailScan(row: DomClient, channel: MailScanChannel) {
     setSendingId(row.id);
+    setRowStatus(prev => ({ ...prev, [row.id]: { text: "Invio...", color: "#555" } }));
     const result = await sendMailScanAction(row.id, channel);
     setSendingId(null);
-    if (!result.success) { alert(result.message || "Errore durante l'invio"); return; }
+    setRowStatus(prev => ({ ...prev, [row.id]: result.success ? { text: result.message || "Inviato.", color: "#006a43" } : { text: result.message || "Errore durante l'invio", color: "#c00" } }));
+    if (!result.success) return;
     setPendingFor(row.id, false);
   }
   const [schedaTab, setSchedaTab] = useState<"dati" | "scadenza" | "proforma">("dati");
@@ -223,6 +229,11 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds }: { rows: Dom
                           </div>
                         )}
                       </td>
+                    </tr>
+                  )}
+                  {!decadute && rowStatus[row.id] && (
+                    <tr className="gestione-row-status-row">
+                      <td colSpan={colCount} style={{ color: rowStatus[row.id].color, fontWeight: 700 }}>{rowStatus[row.id].text}</td>
                     </tr>
                   )}
                 </Fragment>

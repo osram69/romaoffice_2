@@ -71,8 +71,13 @@ async function deliver(account: { host: string; port: number; user: string; pass
       html: payload.html,
       attachments: payload.attachments,
     });
+    // payload.to can be a comma-separated list (e.g. the PEC channel "to"s both the ordinary
+    // address and the PEC address) — info.accepted lists each address individually, so every
+    // requested address must appear in it, not the joined string as a single entry.
+    const requestedTo = payload.to.split(",").map(addr => addr.trim().toLowerCase()).filter(Boolean);
     const accepted = (info.accepted || []).map(value => String(value).toLowerCase());
-    if (!accepted.includes(payload.to.toLowerCase())) {
+    const allAccepted = requestedTo.length > 0 && requestedTo.every(addr => accepted.includes(addr));
+    if (!allAccepted) {
       console.error("Mail delivery failed: recipient rejected", { to: payload.to, accepted: info.accepted, rejected: info.rejected });
       return { sent: false, reason: "recipient-rejected" };
     }

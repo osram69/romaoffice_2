@@ -66,6 +66,7 @@ Ricalca esattamente il flusso del vecchio tool:
 3. Se la scansione è sbagliata, si ripreme Allega: il nuovo file sostituisce quello già in sospeso (Invia/PEC/Aperta restano attivi, ora sull'ultima scansione).
 4. Premendo **Invia** (email ordinaria), **PEC** (via PEC — richiede un indirizzo PEC in anagrafica, altrimenti segnala errore) o **Aperta** (staff ha già letto il contenuto al cliente per telefono: invia comunque un'email, ma con testo che lo dice esplicitamente invece di "in allegato trova la scansione"), l'email parte **subito, senza alcuna conferma o anteprima** — a differenza delle email di scadenza, qui oggetto/testo/informativa sono fissi (portati dal vecchio tool), non c'è niente da personalizzare o rivedere caso per caso.
 5. Inviata con successo l'email (con la scansione allegata), il file viene **eliminato dal server** e Invia/PEC/Aperta tornano disabilitati per quella società — nessuno storico separato: il messaggio inviato (visibile nella cartella "Inviati" della relativa casella email) è la traccia che resta.
+6. Esito dell'invio (in corso / riuscito / fallito, con il motivo) compare in una riga sotto quella della società — stesso posto e stile del vecchio `statusMsg` — invece che in un popup: "Invio..." mentre parte, poi il messaggio (verde) o l'errore (rosso).
 
 ### Testi email: identici al vecchio tool
 
