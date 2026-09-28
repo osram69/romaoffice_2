@@ -1,11 +1,31 @@
+/**
+ * Syncs dom_clients (Supabase/Postgres) from a fresh phpMyAdmin dump of the legacy MySQL
+ * `domiciliazioni` table — unlike import-domiciliazioni-dump.ts (which only inserts rows that
+ * don't exist yet, for the one-time initial migration), this UPDATES existing rows too, matched
+ * by legacy_id, so it can be re-run whenever the legacy site (still the system of record for this
+ * data) has moved on and this site's copy has gone stale.
+ *
+ * Only touches the columns that actually come from the legacy table. Never touches: `id`,
+ * `created_at`, or this site's own additions that have no legacy equivalent — `primo_rinnovo`,
+ * `area_clienti_email`, `area_clienti_password_hash`, `must_change_password` (Area Clienti login,
+ * set directly by staff on this site) — and never deletes anything, so a company created only on
+ * this site (no legacy_id) is untouched.
+ *
+ * Uso:  npx tsx scripts/sync-domiciliazioni-dump.ts <percorso-dump.sql>
+ *
+ * IMPORTANT: this overwrites existing rows' data from the dump — take a Supabase backup/snapshot
+ * first (Database → Backups in the Supabase dashboard) in case anything was edited on this site's
+ * own dashboard since the two diverged and shouldn't be overwritten.
+ */
 import "dotenv/config";
 import { readFileSync } from "node:fs";
 import { Parser } from "node-sql-parser";
+import { eq } from "drizzle-orm";
 import { db, pool } from "@/db";
 import { domClients } from "@/db/schema";
 
 const dumpPath = process.argv[2];
-if (!dumpPath) { console.error("Uso: npx tsx scripts/import-domiciliazioni-dump.ts <percorso-dump.sql>"); process.exit(1); }
+if (!dumpPath) { console.error("Uso: npx tsx scripts/sync-domiciliazioni-dump.ts <percorso-dump.sql>"); process.exit(1); }
 
 function unescape(value: string) {
   return value.replace(/\\'/g, "'").replace(/\\"/g, '"');
@@ -60,16 +80,20 @@ async function main() {
     rows.push(...insert.values.values);
   }
 
-  console.log(`Trovate ${inserts.length} statement INSERT, ${rows.length} righe totali da importare nella tabella domiciliazioni.`);
+  console.log(`Trovate ${inserts.length} statement INSERT, ${rows.length} righe totali nel dump.`);
+
+  const existing = await db.select({ legacyId: domClients.legacyId }).from(domClients);
+  const existingIds = new Set(existing.map(r => r.legacyId).filter((id): id is number => id !== null));
 
   let inserted = 0;
-  let skipped = 0;
+  let updated = 0;
   for (const row of rows) {
     const record: Record<string, string | number | boolean | null> = {};
     columns.forEach((col, i) => { record[col] = literalToJs(row.value[i]); });
 
-    const [result] = await db.insert(domClients).values({
-      legacyId: Number(record.id),
+    const legacyId = Number(record.id);
+    const values = {
+      legacyId,
       ragioneSociale: String(record.ragione_sociale ?? ""),
       sede: record.sede === null ? 1 : Number(record.sede),
       emailPosta: toText(record.email_posta) ?? "",
@@ -99,12 +123,19 @@ async function main() {
       raccoglitore: Number(record.raccoglitore ?? 0),
       prezzoRinnovo: record.prezzo_rinnovo === null ? null : Number(record.prezzo_rinnovo),
       scadenzaInviata: toBool(record.scadenza_inviata),
-    }).onConflictDoNothing({ target: domClients.legacyId }).returning({ id: domClients.id });
+    };
 
-    if (result) inserted++; else skipped++;
+    if (existingIds.has(legacyId)) {
+      const { legacyId: _legacyId, ...updateFields } = values;
+      await db.update(domClients).set({ ...updateFields, updatedAt: new Date() }).where(eq(domClients.legacyId, legacyId));
+      updated++;
+    } else {
+      await db.insert(domClients).values(values);
+      inserted++;
+    }
   }
 
-  console.log(`Importazione completata: ${inserted} nuove righe, ${skipped} già presenti (saltate).`);
+  console.log(`Sincronizzazione completata: ${inserted} nuove righe inserite, ${updated} righe esistenti aggiornate.`);
   await pool.end();
 }
 
