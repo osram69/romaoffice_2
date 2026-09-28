@@ -1,7 +1,11 @@
 export type Lang = "it" | "en";
 export type PageKind = "home" | "contact" | "legal" | "pricing" | "privacy" | "cookies" | "location" | "about" | "testimonials" | "service" | "rooms" | "secretary" | "activation" | "gallery" | "customer";
 
-export const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.romaofficesharing.it";
+// Every caller appends its own leading "/" (or "#"), so a trailing slash left in the env var here
+// — e.g. NEXT_PUBLIC_SITE_URL="https://example.com/" — would double up into "https://example.com//path",
+// exactly the "URL non consentito" errors Search Console reported for the sitemap. Stripped here
+// once so it can't happen regardless of how the env var ends up configured.
+export const BASE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://www.romaofficesharing.it").replace(/\/+$/, "");
 export const contact = {
   address: "Via Venti Settembre, 118 int.1 - 00187 - Roma",
   phone: "+39 06 21.11.6268",
