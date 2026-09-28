@@ -74,3 +74,24 @@
   .hero-secondary{font-size:.68rem}
   .offer-notes{padding-left:.9rem}
 }
+
+/* Floating WhatsApp button — replaces the Tawk.to chat widget. Pill with icon + label on desktop,
+   collapses to a plain round icon button on narrow screens; fades/slides in shortly after mount
+   instead of popping in with the rest of the page. */
+.whatsapp-fab{
+  position:fixed;right:clamp(16px,3vw,32px);bottom:clamp(16px,3vw,32px);z-index:95;
+  display:inline-flex;align-items:center;gap:.6em;height:54px;padding-inline:19px;
+  border-radius:999px;background:var(--ink);color:#fff;border:1px solid var(--ink);
+  box-shadow:0 6px 24px rgba(0,0,0,.22);font-size:.8rem;font-weight:600;letter-spacing:.09em;
+  text-transform:uppercase;text-decoration:none;
+  opacity:0;transform:translateY(14px) scale(.94);pointer-events:none;
+  transition:opacity .32s cubic-bezier(.22,.61,.36,1),transform .32s cubic-bezier(.22,.61,.36,1),background .2s,color .2s;
+}
+.whatsapp-fab-visible{opacity:1;transform:none;pointer-events:auto}
+.whatsapp-fab:hover{background:#fff;color:var(--ink)}
+.whatsapp-fab-glyph{width:21px;height:21px;flex:0 0 auto;fill:currentColor}
+@media(max-width:599px){
+  .whatsapp-fab{width:54px;height:54px;padding:0;justify-content:center}
+  .whatsapp-fab-label{display:none}
+}
+@media(prefers-reduced-motion:reduce){.whatsapp-fab{transition:opacity .01ms;transform:none!important}}
