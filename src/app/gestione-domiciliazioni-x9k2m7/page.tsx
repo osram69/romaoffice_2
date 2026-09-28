@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { domClients } from "@/db/schema";
+import { domClients, domMailScans } from "@/db/schema";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
 import { GestioneShell } from "@/components/GestioneNav";
 import { DomiciliazioniTable } from "@/components/DomiciliazioniTable";
@@ -18,11 +18,14 @@ export default async function DomiciliazioniPage({ searchParams }: { searchParam
   const stato = statoParam !== undefined ? Number(statoParam) : 1;
 
   const rows = await db.select().from(domClients).where(eq(domClients.stato, stato)).orderBy(asc(domClients.ragioneSociale));
+  // Drives which rows show Invia/PEC/Aperta as enabled ("dimmed" otherwise, matching the legacy
+  // tool): a client has a pending mail scan once Allega has been used and until it's sent/discarded.
+  const pendingScans = await db.selectDistinct({ domClientId: domMailScans.domClientId }).from(domMailScans);
 
   return (
     <GestioneShell role={user.role} active="domiciliazioni" username={user.username}>
       <h1 className="gestione-h1" style={{ textAlign: "center", marginBottom: 24 }}>Elenco Domiciliazioni {LABELS[stato] ?? ""}</h1>
-      <DomiciliazioniTable rows={rows} stato={stato} />
+      <DomiciliazioniTable rows={rows} stato={stato} pendingScanIds={pendingScans.map(p => p.domClientId)} />
     </GestioneShell>
   );
 }

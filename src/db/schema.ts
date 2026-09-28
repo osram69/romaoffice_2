@@ -115,6 +115,16 @@ export const siteConfig = pgTable("site_config", {
   // a request carrying the correct PAYMENTS_TEST_BYPASS_TOKEN still sees them, routed to sandbox
   // credentials, so staff can keep testing without exposing it publicly.
   paymentsTestMode: boolean("payments_test_mode").notNull().default(false),
+  // Network scanner (eSCL) reached by the "Allega" mail-scan panel on the domiciliazioni
+  // dashboard — one shared physical scanner for the whole office, so its address/defaults are
+  // configured once here rather than per-operator/browser. Per-scan choices (color/source/dpi)
+  // still start from these but can be overridden in the panel for a single scan.
+  scannerHost: text("scanner_host"),
+  scannerPort: integer("scanner_port"),
+  scannerHttps: boolean("scanner_https").notNull().default(false),
+  scannerColorDefault: varchar("scanner_color_default", { length: 10 }).notNull().default("gray"),
+  scannerSourceDefault: varchar("scanner_source_default", { length: 20 }).notNull().default("platen"),
+  scannerResolutionDefault: integer("scanner_resolution_default").notNull().default(200),
 });
 export const servicePrices = pgTable("service_prices", {
   id: serial("id").primaryKey(), service: varchar("service", { length: 30 }).notNull().references(() => serviceCatalog.code),

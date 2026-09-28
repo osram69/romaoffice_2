@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { serviceCatalog, siteConfig } from "@/db/schema";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
-import { updateOnlineDiscountAction, updatePaymentSettingsAction, updatePaymentsTestModeAction, updateSmartFlagsAction } from "./actions";
+import { updateOnlineDiscountAction, updatePaymentSettingsAction, updatePaymentsTestModeAction, updateScannerConfigAction, updateSmartFlagsAction } from "./actions";
 import { GestioneShell } from "@/components/GestioneNav";
 
 const checkboxRow = { display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "#232f3e" } as const;
@@ -73,6 +73,48 @@ export default async function ConfigurazioneWebPage() {
           <div className="gestione-field" style={{ width: 160 }}>
             <label>Sconto (%)</label>
             <input name="onlineDiscountBps" type="number" step="0.01" min="0" max="100" defaultValue={(payments?.onlineDiscountBps ?? 1000) / 100} />
+          </div>
+          <button type="submit" className="gestione-btn gestione-btn-blue">Salva</button>
+        </form>
+      </section>
+
+      <section className="gestione-card" style={{ padding: 24, marginBottom: 24 }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: "#232f3e", marginTop: 0 }}>Scanner posta (eSCL)</h2>
+        <p style={{ fontSize: 12, color: "#666", marginTop: -6 }}>
+          Indirizzo dello scanner di rete e impostazioni proposte di default per il pulsante &quot;Allega&quot; della domiciliazioni (vedi <code>docs/mail-scanning.md</code>). Un solo scanner per tutto l&apos;ufficio: configurato qui una volta, non per singolo operatore/browser. Richiede il bridge locale (<code>npx tsx scripts/escl-bridge.ts</code>) in esecuzione sul PC da cui si scansiona.
+        </p>
+        <form action={updateScannerConfigAction} style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end" }}>
+          <div className="gestione-field" style={{ width: 180 }}>
+            <label>IP scanner</label>
+            <input name="scannerHost" type="text" placeholder="192.168.1.50" defaultValue={payments?.scannerHost ?? ""} />
+          </div>
+          <div className="gestione-field" style={{ width: 90 }}>
+            <label>Porta</label>
+            <input name="scannerPort" type="text" placeholder="80" defaultValue={payments?.scannerPort ?? ""} />
+          </div>
+          <label style={checkboxRow}><input type="checkbox" name="scannerHttps" defaultChecked={payments?.scannerHttps ?? false} /> HTTPS</label>
+          <div className="gestione-field" style={{ width: 140 }}>
+            <label>Colore predefinito</label>
+            <select name="scannerColorDefault" defaultValue={payments?.scannerColorDefault ?? "gray"}>
+              <option value="gray">Bianco/nero</option>
+              <option value="color">Colore</option>
+            </select>
+          </div>
+          <div className="gestione-field" style={{ width: 170 }}>
+            <label>Sorgente predefinita</label>
+            <select name="scannerSourceDefault" defaultValue={payments?.scannerSourceDefault ?? "platen"}>
+              <option value="platen">Piano</option>
+              <option value="feeder">Caricatore (ADF)</option>
+              <option value="feederDuplex">Caricatore fronte/retro</option>
+            </select>
+          </div>
+          <div className="gestione-field" style={{ width: 120 }}>
+            <label>Risoluzione predefinita</label>
+            <select name="scannerResolutionDefault" defaultValue={String(payments?.scannerResolutionDefault ?? 200)}>
+              <option value="150">150 dpi</option>
+              <option value="200">200 dpi</option>
+              <option value="300">300 dpi</option>
+            </select>
           </div>
           <button type="submit" className="gestione-btn gestione-btn-blue">Salva</button>
         </form>

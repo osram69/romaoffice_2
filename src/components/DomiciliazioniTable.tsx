@@ -10,6 +10,8 @@ import { DeleteIconButton } from "./DeleteIconButton";
 import { ActionFormButton } from "./ActionFormButton";
 import { ScadenzaEmailPanel } from "./ScadenzaEmailPanel";
 import { DomMailScanPanel } from "./DomMailScanPanel";
+import { DomMailScanSendPanel } from "./DomMailScanSendPanel";
+import type { MailScanChannel } from "@/app/gestione-domiciliazioni-x9k2m7/actions";
 import {
   updateDomiciliazioneAction, deleteDomiciliazioneAction,
   decadiDomiciliazioneAction, ripristinaDomiciliazioneAction, attivaDomiciliazioneAction,
@@ -38,7 +40,6 @@ function letterOf(name: string) {
   const ch = name.trim().charAt(0).toUpperCase();
   return /[0-9]/.test(ch) ? "#" : ch || "#";
 }
-function notYet() { alert("Funzione non ancora disponibile."); }
 
 // Mirrors the legacy Decadute-specific scadenza coloring (domiciliazioni.php, stato==2 branch):
 // yellow if due within 10 days (or today), red (light) if already past due, otherwise plain.
@@ -77,10 +78,22 @@ function pairedRows(fields: Field[]) {
   return out;
 }
 
-export function DomiciliazioniTable({ rows, stato }: { rows: DomClient[]; stato: number }) {
+export function DomiciliazioniTable({ rows, stato, pendingScanIds }: { rows: DomClient[]; stato: number; pendingScanIds: number[] }) {
   const [viewing, setViewing] = useState<DomClient | null>(null);
   const [editing, setEditing] = useState<DomClient | null>(null);
   const [scanning, setScanning] = useState<DomClient | null>(null);
+  const [sending, setSending] = useState<{ client: DomClient; channel: MailScanChannel } | null>(null);
+  // Invia/PEC/Aperta are enabled only for a client with a pending scan (Allega used, not yet sent
+  // or discarded) — mirrors pendingScanIds from the server, then updated optimistically as scans
+  // are attached/sent/removed in this tab without waiting for a full reload.
+  const [pending, setPending] = useState<Set<number>>(() => new Set(pendingScanIds));
+  function setPendingFor(clientId: number, hasPending: boolean) {
+    setPending(prev => {
+      const next = new Set(prev);
+      if (hasPending) next.add(clientId); else next.delete(clientId);
+      return next;
+    });
+  }
   const [schedaTab, setSchedaTab] = useState<"dati" | "scadenza" | "proforma">("dati");
   function openScheda(row: DomClient) { setViewing(row); setSchedaTab("dati"); }
   let lastLetter = "";
@@ -188,9 +201,9 @@ export function DomiciliazioniTable({ rows, stato }: { rows: DomClient[]; stato:
                           // (moves it to Decadute) — it never permanently deletes.
                           <div className="gestione-row-actions">
                             <button type="button" className="gestione-action-btn gestione-action-allega" onClick={() => setScanning(row)}>Allega</button>
-                            <button type="button" className="gestione-action-btn gestione-action-invia" onClick={notYet}>Invia</button>
-                            <button type="button" className="gestione-action-btn gestione-action-pec" onClick={notYet}>PEC</button>
-                            <button type="button" className="gestione-action-btn gestione-action-aperta" onClick={notYet}>Aperta</button>
+                            <button type="button" className="gestione-action-btn gestione-action-invia" disabled={!pending.has(row.id)} onClick={() => setSending({ client: row, channel: "ordinaria" })}>Invia</button>
+                            <button type="button" className="gestione-action-btn gestione-action-pec" disabled={!pending.has(row.id)} onClick={() => setSending({ client: row, channel: "pec" })}>PEC</button>
+                            <button type="button" className="gestione-action-btn gestione-action-aperta" disabled={!pending.has(row.id)} onClick={() => setSending({ client: row, channel: "aperta" })}>Aperta</button>
                             <button type="button" className="gestione-icon-btn edit" aria-label={`Modifica ${row.ragioneSociale}`} title="Modifica" onClick={() => setEditing(row)}>
                               <Pencil size={14} />
                             </button>
@@ -305,7 +318,11 @@ export function DomiciliazioniTable({ rows, stato }: { rows: DomClient[]; stato:
       )}
 
       {scanning && (
-        <DomMailScanPanel clientId={scanning.id} ragioneSociale={scanning.ragioneSociale} onClose={() => setScanning(null)} />
+        <DomMailScanPanel clientId={scanning.id} ragioneSociale={scanning.ragioneSociale} onClose={() => setScanning(null)} onPendingChange={hasPending => setPendingFor(scanning.id, hasPending)} />
+      )}
+
+      {sending && (
+        <DomMailScanSendPanel clientId={sending.client.id} ragioneSociale={sending.client.ragioneSociale} channel={sending.channel} onClose={() => setSending(null)} onSent={() => setPendingFor(sending.client.id, false)} />
       )}
     </>
   );

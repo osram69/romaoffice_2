@@ -59,3 +59,20 @@ export async function updatePaymentsTestModeAction(formData: FormData) {
   revalidatePath(BASE_PATH);
   revalidatePath("/attiva.html"); revalidatePath("/en/activate.html");
 }
+
+export async function updateScannerConfigAction(formData: FormData) {
+  "use server";
+  await requireAdmin();
+  const port = String(formData.get("scannerPort") ?? "").trim();
+  const resolution = Number(formData.get("scannerResolutionDefault"));
+  await db.update(siteConfig).set({
+    scannerHost: String(formData.get("scannerHost") ?? "").trim() || null,
+    scannerPort: port ? Number(port) : null,
+    scannerHttps: formData.get("scannerHttps") === "on",
+    scannerColorDefault: formData.get("scannerColorDefault") === "color" ? "color" : "gray",
+    scannerSourceDefault: ["platen", "feeder", "feederDuplex"].includes(String(formData.get("scannerSourceDefault"))) ? String(formData.get("scannerSourceDefault")) : "platen",
+    scannerResolutionDefault: Number.isFinite(resolution) && resolution > 0 ? resolution : 200,
+  }).where(eq(siteConfig.id, 1));
+  revalidatePath(BASE_PATH);
+  revalidatePath("/gestione-domiciliazioni-x9k2m7");
+}

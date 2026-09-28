@@ -1,34 +1,30 @@
 "use client";
 import { useEffect, useState } from "react";
-import { attachMailScanAction, listMailScansAction, removeMailScanAction, type MailScanSummary } from "@/app/gestione-domiciliazioni-x9k2m7/actions";
+import { attachMailScanAction, getScannerConfigAction, listMailScansAction, removeMailScanAction, type MailScanSummary, type ScannerConfig } from "@/app/gestione-domiciliazioni-x9k2m7/actions";
 import type { ColorMode, ScanSource } from "@/lib/escl-scanner";
 
-// Settings for reaching the scanner are a property of the operator's own PC/network, not of any
-// one domiciliazione — remembered per browser, never sent to or read from the server.
-const SETTINGS_KEY = "ros_escl_scanner_settings";
-type ScannerSettings = { bridgePort: string; host: string; port: string; https: boolean; color: ColorMode; source: ScanSource; resolution: string };
-const DEFAULT_SETTINGS: ScannerSettings = { bridgePort: "17866", host: "", port: "", https: false, color: "gray", source: "platen", resolution: "200" };
+// Only the local bridge's own port is a per-operator/browser setting (each PC runs its own bridge
+// instance against the one shared scanner) — everything else (scanner IP, defaults) is configured
+// once for the whole office in Configurazione Web (see getScannerConfigAction) and just fetched here.
+const BRIDGE_PORT_KEY = "ros_escl_bridge_port";
+function loadBridgePort(): string {
+  try { return window.localStorage.getItem(BRIDGE_PORT_KEY) || "17866"; } catch { return "17866"; }
+}
+function saveBridgePort(port: string) {
+  try { window.localStorage.setItem(BRIDGE_PORT_KEY, port); } catch { /* private mode / storage disabled */ }
+}
 
-function loadSettings(): ScannerSettings {
-  try {
-    const raw = window.localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return DEFAULT_SETTINGS;
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
-  } catch {
-    return DEFAULT_SETTINGS;
-  }
-}
-function saveSettings(settings: ScannerSettings) {
-  try { window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch { /* private mode / storage disabled */ }
-}
+type ScanOptions = { color: ColorMode; source: ScanSource; resolution: string };
 
 function fmtDateTime(iso: string) {
   const d = new Date(iso);
   return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-export function DomMailScanPanel({ clientId, ragioneSociale, onClose }: { clientId: number; ragioneSociale: string; onClose: () => void }) {
-  const [settings, setSettings] = useState<ScannerSettings>(loadSettings);
+export function DomMailScanPanel({ clientId, ragioneSociale, onClose, onPendingChange }: { clientId: number; ragioneSociale: string; onClose: () => void; onPendingChange: (hasPending: boolean) => void }) {
+  const [bridgePort, setBridgePort] = useState(loadBridgePort);
+  const [config, setConfig] = useState<ScannerConfig | null>(null);
+  const [options, setOptions] = useState<ScanOptions>({ color: "gray", source: "platen", resolution: "200" });
   const [scans, setScans] = useState<MailScanSummary[]>([]);
   const [loadingScans, setLoadingScans] = useState(true);
   const [status, setStatus] = useState<{ text: string; color: string } | null>(null);
@@ -38,31 +34,43 @@ export function DomMailScanPanel({ clientId, ragioneSociale, onClose }: { client
     setLoadingScans(true);
     const result = await listMailScansAction(clientId);
     setLoadingScans(false);
-    if (result.success) setScans(result.scans ?? []);
-    else setStatus({ text: result.message || "Errore nel caricamento delle scansioni", color: "red" });
+    if (result.success) {
+      const found = result.scans ?? [];
+      setScans(found);
+      onPendingChange(found.length > 0);
+    } else {
+      setStatus({ text: result.message || "Errore nel caricamento delle scansioni", color: "red" });
+    }
   }
-  useEffect(() => { refreshScans();
+  useEffect(() => {
+    refreshScans();
+    getScannerConfigAction().then(cfg => {
+      setConfig(cfg);
+      setOptions({ color: cfg.color, source: cfg.source, resolution: String(cfg.resolution) });
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId]);
 
-  function update<K extends keyof ScannerSettings>(key: K, value: ScannerSettings[K]) {
-    const next = { ...settings, [key]: value };
-    setSettings(next);
-    saveSettings(next);
+  function updateBridgePort(value: string) {
+    setBridgePort(value);
+    saveBridgePort(value);
+  }
+  function updateOption<K extends keyof ScanOptions>(key: K, value: ScanOptions[K]) {
+    setOptions(prev => ({ ...prev, [key]: value }));
   }
 
   function bridgeUrl(path: string) {
-    return `http://127.0.0.1:${settings.bridgePort || "17866"}${path}`;
+    return `http://127.0.0.1:${bridgePort || "17866"}${path}`;
   }
 
   async function testScanner() {
-    if (!settings.host.trim()) { setStatus({ text: "Inserisci l'indirizzo IP dello scanner.", color: "#555" }); return; }
+    if (!config?.host) return;
     setBusy(true);
     setStatus({ text: "Verifica in corso...", color: "#555" });
     try {
-      const params = new URLSearchParams({ host: settings.host.trim() });
-      if (settings.port.trim()) params.set("port", settings.port.trim());
-      if (settings.https) params.set("https", "1");
+      const params = new URLSearchParams({ host: config.host });
+      if (config.port) params.set("port", String(config.port));
+      if (config.https) params.set("https", "1");
       const res = await fetch(bridgeUrl(`/capabilities?${params}`), { signal: AbortSignal.timeout(10000) });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.message || "Scanner non raggiungibile");
@@ -75,7 +83,7 @@ export function DomMailScanPanel({ clientId, ragioneSociale, onClose }: { client
   }
 
   async function scanAndAttach() {
-    if (!settings.host.trim()) { setStatus({ text: "Inserisci l'indirizzo IP dello scanner.", color: "#555" }); return; }
+    if (!config?.host) return;
     setBusy(true);
     setStatus({ text: "Scansione in corso...", color: "#555" });
     try {
@@ -83,12 +91,12 @@ export function DomMailScanPanel({ clientId, ragioneSociale, onClose }: { client
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          host: settings.host.trim(),
-          port: settings.port.trim() ? Number(settings.port.trim()) : undefined,
-          https: settings.https,
-          color: settings.color,
-          source: settings.source,
-          resolution: Number(settings.resolution) || 200,
+          host: config.host,
+          port: config.port ?? undefined,
+          https: config.https,
+          color: options.color,
+          source: options.source,
+          resolution: Number(options.resolution) || 200,
         }),
         signal: AbortSignal.timeout(120000),
       });
@@ -114,7 +122,9 @@ export function DomMailScanPanel({ clientId, ragioneSociale, onClose }: { client
     const result = await removeMailScanAction(scanId, clientId);
     setBusy(false);
     if (!result.success) { setStatus({ text: result.message || "Errore durante l'eliminazione", color: "red" }); return; }
-    setScans(prev => prev.filter(s => s.id !== scanId));
+    const next = scans.filter(s => s.id !== scanId);
+    setScans(next);
+    onPendingChange(next.length > 0);
   }
 
   return (
@@ -129,31 +139,28 @@ export function DomMailScanPanel({ clientId, ragioneSociale, onClose }: { client
             Richiede il bridge locale eSCL in esecuzione su questo PC (<code>npx tsx scripts/escl-bridge.ts</code>), sulla stessa rete dello scanner.
           </p>
 
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
-            <label style={{ fontSize: 12, flex: "1 1 200px" }}>
-              IP scanner
-              <input type="text" placeholder="192.168.1.50" value={settings.host} disabled={busy} onChange={e => update("host", e.target.value)} style={{ width: "100%", marginTop: 2 }} />
-            </label>
-            <label style={{ fontSize: 12, width: 90 }}>
-              Porta
-              <input type="text" placeholder="80" value={settings.port} disabled={busy} onChange={e => update("port", e.target.value)} style={{ width: "100%", marginTop: 2 }} />
-            </label>
-            <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4, marginTop: 16 }}>
-              <input type="checkbox" checked={settings.https} disabled={busy} onChange={e => update("https", e.target.checked)} /> HTTPS
-            </label>
-          </div>
+          {config && !config.host ? (
+            <p style={{ fontSize: 12, color: "#A52A2A" }}>
+              Nessuno scanner configurato. Un amministratore deve impostare IP e porta in <strong>Configurazione Web → Scanner posta</strong>.
+            </p>
+          ) : (
+            <p style={{ fontSize: 12, color: "#666" }}>
+              Scanner: <strong>{config?.host}{config?.port ? `:${config.port}` : ""}</strong> {config?.https ? "(HTTPS)" : ""} — modificabile in Configurazione Web.
+              {" "}Porta bridge locale: <input type="text" value={bridgePort} disabled={busy} onChange={e => updateBridgePort(e.target.value)} style={{ width: 60 }} />
+            </p>
+          )}
 
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
             <label style={{ fontSize: 12, flex: "1 1 120px" }}>
               Colore
-              <select value={settings.color} disabled={busy} onChange={e => update("color", e.target.value as ColorMode)} style={{ width: "100%", marginTop: 2 }}>
+              <select value={options.color} disabled={busy} onChange={e => updateOption("color", e.target.value as ColorMode)} style={{ width: "100%", marginTop: 2 }}>
                 <option value="gray">Bianco/nero</option>
                 <option value="color">Colore</option>
               </select>
             </label>
             <label style={{ fontSize: 12, flex: "1 1 160px" }}>
               Sorgente
-              <select value={settings.source} disabled={busy} onChange={e => update("source", e.target.value as ScanSource)} style={{ width: "100%", marginTop: 2 }}>
+              <select value={options.source} disabled={busy} onChange={e => updateOption("source", e.target.value as ScanSource)} style={{ width: "100%", marginTop: 2 }}>
                 <option value="platen">Piano</option>
                 <option value="feeder">Caricatore (ADF)</option>
                 <option value="feederDuplex">Caricatore fronte/retro</option>
@@ -161,7 +168,7 @@ export function DomMailScanPanel({ clientId, ragioneSociale, onClose }: { client
             </label>
             <label style={{ fontSize: 12, flex: "1 1 100px" }}>
               Risoluzione
-              <select value={settings.resolution} disabled={busy} onChange={e => update("resolution", e.target.value)} style={{ width: "100%", marginTop: 2 }}>
+              <select value={options.resolution} disabled={busy} onChange={e => updateOption("resolution", e.target.value)} style={{ width: "100%", marginTop: 2 }}>
                 <option value="150">150 dpi</option>
                 <option value="200">200 dpi</option>
                 <option value="300">300 dpi</option>
@@ -170,8 +177,8 @@ export function DomMailScanPanel({ clientId, ragioneSociale, onClose }: { client
           </div>
 
           <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
-            <button type="button" className="gestione-btn gestione-btn-outline" disabled={busy} onClick={testScanner}>Verifica scanner</button>
-            <button type="button" className="gestione-btn gestione-btn-blue" disabled={busy} onClick={scanAndAttach}>Scansiona e allega</button>
+            <button type="button" className="gestione-btn gestione-btn-outline" disabled={busy || !config?.host} onClick={testScanner}>Verifica scanner</button>
+            <button type="button" className="gestione-btn gestione-btn-blue" disabled={busy || !config?.host} onClick={scanAndAttach}>Scansiona e allega</button>
             {status && <span style={{ fontSize: 12, color: status.color }}>{status.text}</span>}
           </div>
 

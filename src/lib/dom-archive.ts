@@ -1,5 +1,6 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 
 // File-format-compatible with the legacy PHP tool (show_enc_pdf.php / ajax_upload_enc.php):
@@ -36,8 +37,21 @@ function archiveKey() {
 function filePath(fileId: number, type: DocType) {
   return path.join(archiveDir(), `${fileId}_${type}.pdf.enc`);
 }
+
+// Mail scans are deliberately NOT kept in archiveDir(): that folder is the permanent, backed-up
+// contractual archive (con/mod/all/doc/avc/rev), while a mail scan is a working document that
+// only needs to survive until staff sends/marks it — a genuinely different retention need, so it
+// gets its own directory (defaults to the OS temp dir; set DOM_MAIL_SCANS_DIR to override, e.g.
+// if the host's default temp dir is cleared too aggressively for same-day turnaround).
+function mailScanDir() {
+  const dir = process.env.DOM_MAIL_SCANS_DIR;
+  if (!dir) return path.join(os.tmpdir(), "dom-mail-scans");
+  if (/^https?:\/\//i.test(dir)) throw new Error("DOM_MAIL_SCANS_DIR deve essere un percorso assoluto sul filesystem del server, non un indirizzo web");
+  if (!path.isAbsolute(dir)) throw new Error("DOM_MAIL_SCANS_DIR deve essere un percorso assoluto (deve iniziare con /), non relativo");
+  return dir;
+}
 function mailScanFilePath(scanId: number) {
-  return path.join(archiveDir(), `posta_${scanId}.pdf.enc`);
+  return path.join(mailScanDir(), `posta_${scanId}.pdf.enc`);
 }
 
 async function encryptToFile(targetPath: string, data: Buffer) {
@@ -46,8 +60,7 @@ async function encryptToFile(targetPath: string, data: Buffer) {
   const ciphertext = Buffer.concat([cipher.update(data), cipher.final()]);
   const ciphertextB64 = ciphertext.toString("base64");
   const combined = Buffer.concat([Buffer.from(ciphertextB64, "utf8"), Buffer.from("::"), iv]);
-  const dir = archiveDir();
-  await mkdir(dir, { recursive: true });
+  await mkdir(path.dirname(targetPath), { recursive: true });
   await writeFile(targetPath, Buffer.from(combined.toString("base64"), "utf8"));
 }
 async function decryptFromFile(sourcePath: string): Promise<Buffer> {

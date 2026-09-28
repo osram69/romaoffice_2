@@ -4,12 +4,12 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { domClients, domCustomerChallenges, domCustomerSessions, domMailScans, domRinnovoPrezzi } from "@/db/schema";
+import { domClients, domCustomerChallenges, domCustomerSessions, domMailScans, domRinnovoPrezzi, siteConfig } from "@/db/schema";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
-import { removeEncrypted, removeMailScanEncrypted, saveEncrypted, saveMailScanEncrypted, type DocType, DOC_TYPES } from "@/lib/dom-archive";
+import { readMailScanDecrypted, removeEncrypted, removeMailScanEncrypted, saveEncrypted, saveMailScanEncrypted, type DocType, DOC_TYPES } from "@/lib/dom-archive";
 import { PRESENZA_FILE_BITS, cleanText } from "@/lib/dom-status";
 import { buildScadenzaEmailHtml, defaultScontoApplicabile, scadenzaEmailSubject } from "@/lib/dom-scadenza-email";
-import { sendDomMail } from "@/lib/mailer";
+import { sendDomMail, type DomMailAccount } from "@/lib/mailer";
 import { hashPassword } from "@/lib/customer-auth";
 import { passwordMeetsPolicy } from "@/lib/password-policy";
 
@@ -153,6 +153,27 @@ export async function removeDomDocumentAction(id: number, docType: DocType): Pro
 
 export type MailScanSummary = { id: number; createdAt: string; scannedBy: string | null };
 
+export type ScannerConfig = {
+  host: string | null; port: number | null; https: boolean;
+  color: "color" | "gray"; source: "platen" | "feeder" | "feederDuplex"; resolution: number;
+};
+
+// Read-only for any staff role (operatore included, since scanning is part of day-to-day mail
+// handling) — only admins can change it, in Configurazione Web (see updateScannerConfigAction).
+export async function getScannerConfigAction(): Promise<ScannerConfig> {
+  "use server";
+  await requireStaff();
+  const [row] = await db.select().from(siteConfig).where(eq(siteConfig.id, 1)).limit(1);
+  return {
+    host: row?.scannerHost ?? null,
+    port: row?.scannerPort ?? null,
+    https: row?.scannerHttps ?? false,
+    color: row?.scannerColorDefault === "color" ? "color" : "gray",
+    source: row?.scannerSourceDefault === "feeder" || row?.scannerSourceDefault === "feederDuplex" ? row.scannerSourceDefault : "platen",
+    resolution: row?.scannerResolutionDefault ?? 200,
+  };
+}
+
 export async function listMailScansAction(domClientId: number): Promise<{ success: boolean; message?: string; scans?: MailScanSummary[] }> {
   "use server";
   await requireStaff();
@@ -164,6 +185,10 @@ export async function listMailScansAction(domClientId: number): Promise<{ succes
 // the local eSCL bridge (src/lib/escl-scanner.ts / scripts/escl-bridge.ts) — this action only
 // persists it, it never talks to the scanner itself (the Hostinger-hosted server has no route to
 // the office LAN the scanner is on).
+//
+// A client has at most one pending scan at a time: pressing "Allega" again (e.g. because the first
+// scan came out wrong) REPLACES it rather than accumulating a second one, matching the legacy
+// tool's single scansione.pdf temp file.
 export async function attachMailScanAction(domClientId: number, pdfBase64: string): Promise<{ success: boolean; message?: string; scan?: MailScanSummary }> {
   "use server";
   const user = await requireStaff();
@@ -176,6 +201,10 @@ export async function attachMailScanAction(domClientId: number, pdfBase64: strin
   }
   if (buffer.subarray(0, 4).toString("ascii") !== "%PDF") return { success: false, message: "Il file ricevuto non è un PDF valido" };
   try {
+    const previous = await db.select({ id: domMailScans.id }).from(domMailScans).where(eq(domMailScans.domClientId, domClientId));
+    for (const p of previous) await removeMailScanEncrypted(p.id);
+    if (previous.length) await db.delete(domMailScans).where(eq(domMailScans.domClientId, domClientId));
+
     const [row] = await db.insert(domMailScans).values({ domClientId, scannedByUsername: user.username }).returning();
     await saveMailScanEncrypted(row.id, buffer);
     revalidatePath(BASE_PATH);
@@ -189,6 +218,137 @@ export async function removeMailScanAction(scanId: number, domClientId: number):
   "use server";
   await requireStaff();
   await db.delete(domMailScans).where(and(eq(domMailScans.id, scanId), eq(domMailScans.domClientId, domClientId)));
+  await removeMailScanEncrypted(scanId);
+  revalidatePath(BASE_PATH);
+  return { success: true };
+}
+
+// "Invia" (ordinary email) and "PEC" notify the client that mail arrived, with the scan attached.
+// "Aperta" is for when staff opened the letter and read its content to the client over the phone —
+// still an email (so there's a written record), but says so instead of just "see attached".
+// Subject/greeting/recipients/disclaimers below are ported verbatim from the legacy tool's
+// ajax_send_mail.php (case "PEC" / "Aperta" / "Invia"/default) — same wording, same fixed
+// "posta@romaofficesharing.it" internal address, same disclaimer paragraphs in IT and EN.
+export type MailScanChannel = "ordinaria" | "pec" | "aperta";
+
+const MAIL_SCAN_INTERNAL_ADDRESS = "posta@romaofficesharing.it";
+
+// Shared by all three channels (legacy: identical in every case's $mail->Body).
+const DISCLAIMER_PRIVACY_HTML = `<br><p style="font-size:11px;"><b>Avviso di Riservatezza</b> - Questo documento è riservato esclusivamente al destinatario. Tutte le informazioni ivi contenute, compresi eventuali allegati, sono soggette a riservatezza a termini del vigente D.Lgs. 196/2003 in materia di privacy e del Regolamento europeo 679/2016 - GDPR - e quindi ne è proibita l'utilizzazione ulteriore non autorizzata. Se avete ricevuto per errore questo messaggio, Vi preghiamo di informare immediatamente il mittente e cancellare l'e-mail. Grazie.</p>
+<p style="font-size:11px;"><b>Confidentiality Notice</b> - This document is intended exclusively for the recipient. All information contained herein, including any attachments, is subject to confidentiality under the current Legislative Decree 196/2003 on privacy and the European Regulation 679/2016 - GDPR - and therefore any unauthorized further use is prohibited. If you have received this message in error, please immediately inform the sender and delete the email. Thank you.</p>`;
+
+// "Invia" and "PEC" share this exact disclaimer wording (legacy: same $mail->Body block in both
+// the "PEC" and default/"Invia" cases); "Aperta" has its own wording below.
+const DISCLAIMER_GENERIC_HTML = `<br><p style="font-size:11px;"><b>Esclusione di responsabilità</b> - Il documento allegato alla presente si riferisce alla scansione della corrispondenza arrivata presso la nostra sede. La presente scansione è fornita <strong>esclusivamente a scopo informativo</strong>. Non garantiamo l'accuratezza o la completezza delle informazioni fornite, poiché potrebbero verificarsi errori o omissioni. Pertanto, la scansione non esonera la società domiciliataria in oggetto o il professionista, dall'obbligo di provvedere urgentemente al ritiro dell'atto in originale. Si consiglia di verificare il contenuto originale della corrispondenza.</p>
+<p style="font-size:11px;"><b>Disclaimer</b> - The document attached hereto refers to the scanned correspondence received at our office. This scan is provided <strong>for informational purposes only</strong>. We do not guarantee the accuracy or completeness of the information supplied, as errors or omissions may occur. Therefore, the scan does not release the domiciliary company in question or the professional from the obligation to promptly collect the original document. You are advised to verify the original contents of the correspondence.</p>${DISCLAIMER_PRIVACY_HTML}`;
+
+const DISCLAIMER_APERTA_HTML = `<br><p style="font-size:11px;"><b>Esclusione di responsabilità</b> - Il documento allegato alla presente si riferisce alla scansione del contenuto della corrispondenza arrivata presso la nostra sede, di cui la società domiciliataria in oggetto ha espressamente richiesto l'apertura. La presente scansione è fornita <strong>esclusivamente a scopo informativo</strong>. Non garantiamo l'accuratezza o la completezza delle informazioni fornite, poiché potrebbero verificarsi errori o omissioni. Pertanto, la scansione non esonera la società domiciliataria in oggetto, dall'obbligo di provvedere urgentemente al ritiro dell'atto in originale. Si consiglia di verificare il contenuto originale della corrispondenza.</p>
+<p style="font-size:11px;"><b>Disclaimer</b> - The attached document refers to the scan of the content of the correspondence received at our office, which the company specified in the email subject, has explicitly requested to open. This scan is provided <strong>exclusively for informational purposes</strong>. We do not guarantee the accuracy or completeness of the information provided, as errors or omissions may occur. Therefore, the scan does not exempt the company specified in the email subject from the obligation to promptly retrieve the document. It is advised to verify the original content of the correspondence.</p>${DISCLAIMER_PRIVACY_HTML}`;
+
+function mailScanDisclaimerHtml(channel: MailScanChannel): string {
+  return channel === "aperta" ? DISCLAIMER_APERTA_HTML : DISCLAIMER_GENERIC_HTML;
+}
+function mailScanPageTitle(channel: MailScanChannel): string {
+  if (channel === "pec") return "Scansione Atto - Roma Office Sharing";
+  if (channel === "aperta") return "Apertura corrispondenza - Roma Office Sharing";
+  return "Scansione corrispondenza - Roma Office Sharing";
+}
+// Legacy: str_pad(rand(0,99999), 5, "0", STR_PAD_LEFT) — a random 5-digit reference the client can
+// quote when replying (PEC only: "rispondere... lasciando inalterato il codice ID nell'oggetto").
+function randomIdCode(): string {
+  return String(Math.floor(Math.random() * 100000)).padStart(5, "0");
+}
+// Legacy: $ragioneSoc = str_ireplace(['(Solo Postale)', '*'], ['', ''], $ragioneSoc) before use in Subject.
+function cleanRagioneSocialeForSubject(ragioneSociale: string): string {
+  return ragioneSociale.replace(/\(Solo Postale\)/gi, "").replace(/\*/g, "").trim();
+}
+
+function mailScanDraftContent(channel: MailScanChannel, ragioneSociale: string): { subject: string; text: string } {
+  const ragioneSoc = cleanRagioneSocialeForSubject(ragioneSociale);
+  if (channel === "pec") {
+    return {
+      subject: `[ID${randomIdCode()}] Scansione Atto/Raccomandata ${ragioneSoc} - Roma Office Sharing`,
+      text: "Buongiorno,\n\nsi allega alla presente l'Atto Giudiziario/Amministrativo/Raccomandata pervenuto a Vostro nome presso i nostri uffici.\n\nQualora si desideri ricevere la scansione del contenuto, rispondere direttamente alla presente, lasciando inalterato il codice ID contenuto nell'oggetto.\n\nCordiali saluti\nSegreteria Roma Office Sharing",
+    };
+  }
+  if (channel === "aperta") {
+    return {
+      subject: `Apertura corrispondenza ${ragioneSoc} - Roma Office Sharing`,
+      text: "Buongiorno,\n\nsi allega alla presente la scansione del contenuto della busta richiesta\n\nCordiali saluti\nSegreteria Roma Office Sharing",
+    };
+  }
+  return {
+    subject: `[ID${randomIdCode()}] Scansione corrispondenza ${ragioneSoc} - Roma Office Sharing`,
+    text: "Buongiorno,\n\nsi allega alla presente la scansione della corrispondenza arrivata in sede a Vs nome.\n\nCordiali saluti\nSegreteria Roma Office Sharing",
+  };
+}
+
+export type MailScanDraft = { scanId: number; createdAt: string; subject: string; text: string };
+
+// Always targets the most recent not-yet-handled scan for this client — handled scans are deleted
+// on send (see sendMailScanAction), so in practice there's at most one of these at a time.
+export async function getMailScanDraftAction(domClientId: number, channel: MailScanChannel): Promise<{ success: boolean; message?: string; draft?: MailScanDraft }> {
+  "use server";
+  await requireStaff();
+  const [client] = await db.select().from(domClients).where(eq(domClients.id, domClientId)).limit(1);
+  if (!client) return { success: false, message: "Domiciliazione non trovata" };
+  if (channel === "pec" && !cleanText(client.emailPec)) return { success: false, message: "Questa società non ha un indirizzo PEC configurato." };
+
+  const [scan] = await db.select().from(domMailScans).where(eq(domMailScans.domClientId, domClientId)).orderBy(desc(domMailScans.createdAt)).limit(1);
+  if (!scan) return { success: false, message: 'Nessuna scansione in attesa per questa società. Usa prima "Allega".' };
+
+  const { subject, text } = mailScanDraftContent(channel, client.ragioneSociale);
+  return { success: true, draft: { scanId: scan.id, createdAt: scan.createdAt.toISOString(), subject, text } };
+}
+
+// Sends the given (already-reviewed) subject/opening-text with the scan attached, then deletes the
+// scan — per team decision, a handled mail scan isn't kept as a permanent record like the contract
+// documents are; the email sent (in each mailbox's own Sent folder) is the record. The disclaimer
+// footer is appended here rather than being part of the editable draft, so it can't be accidentally
+// altered or dropped by whoever reviews the opening text.
+//
+// Recipients ported verbatim from ajax_send_mail.php: email_posta's first address is always the
+// primary "to" (remaining email_posta addresses CC'd); PEC additionally "to"s email_pec and CCs the
+// fixed internal address; Invia/Aperta additionally BCC the fixed internal address instead (legacy
+// only skipped this BCC for a "generic" scan not tied to any client record — doesn't apply here).
+export async function sendMailScanAction(domClientId: number, scanId: number, channel: MailScanChannel, subject: string, text: string): Promise<{ success: boolean; message?: string }> {
+  "use server";
+  await requireStaff();
+  if (!subject.trim() || !text.trim()) return { success: false, message: "Oggetto e testo non possono essere vuoti" };
+
+  const [client] = await db.select().from(domClients).where(eq(domClients.id, domClientId)).limit(1);
+  if (!client) return { success: false, message: "Domiciliazione non trovata" };
+  const [scan] = await db.select().from(domMailScans).where(and(eq(domMailScans.id, scanId), eq(domMailScans.domClientId, domClientId))).limit(1);
+  if (!scan) return { success: false, message: "Scansione non trovata (forse già gestita da un altro operatore)" };
+
+  const ordinarie = cleanText(client.emailPosta).split(";").map(s => s.trim()).filter(Boolean);
+  const pec = cleanText(client.emailPec);
+  if (!ordinarie.length) return { success: false, message: "Questa società non ha un indirizzo email ordinario configurato." };
+  if (channel === "pec" && !pec) return { success: false, message: "Questa società non ha un indirizzo PEC configurato." };
+
+  const account: DomMailAccount = channel === "pec" ? "pec" : "ordinaria";
+  const to = channel === "pec" ? [ordinarie[0], pec].join(",") : ordinarie[0];
+  const cc = channel === "pec" ? [...ordinarie.slice(1), MAIL_SCAN_INTERNAL_ADDRESS] : ordinarie.slice(1);
+  const bcc = channel === "pec" ? undefined : MAIL_SCAN_INTERNAL_ADDRESS;
+
+  let pdf: Buffer;
+  try {
+    pdf = await readMailScanDecrypted(scanId);
+  } catch {
+    return { success: false, message: "Impossibile leggere il file della scansione (forse già gestita altrove)" };
+  }
+
+  const bodyHtml = `<p>${text.trim().replace(/\n/g, "<br>\n")}</p>`;
+  const html = `<html>\n<head>\n<title>${mailScanPageTitle(channel)}</title>\n</head>\n<body>\n${bodyHtml}\n${mailScanDisclaimerHtml(channel)}\n</body>\n</html>`;
+
+  const safeName = client.ragioneSociale.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "") || String(client.id);
+  const result = await sendDomMail(account, {
+    to, cc: cc.join(","), bcc, subject, html, text: html.replace(/<[^>]+>/g, " "),
+    attachments: [{ filename: `posta_${safeName}.pdf`, content: pdf, contentType: "application/pdf" }],
+  });
+  if (!result.sent) return { success: false, message: `Invio non riuscito (${result.reason})` };
+
+  await db.delete(domMailScans).where(eq(domMailScans.id, scanId));
   await removeMailScanEncrypted(scanId);
   revalidatePath(BASE_PATH);
   return { success: true };
