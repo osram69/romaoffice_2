@@ -37,9 +37,6 @@ export function GestioneSidebar({ role, active, username, tabs, newDomiciliazion
           <li className={active === "domiciliazioni" ? "active" : ""}>
             <Link href="/gestione-domiciliazioni-x9k2m7" onClick={() => setOpen(false)}>Domiciliazioni</Link>
           </li>
-          <li className={active === "ordini" ? "active" : ""}>
-            <Link href="/gestione-ordini-x9k2m7" onClick={() => setOpen(false)}>Ordini Online</Link>
-          </li>
           {tabs.map(tab => (
             <li key={tab.stato} className="sidebar-sub">
               <Link href={`/gestione-domiciliazioni-x9k2m7?stato=${tab.stato}`} onClick={() => setOpen(false)}>
@@ -65,6 +62,9 @@ export function GestioneSidebar({ role, active, username, tabs, newDomiciliazion
               </li>
             </>
           )}
+          <li className={active === "ordini" ? "active" : ""}>
+            <Link href="/gestione-ordini-x9k2m7" onClick={() => setOpen(false)}>Ordini Online</Link>
+          </li>
           <li><form action={staffLogoutAction}><button type="submit" className="sidebar-link">Esci</button></form></li>
         </ul>
       </aside>

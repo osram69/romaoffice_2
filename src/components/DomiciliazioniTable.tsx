@@ -97,9 +97,7 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds }: { rows: Dom
     });
   }
 
-  const CHANNEL_LABEL: Record<MailScanChannel, string> = { ordinaria: "email ordinaria", pec: "PEC", aperta: "Aperta (con notifica via email)" };
   async function handleSendMailScan(row: DomClient, channel: MailScanChannel) {
-    if (!confirm(`Inviare a "${row.ragioneSociale}" tramite ${CHANNEL_LABEL[channel]}?`)) return;
     setSendingId(row.id);
     const result = await sendMailScanAction(row.id, channel);
     setSendingId(null);
