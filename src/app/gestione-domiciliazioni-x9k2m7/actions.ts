@@ -283,43 +283,23 @@ function mailScanDraftContent(channel: MailScanChannel, ragioneSociale: string):
   };
 }
 
-export type MailScanDraft = { scanId: number; createdAt: string; subject: string; text: string };
-
-// Always targets the most recent not-yet-handled scan for this client — handled scans are deleted
-// on send (see sendMailScanAction), so in practice there's at most one of these at a time.
-export async function getMailScanDraftAction(domClientId: number, channel: MailScanChannel): Promise<{ success: boolean; message?: string; draft?: MailScanDraft }> {
-  "use server";
-  await requireStaff();
-  const [client] = await db.select().from(domClients).where(eq(domClients.id, domClientId)).limit(1);
-  if (!client) return { success: false, message: "Domiciliazione non trovata" };
-  if (channel === "pec" && !cleanText(client.emailPec)) return { success: false, message: "Questa società non ha un indirizzo PEC configurato." };
-
-  const [scan] = await db.select().from(domMailScans).where(eq(domMailScans.domClientId, domClientId)).orderBy(desc(domMailScans.createdAt)).limit(1);
-  if (!scan) return { success: false, message: 'Nessuna scansione in attesa per questa società. Usa prima "Allega".' };
-
-  const { subject, text } = mailScanDraftContent(channel, client.ragioneSociale);
-  return { success: true, draft: { scanId: scan.id, createdAt: scan.createdAt.toISOString(), subject, text } };
-}
-
-// Sends the given (already-reviewed) subject/opening-text with the scan attached, then deletes the
+// Sends immediately (no staff-editable preview — subject/opening text/disclaimer are fixed, ported
+// from the legacy tool) to the most recent not-yet-handled scan for this client, then deletes the
 // scan — per team decision, a handled mail scan isn't kept as a permanent record like the contract
-// documents are; the email sent (in each mailbox's own Sent folder) is the record. The disclaimer
-// footer is appended here rather than being part of the editable draft, so it can't be accidentally
-// altered or dropped by whoever reviews the opening text.
+// documents are; the email sent (in each mailbox's own Sent folder) is the record.
 //
 // Recipients ported verbatim from ajax_send_mail.php: email_posta's first address is always the
 // primary "to" (remaining email_posta addresses CC'd); PEC additionally "to"s email_pec and CCs the
 // fixed internal address; Invia/Aperta additionally BCC the fixed internal address instead (legacy
 // only skipped this BCC for a "generic" scan not tied to any client record — doesn't apply here).
-export async function sendMailScanAction(domClientId: number, scanId: number, channel: MailScanChannel, subject: string, text: string): Promise<{ success: boolean; message?: string }> {
+export async function sendMailScanAction(domClientId: number, channel: MailScanChannel): Promise<{ success: boolean; message?: string }> {
   "use server";
   await requireStaff();
-  if (!subject.trim() || !text.trim()) return { success: false, message: "Oggetto e testo non possono essere vuoti" };
 
   const [client] = await db.select().from(domClients).where(eq(domClients.id, domClientId)).limit(1);
   if (!client) return { success: false, message: "Domiciliazione non trovata" };
-  const [scan] = await db.select().from(domMailScans).where(and(eq(domMailScans.id, scanId), eq(domMailScans.domClientId, domClientId))).limit(1);
-  if (!scan) return { success: false, message: "Scansione non trovata (forse già gestita da un altro operatore)" };
+  const [scan] = await db.select().from(domMailScans).where(eq(domMailScans.domClientId, domClientId)).orderBy(desc(domMailScans.createdAt)).limit(1);
+  if (!scan) return { success: false, message: 'Nessuna scansione in attesa per questa società. Usa prima "Allega".' };
 
   const ordinarie = cleanText(client.emailPosta).split(";").map(s => s.trim()).filter(Boolean);
   const pec = cleanText(client.emailPec);
@@ -333,11 +313,12 @@ export async function sendMailScanAction(domClientId: number, scanId: number, ch
 
   let pdf: Buffer;
   try {
-    pdf = await readMailScanDecrypted(scanId);
+    pdf = await readMailScanDecrypted(scan.id);
   } catch {
     return { success: false, message: "Impossibile leggere il file della scansione (forse già gestita altrove)" };
   }
 
+  const { subject, text } = mailScanDraftContent(channel, client.ragioneSociale);
   const bodyHtml = `<p>${text.trim().replace(/\n/g, "<br>\n")}</p>`;
   const html = `<html>\n<head>\n<title>${mailScanPageTitle(channel)}</title>\n</head>\n<body>\n${bodyHtml}\n${mailScanDisclaimerHtml(channel)}\n</body>\n</html>`;
 
@@ -348,8 +329,8 @@ export async function sendMailScanAction(domClientId: number, scanId: number, ch
   });
   if (!result.sent) return { success: false, message: `Invio non riuscito (${result.reason})` };
 
-  await db.delete(domMailScans).where(eq(domMailScans.id, scanId));
-  await removeMailScanEncrypted(scanId);
+  await db.delete(domMailScans).where(eq(domMailScans.id, scan.id));
+  await removeMailScanEncrypted(scan.id);
   revalidatePath(BASE_PATH);
   return { success: true };
 }

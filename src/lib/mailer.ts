@@ -28,10 +28,15 @@ export type DomMailAccount = "ordinaria" | "pec";
 
 function accountEnv(account: DomMailAccount) {
   const prefix = account === "pec" ? "PEC_SMTP" : "ORDINARIA_SMTP";
+  const fromAddress = process.env[`${prefix}_FROM`] || process.env[`${prefix}_USER`];
+  // A bare address in the From header shows up in most mail clients as just its local part
+  // ("posta" for posta@romaofficesharing.it) instead of a real sender name — wrap it with a
+  // display name (overridable per account via _FROM_NAME) so recipients see "Roma Office Sharing".
+  const fromName = process.env[`${prefix}_FROM_NAME`] || "Roma Office Sharing";
   return {
     host: process.env[`${prefix}_HOST`], port: Number(process.env[`${prefix}_PORT`] || 465),
     user: process.env[`${prefix}_USER`], pass: process.env[`${prefix}_PASS`],
-    from: process.env[`${prefix}_FROM`] || process.env[`${prefix}_USER`],
+    from: fromAddress ? `"${fromName}" <${fromAddress}>` : fromAddress,
   };
 }
 

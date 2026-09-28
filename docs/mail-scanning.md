@@ -64,7 +64,7 @@ Ricalca esattamente il flusso del vecchio tool:
 1. Per una società senza scansioni in sospeso, solo **Allega** è cliccabile — Invia/PEC/Aperta sono disabilitati ("dimmed").
 2. Fatta una scansione, Invia/PEC/Aperta si attivano per quella riga.
 3. Se la scansione è sbagliata, si ripreme Allega: il nuovo file sostituisce quello già in sospeso (Invia/PEC/Aperta restano attivi, ora sull'ultima scansione).
-4. Premendo **Invia** (email ordinaria), **PEC** (via PEC — richiede un indirizzo PEC in anagrafica, altrimenti segnala errore) o **Aperta** (staff ha già letto il contenuto al cliente per telefono: invia comunque un'email, ma con testo che lo dice esplicitamente invece di "in allegato trova la scansione"), il pannello mostra oggetto/testo precompilati ma modificabili prima dell'invio effettivo (stesso principio delle email di scadenza: mai inviare un testo senza che lo staff lo riveda).
+4. Premendo **Invia** (email ordinaria), **PEC** (via PEC — richiede un indirizzo PEC in anagrafica, altrimenti segnala errore) o **Aperta** (staff ha già letto il contenuto al cliente per telefono: invia comunque un'email, ma con testo che lo dice esplicitamente invece di "in allegato trova la scansione"), dopo una conferma (`confirm()`) l'email parte **subito**, senza anteprima da rivedere — a differenza delle email di scadenza, qui oggetto/testo/informativa sono fissi (portati dal vecchio tool), non c'è niente da personalizzare caso per caso.
 5. Inviata con successo l'email (con la scansione allegata), il file viene **eliminato dal server** e Invia/PEC/Aperta tornano disabilitati per quella società — nessuno storico separato: il messaggio inviato (visibile nella cartella "Inviati" della relativa casella email) è la traccia che resta.
 
 ### Testi email: identici al vecchio tool
@@ -73,7 +73,8 @@ Oggetto, testo di apertura, mittenti/CC/BCC e informativa (esclusione di respons
 
 - **Destinatari**: il primo indirizzo di `email_posta` è sempre il destinatario principale (gli altri in CC). PEC aggiunge anche `email_pec` come destinatario e mette in CC l'indirizzo fisso `posta@romaofficesharing.it`; Invia/Aperta mettono invece quello stesso indirizzo in CCN (BCC).
 - **Oggetto**: PEC e Invia includono un codice `[ID#####]` casuale a 5 cifre (come `rand(0,99999)` lato PHP); Aperta no.
-- **Testo di apertura** (l'unica parte che lo staff vede/modifica prima dell'invio) e **informativa legale** (aggiunta automaticamente in fondo, non modificabile nel pannello): stessa formulazione IT/EN del vecchio tool, con la sola differenza che l'informativa di Aperta ha un paragrafo iniziale diverso (menziona esplicitamente che l'apertura è stata richiesta dalla società).
+- **Testo di apertura** e **informativa legale** (in fondo all'email, entrambi fissi, non modificabili — vedi sopra): stessa formulazione IT/EN del vecchio tool, con la sola differenza che l'informativa di Aperta ha un paragrafo iniziale diverso (menziona esplicitamente che l'apertura è stata richiesta dalla società).
+- **Mittente**: `src/lib/mailer.ts` (`accountEnv`) ora mostra sempre un nome visualizzato — "Roma Office Sharing" di default, sovrascrivibile per singolo account con `ORDINARIA_SMTP_FROM_NAME` / `PEC_SMTP_FROM_NAME` — invece del solo indirizzo nudo (che in molti client di posta appariva come il solo "posta", la parte prima della @). Vale per tutte le email inviate tramite questi due account, non solo per la scansione posta.
 
 Non è stato portato il pre-processing PDF del vecchio tool (`trimPdfBottom`, un ritaglio di 0,6&nbsp;cm in basso per eliminare una filigrana del software di scansione precedente, Asprise) — con eSCL non serve, non essendoci quella filigrana.
 

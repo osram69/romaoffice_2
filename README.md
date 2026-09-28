@@ -110,7 +110,7 @@ Generate `AUTH_SECRET` with `openssl rand -hex 32` — it must be at least 32 ch
 
 ### Mail scanning (eSCL) on the domiciliazioni dashboard
 
-The **Allega** button next to each active domiciliazione (`/gestione-domiciliazioni-x9k2m7`) scans incoming mail from the office's network scanner/MFP and attaches the PDF to that company's record — replacing the old Python `pyscanner` TWAIN bridge. Scanner address and defaults are configured once for the whole office in **Configurazione Web** (admin only), not per operator/browser. See **`docs/mail-scanning.md`** for the architecture (why the scan is driven by the operator's browser rather than the Hostinger-hosted server), the local bridge (`npx tsx scripts/escl-bridge.ts`), why scans are kept separate from the permanent, encrypted contract archive, and how **Invia**/**PEC**/**Aperta** email the most recent pending scan to the client (and delete it) once staff reviews and confirms the draft.
+The **Allega** button next to each active domiciliazione (`/gestione-domiciliazioni-x9k2m7`) scans incoming mail from the office's network scanner/MFP and attaches the PDF to that company's record — replacing the old Python `pyscanner` TWAIN bridge. Scanner address and defaults are configured once for the whole office in **Configurazione Web** (admin only), not per operator/browser. See **`docs/mail-scanning.md`** for the architecture (why the scan is driven by the operator's browser rather than the Hostinger-hosted server), the local bridge (`npx tsx scripts/escl-bridge.ts`), why scans are kept separate from the permanent, encrypted contract archive, and how **Invia**/**PEC**/**Aperta** email the most recent pending scan to the client (and delete it) once staff confirms.
 
 ## Hostinger deployment
 

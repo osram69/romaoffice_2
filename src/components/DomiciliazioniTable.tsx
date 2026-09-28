@@ -10,11 +10,11 @@ import { DeleteIconButton } from "./DeleteIconButton";
 import { ActionFormButton } from "./ActionFormButton";
 import { ScadenzaEmailPanel } from "./ScadenzaEmailPanel";
 import { DomMailScanPanel } from "./DomMailScanPanel";
-import { DomMailScanSendPanel } from "./DomMailScanSendPanel";
 import type { MailScanChannel } from "@/app/gestione-domiciliazioni-x9k2m7/actions";
 import {
   updateDomiciliazioneAction, deleteDomiciliazioneAction,
   decadiDomiciliazioneAction, ripristinaDomiciliazioneAction, attivaDomiciliazioneAction,
+  sendMailScanAction,
 } from "@/app/gestione-domiciliazioni-x9k2m7/actions";
 
 type DomClient = InferSelectModel<typeof domClients>;
@@ -82,7 +82,9 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds }: { rows: Dom
   const [viewing, setViewing] = useState<DomClient | null>(null);
   const [editing, setEditing] = useState<DomClient | null>(null);
   const [scanning, setScanning] = useState<DomClient | null>(null);
-  const [sending, setSending] = useState<{ client: DomClient; channel: MailScanChannel } | null>(null);
+  // Sends immediately (no preview — see sendMailScanAction), just tracks which row is mid-send so
+  // its three buttons can show a busy state instead of allowing a double-click double-send.
+  const [sendingId, setSendingId] = useState<number | null>(null);
   // Invia/PEC/Aperta are enabled only for a client with a pending scan (Allega used, not yet sent
   // or discarded) — mirrors pendingScanIds from the server, then updated optimistically as scans
   // are attached/sent/removed in this tab without waiting for a full reload.
@@ -93,6 +95,16 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds }: { rows: Dom
       if (hasPending) next.add(clientId); else next.delete(clientId);
       return next;
     });
+  }
+
+  const CHANNEL_LABEL: Record<MailScanChannel, string> = { ordinaria: "email ordinaria", pec: "PEC", aperta: "Aperta (con notifica via email)" };
+  async function handleSendMailScan(row: DomClient, channel: MailScanChannel) {
+    if (!confirm(`Inviare a "${row.ragioneSociale}" tramite ${CHANNEL_LABEL[channel]}?`)) return;
+    setSendingId(row.id);
+    const result = await sendMailScanAction(row.id, channel);
+    setSendingId(null);
+    if (!result.success) { alert(result.message || "Errore durante l'invio"); return; }
+    setPendingFor(row.id, false);
   }
   const [schedaTab, setSchedaTab] = useState<"dati" | "scadenza" | "proforma">("dati");
   function openScheda(row: DomClient) { setViewing(row); setSchedaTab("dati"); }
@@ -201,9 +213,9 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds }: { rows: Dom
                           // (moves it to Decadute) — it never permanently deletes.
                           <div className="gestione-row-actions">
                             <button type="button" className="gestione-action-btn gestione-action-allega" onClick={() => setScanning(row)}>Allega</button>
-                            <button type="button" className="gestione-action-btn gestione-action-invia" disabled={!pending.has(row.id)} onClick={() => setSending({ client: row, channel: "ordinaria" })}>Invia</button>
-                            <button type="button" className="gestione-action-btn gestione-action-pec" disabled={!pending.has(row.id)} onClick={() => setSending({ client: row, channel: "pec" })}>PEC</button>
-                            <button type="button" className="gestione-action-btn gestione-action-aperta" disabled={!pending.has(row.id)} onClick={() => setSending({ client: row, channel: "aperta" })}>Aperta</button>
+                            <button type="button" className="gestione-action-btn gestione-action-invia" disabled={!pending.has(row.id) || sendingId === row.id} onClick={() => handleSendMailScan(row, "ordinaria")}>Invia</button>
+                            <button type="button" className="gestione-action-btn gestione-action-pec" disabled={!pending.has(row.id) || sendingId === row.id} onClick={() => handleSendMailScan(row, "pec")}>PEC</button>
+                            <button type="button" className="gestione-action-btn gestione-action-aperta" disabled={!pending.has(row.id) || sendingId === row.id} onClick={() => handleSendMailScan(row, "aperta")}>Aperta</button>
                             <button type="button" className="gestione-icon-btn edit" aria-label={`Modifica ${row.ragioneSociale}`} title="Modifica" onClick={() => setEditing(row)}>
                               <Pencil size={14} />
                             </button>
@@ -319,10 +331,6 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds }: { rows: Dom
 
       {scanning && (
         <DomMailScanPanel clientId={scanning.id} ragioneSociale={scanning.ragioneSociale} onClose={() => setScanning(null)} onPendingChange={hasPending => setPendingFor(scanning.id, hasPending)} />
-      )}
-
-      {sending && (
-        <DomMailScanSendPanel clientId={sending.client.id} ragioneSociale={sending.client.ragioneSociale} channel={sending.channel} onClose={() => setSending(null)} onSent={() => setPendingFor(sending.client.id, false)} />
       )}
     </>
   );
