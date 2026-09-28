@@ -30,8 +30,8 @@ function SmartStartCard({ lang, product }: { lang: Lang; product: ProductOffer }
     <h4>{it ? "Contratto Smart-Start: risparmia di più nei primi mesi" : "Smart-Start agreement: save more in the first months"}</h4>
     <p>{it ? "Pensato per chi sta aprendo una nuova attività: una prima tranche a canone ridotto, poi un contratto standard di 24 mesi. Riservato a nuove partite IVA o società non ancora costituite." : "Designed for a brand-new business: a first instalment at a reduced monthly fee, followed by a standard 24-month agreement. Reserved for new VAT numbers or companies not yet incorporated."}</p>
     <div className="smart-start-tiers">
-      {product.smart3x24Active && <div><b>Smart-Start 3+24</b><p>{it ? "Prima tranche: 3 mesi a 20 €/mese (60 € + IVA) — poi contratto 24 mesi standard" : "First instalment: 3 months at €20/month (€60 + VAT) — then a standard 24-month agreement"}</p></div>}
-      {product.smart6x24Active && <div><b>Smart-Start 6+24</b><p>{it ? "Prima tranche: 6 mesi a 20 €/mese (120 € + IVA) — poi contratto 24 mesi standard" : "First instalment: 6 months at €20/month (€120 + VAT) — then a standard 24-month agreement"}</p></div>}
+      {product.smart3x24Active && <div><b>Smart-Start 3+24</b><p>{it ? "Prima tranche: 3 mesi a 20 €/mese (60 € + IVA) — poi contratto 24 mesi" : "First instalment: 3 months at €20/month (€60 + VAT) — then a 24-month agreement"}</p></div>}
+      {product.smart6x24Active && <div><b>Smart-Start 6+24</b><p>{it ? "Prima tranche: 6 mesi a 20 €/mese (120 € + IVA) — poi contratto 24 mesi" : "First instalment: 6 months at €20/month (€120 + VAT) — then a 24-month agreement"}</p></div>}
     </div>
     <p className="form-note">{it ? "Il contratto Smart-Start ha una struttura a due tranche non gestibile dal pagamento online automatico: richiedilo con il modulo online o telefonicamente, lo prepariamo su misura." : "The Smart-Start agreement has a two-instalment structure that the automated online checkout cannot handle: request it via the online form or by phone and we will prepare it for you."}</p>
   </div>;
