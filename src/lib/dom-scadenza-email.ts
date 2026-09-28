@@ -55,10 +55,23 @@ function scontoClause(client: Pick<DomClient, "inizioDom">, includeSconto: boole
   return ` (lo sconto una-tantum attivazioni${year ? ` ${year}` : ""} non è più applicabile)`;
 }
 
-function offerteRows(prezzi: RinnovoPrezzo[], currentMonths: number | null): string {
+/** Renewal durations that actually have a usable price on file, in order — used both to render the
+ * offer rows and to let staff know, via checkboxes, which durations exist to toggle. */
+export function scadenzaOfferMonths(prezzi: RinnovoPrezzo[]): number[] {
+  return prezzi.filter(p => p.prezzoPieno !== null && p.prezzoOfferta !== null).map(p => p.mesi).sort((a, b) => a - b);
+}
+
+/** Which of those durations are on by default: only renewals *longer* than the client's current
+ * contract (mirrors the legacy behavior — offering the same or a shorter term as an "upsell" makes
+ * no sense) — staff can still override per-send via the checkboxes in the panel. */
+export function scadenzaDefaultMonths(prezzi: RinnovoPrezzo[], currentMonths: number | null): number[] {
+  return scadenzaOfferMonths(prezzi).filter(m => currentMonths === null || m > currentMonths);
+}
+
+function offerteRows(prezzi: RinnovoPrezzo[], includeMonths: number[]): string {
   const rows = prezzi
     .filter(p => p.prezzoPieno !== null && p.prezzoOfferta !== null)
-    .filter(p => currentMonths === null || p.mesi > currentMonths)
+    .filter(p => includeMonths.includes(p.mesi))
     .sort((a, b) => a.mesi - b.mesi);
   if (rows.length === 0) return "";
   return rows.map(p => {
@@ -75,10 +88,11 @@ export function scadenzaEmailSubject(client: Pick<DomClient, "ragioneSociale">):
  * plus the (new) activation-discount disclaimer. This is meant to be shown to staff for review/
  * editing before sending — never sent unmodified — but is also a stable building block a future
  * automation (local agent / AI) can call directly with the same DomClient + pricing shape. */
-export function buildScadenzaEmailHtml(client: DomClient, prezzi: RinnovoPrezzo[], includeSconto: boolean): string {
+export function buildScadenzaEmailHtml(client: DomClient, prezzi: RinnovoPrezzo[], includeSconto: boolean, includeMonths?: number[]): string {
   const months = contractMonths(client);
   const durata = months ? DURATA_PAROLA[months] ?? `di ${months} mesi` : "";
   const prezzoRinnovo = client.prezzoRinnovo !== null ? String(client.prezzoRinnovo) : "[PREZZO]";
+  const offerMonths = includeMonths ?? scadenzaDefaultMonths(prezzi, months);
 
   return `<p>Buongiorno Sig. ${cognomeDi(client)},</p>
 <p>con la presente volevamo informarLa che in data <strong>${fmtDateIT(client.scadenzaDom)}</strong>, scadrà il contratto di domiciliazione legale della società <strong>${client.ragioneSociale}</strong></p>
@@ -86,7 +100,7 @@ export function buildScadenzaEmailHtml(client: DomClient, prezzi: RinnovoPrezzo[
 <p>Per il rinnovo possiamo mantenere le stesse condizioni precedenti con canone${durata ? ` ${durata}` : ""} di ${prezzoRinnovo}&nbsp;€ + IVA${scontoClause(client, includeSconto)}</p>
 <p><u>Nel caso di pagamento tardivo, non sarà possibile rinnovare alle stesse condizioni.</u></p>
 <p>Abbiamo altresì attive le seguenti offerte:</p>
-${offerteRows(prezzi, months)}
+${offerteRows(prezzi, offerMonths)}
 <p>Nel caso di conferma intento al rinnovo, provvederemo ad inviarle relativa fattura proforma per il pagamento, altrimenti La preghiamo di inviarci raccomandata/PEC con comunicazione di recesso.</p>
 <p>Restiamo in attesa di un cortese riscontro</p>
 <p>Cordiali saluti<br>Amministrazione Roma Office Sharing</p>`;

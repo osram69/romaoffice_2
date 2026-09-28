@@ -8,7 +8,7 @@ import { domClients, domCustomerChallenges, domCustomerSessions, domMailScans, d
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
 import { readMailScanDecrypted, removeEncrypted, removeMailScanEncrypted, saveEncrypted, saveMailScanEncrypted, type DocType, DOC_TYPES } from "@/lib/dom-archive";
 import { PRESENZA_FILE_BITS, cleanText } from "@/lib/dom-status";
-import { buildScadenzaEmailHtml, defaultScontoApplicabile, scadenzaEmailSubject } from "@/lib/dom-scadenza-email";
+import { buildScadenzaEmailHtml, contractMonths, defaultScontoApplicabile, scadenzaDefaultMonths, scadenzaEmailSubject, scadenzaOfferMonths } from "@/lib/dom-scadenza-email";
 import { sendDomMail, type DomMailAccount } from "@/lib/mailer";
 import { hashPassword } from "@/lib/customer-auth";
 import { passwordMeetsPolicy } from "@/lib/password-policy";
@@ -342,21 +342,25 @@ export async function sendMailScanAction(domClientId: number, channel: MailScanC
 // Draft the scadenza reminder for staff to review/edit before sending — never sent unmodified.
 // Reuses a previously edited/sent draft (testoScadenza) unless `regenerate` asks for a fresh one;
 // `includeSconto`, when given, overrides the automatic (contract-duration-based) default for the
-// "sconto attivazioni non più applicabile" disclaimer while regenerating.
-export async function getScadenzaDraftAction(id: number, regenerate = false, includeSconto?: boolean): Promise<{ success: boolean; message?: string; subject?: string; html?: string; prezzoRinnovo?: number | null; scontoDefault?: boolean }> {
+// "sconto attivazioni non più applicabile" disclaimer while regenerating; same for `includeMonths`
+// and which renewal-offer durations (6/12/24/36/48) get listed.
+export async function getScadenzaDraftAction(id: number, regenerate = false, includeSconto?: boolean, includeMonths?: number[]): Promise<{ success: boolean; message?: string; subject?: string; html?: string; prezzoRinnovo?: number | null; scontoDefault?: boolean; availableMonths?: number[]; defaultMonths?: number[] }> {
   "use server";
   await requireStaff();
   const [client] = await db.select().from(domClients).where(eq(domClients.id, id)).limit(1);
   if (!client) return { success: false, message: "Domiciliazione non trovata" };
   const prezzi = await db.select().from(domRinnovoPrezzi);
   const scontoDefault = defaultScontoApplicabile(client);
+  const defaultMonths = scadenzaDefaultMonths(prezzi, contractMonths(client));
   const stored = !regenerate ? client.testoScadenza?.trim() : "";
   return {
     success: true,
     subject: scadenzaEmailSubject(client),
-    html: stored || buildScadenzaEmailHtml(client, prezzi, includeSconto ?? scontoDefault),
+    html: stored || buildScadenzaEmailHtml(client, prezzi, includeSconto ?? scontoDefault, includeMonths ?? defaultMonths),
     prezzoRinnovo: client.prezzoRinnovo,
     scontoDefault,
+    availableMonths: scadenzaOfferMonths(prezzi),
+    defaultMonths,
   };
 }
 
