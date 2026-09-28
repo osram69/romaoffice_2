@@ -96,10 +96,20 @@ async function deleteJob(jobUrl: string): Promise<void> {
   try { await fetch(jobUrl, { method: "DELETE", signal: AbortSignal.timeout(5000) }); } catch { /* best-effort cleanup */ }
 }
 
-/** Scans one document (single page from the flatbed, or every page the feeder holds) and
- * returns a single PDF. Pages the scanner sends as JPEG are wrapped into PDF pages with pdf-lib;
- * pages it sends as PDF directly are merged in as-is. */
-export async function scanToPdf(options: ScanOptions): Promise<Buffer> {
+export type ScannedPage = { data: Buffer; format: "pdf" | "jpeg" | "png" };
+
+function pageFormat(page: Buffer): ScannedPage["format"] {
+  if (page.subarray(0, 4).toString("ascii") === "%PDF") return "pdf";
+  if (page[0] === 0xff && page[1] === 0xd8) return "jpeg";
+  return "png";
+}
+
+/** Scans one document (single page from the flatbed, or every page the feeder holds) and returns
+ * each page's raw bytes as the scanner sent them — JPEG/PNG on most real-world eSCL devices
+ * despite requesting application/pdf, occasionally a one-page PDF. Kept separate from pagesToPdf
+ * so callers that want individual page thumbnails (JPEG/PNG can be shown directly as an <img>,
+ * no PDF rendering needed) don't have to re-parse a merged PDF to get them back out. */
+export async function scanPages(options: ScanOptions): Promise<ScannedPage[]> {
   const opts = {
     host: options.host, port: options.port, https: options.https,
     resolution: options.resolution ?? 200,
@@ -108,27 +118,41 @@ export async function scanToPdf(options: ScanOptions): Promise<Buffer> {
     pageSize: options.pageSize ?? "a4" as PageSize,
   };
   const jobUrl = await createScanJob(opts);
-  const outDoc = await PDFDocument.create();
   try {
-    let pageCount = 0;
+    const pages: ScannedPage[] = [];
     while (true) {
       const page = await fetchNextDocument(jobUrl);
       if (!page) break;
-      pageCount++;
-      if (page.subarray(0, 4).toString("ascii") === "%PDF") {
-        const pageDoc = await PDFDocument.load(page);
-        const copied = await outDoc.copyPages(pageDoc, pageDoc.getPageIndices());
-        copied.forEach(p => outDoc.addPage(p));
-      } else {
-        const image = page[0] === 0xff && page[1] === 0xd8 ? await outDoc.embedJpg(page) : await outDoc.embedPng(page);
-        const p = outDoc.addPage([image.width, image.height]);
-        p.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
-      }
+      pages.push({ data: page, format: pageFormat(page) });
       if (opts.source === "platen") break; // flatbed: exactly one page per job
     }
-    if (pageCount === 0) throw new Error("Lo scanner non ha restituito alcuna pagina");
+    if (pages.length === 0) throw new Error("Lo scanner non ha restituito alcuna pagina");
+    return pages;
   } finally {
     await deleteJob(jobUrl);
   }
+}
+
+/** Merges scanned pages (as returned by scanPages) into a single PDF, embedding JPEG/PNG pages as
+ * full-page images and copying already-PDF pages in as-is. */
+export async function pagesToPdf(pages: ScannedPage[]): Promise<Buffer> {
+  const outDoc = await PDFDocument.create();
+  for (const page of pages) {
+    if (page.format === "pdf") {
+      const pageDoc = await PDFDocument.load(page.data);
+      const copied = await outDoc.copyPages(pageDoc, pageDoc.getPageIndices());
+      copied.forEach(p => outDoc.addPage(p));
+    } else {
+      const image = page.format === "jpeg" ? await outDoc.embedJpg(page.data) : await outDoc.embedPng(page.data);
+      const p = outDoc.addPage([image.width, image.height]);
+      p.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
+    }
+  }
   return Buffer.from(await outDoc.save());
+}
+
+/** Scans one document and returns a single merged PDF — convenience wrapper over
+ * scanPages + pagesToPdf for callers that don't need individual pages (e.g. per-page thumbnails). */
+export async function scanToPdf(options: ScanOptions): Promise<Buffer> {
+  return pagesToPdf(await scanPages(options));
 }

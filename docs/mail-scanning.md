@@ -8,7 +8,7 @@ Il sito gira su Hostinger; lo scanner è sulla rete locale dell'ufficio. Il serv
 
 1. Il browser chiama un piccolo bridge locale (`scripts/escl-bridge.ts`), in ascolto solo su `127.0.0.1` sul PC dell'operatore.
 2. Il bridge (lato Node, non lato browser: nessun limite CORS/mixed-content) chiama in HTTP puro l'indirizzo IP dello scanner con la libreria `src/lib/escl-scanner.ts`.
-3. Il bridge restituisce al browser il PDF già acquisito (base64); il browser lo carica sul sito tramite una server action, che lo salva cifrato.
+3. Il bridge restituisce al browser sia il PDF della scansione (base64) sia le singole pagine (per le miniature — vedi sotto); solo quando l'operatore conferma, il browser carica il PDF unito sul sito tramite una server action, che lo salva cifrato.
 
 Il server Hostinger riceve quindi solo il PDF finale — non parla mai direttamente con lo scanner.
 
@@ -33,6 +33,15 @@ Se risponde con un XML, lo scanner supporta eSCL ed è pronto all'uso.
 Indirizzo IP/porta/HTTPS dello scanner e le impostazioni proposte di default (colore, sorgente, risoluzione) si configurano **una sola volta per tutto l'ufficio** in `/gestione-configurazione-x9k2m7` → sezione "Scanner posta (eSCL)" — non per singolo operatore/browser, dato che è un unico scanner fisico condiviso. Sono salvate in `site_config` (`scanner_host`, `scanner_port`, `scanner_https`, `scanner_color_default`, `scanner_source_default`, `scanner_resolution_default`).
 
 Nel pannello "Allega" (accessibile ad admin e operatore), colore/sorgente/risoluzione restano comunque modificabili per la singola scansione — quelli configurati sono solo il punto di partenza.
+
+## Il pannello "Allega": miniature e scansioni multiple
+
+Rifà, nell'aspetto e nel comportamento, il pannello del vecchio tool (sfondo scuro con header brandizzato, pannello impostazioni a sinistra, anteprima a destra):
+
+- Ogni pressione di **Scansiona documento** aggiunge un blocco di pagine (dal piano: una pagina; dal caricatore: tutte quelle acquisite in quel passaggio) senza sostituire le precedenti — utile per comporre un unico documento da più passaggi (es. fronte da piano, retro da ADF).
+- Ogni pagina viene mostrata come **miniatura reale** (non un'icona generica): il bridge restituisce anche le singole pagine così come le manda lo scanner — quasi sempre JPEG anche quando si richiede PDF, comportamento comune alla maggior parte delle multifunzione eSCL — mostrate direttamente come `<img>`. Se una pagina arrivasse eccezionalmente già come PDF, la miniatura mostra un'icona generica al suo posto (il PDF resta comunque incluso nel documento finale).
+- **Scarta ultima** rimuove l'ultimo blocco scansionato; **Svuota tutto** azzera tutto (con conferma); **Conferma upload** unisce tutti i blocchi in un unico PDF (client-side, con `pdf-lib`) e lo allega alla società — da quel momento sostituisce l'eventuale scansione già in sospeso.
+- Se la società ha già una scansione in sospeso da prima, il pannello lo segnala in alto con un link per aprirla e un pulsante per rimuoverla, senza dover per forza scansionare di nuovo.
 
 ## Storage: due archivi diversi, non uno
 

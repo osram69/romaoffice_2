@@ -150,3 +150,54 @@ tr.gestione-letter-row { scroll-margin-top: 70px; }
 @media (max-width: 800px) {
   .gestione-scheda-table-paired, .gestione-scheda-table-paired tbody, .gestione-scheda-table-paired tr, .gestione-scheda-table-paired th, .gestione-scheda-table-paired td { display: block; width: auto !important; text-align: left !important; }
 }
+
+/* Scan bridge modal (Allega) — visual identity ported from the legacy tool's own scanner modal:
+   dark brand header with orange accent, settings panel + thumbnail preview panel side by side. */
+.scan-bridge-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 200; display: flex; align-items: flex-start; justify-content: center; padding: 24px; overflow-y: auto; }
+.scan-bridge-box { background: #f4f6fa; border-radius: 18px; width: 100%; max-width: 1180px; position: relative; box-shadow: 0 18px 55px rgba(0,0,0,.35); overflow: hidden; }
+.scan-bridge-header { display: flex; align-items: center; justify-content: space-between; background: linear-gradient(135deg, #3f3f3f 0%, #5d5d5d 100%); color: #fff; border-bottom: 3px solid #ff7900; padding: 10px 18px; min-height: 52px; }
+.scan-bridge-brand { display: flex; align-items: center; min-width: 0; gap: 10px; }
+.scan-bridge-brand img { width: 34px; height: 34px; object-fit: contain; filter: drop-shadow(0 1px 3px rgba(0,0,0,.25)); }
+.scan-bridge-brand-name { font-size: 15px; font-weight: 800; letter-spacing: .5px; line-height: 1.2; }
+.scan-bridge-brand-subtitle { font-size: 11px; font-weight: 600; color: #ffb066; letter-spacing: .3px; }
+.scan-bridge-close { background: none; border: none; color: #fff; opacity: .9; font-size: 28px; font-weight: 300; line-height: 1; cursor: pointer; padding: 4px 8px; }
+.scan-bridge-close:hover { color: #ff7900; opacity: 1; }
+.scan-bridge-body { padding: 14px 16px; background: radial-gradient(circle at top left, rgba(255,121,0,.12), transparent 34%), #f4f6fa; }
+.scan-bridge-shell { display: flex; flex-wrap: wrap; border: 1px solid #dce1ea; background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 6px 20px rgba(35,47,62,.10); }
+.scan-bridge-settings { flex: 1 1 260px; background: #fff; border-right: 1px solid #e1e5ed; padding: 18px; }
+.scan-bridge-preview-panel { flex: 2 1 420px; background: #fbfcfe; padding: 14px; min-width: 0; }
+.scan-bridge-panel-title { font-size: 15px; font-weight: 800; color: #232f3e; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #e5e9f1; display: flex; align-items: center; }
+.scan-bridge-panel-title::before { content: ""; width: 9px; height: 9px; background: #ff7900; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 0 4px rgba(255,121,0,.22); }
+.scan-bridge-field { margin-bottom: 10px; }
+.scan-bridge-field label { display: block; color: #25324b; font-size: 12px; font-weight: 700; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .4px; }
+.scan-bridge-field select { width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cfd6e2; color: #1f2d46; font-size: 13px; padding: 0 10px; background: #fff; }
+.scan-bridge-field select:focus { outline: none; border-color: #ff7900; box-shadow: 0 0 0 3px rgba(255,121,0,.16); }
+.scan-bridge-scan-btn { width: 100%; height: 46px; border: 0; border-radius: 10px; background: linear-gradient(135deg, #ff8a1c 0%, #f26f00 100%); box-shadow: 0 6px 13px rgba(255,121,0,.28); font-weight: 800; letter-spacing: .2px; margin-top: 6px; color: #fff; cursor: pointer; }
+.scan-bridge-scan-btn:hover:not(:disabled) { background: linear-gradient(135deg, #ff9a35 0%, #ff7900 100%); transform: translateY(-1px); }
+.scan-bridge-scan-btn:disabled { opacity: .65; cursor: not-allowed; box-shadow: none; }
+.scan-bridge-hint { background: #f7f9fd; border: 1px solid #e0e6f0; color: #58657a; border-radius: 10px; padding: 8px 10px; font-size: 12px; line-height: 1.25; margin-top: 10px; }
+.scan-bridge-preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 8px; }
+.scan-bridge-preview-title { color: #232f3e; font-size: 13px; font-weight: 800; margin: 0; }
+.scan-bridge-summary { font-size: 12px; color: #6c778b; white-space: nowrap; }
+.scan-bridge-thumbs { min-height: 300px; max-height: 420px; overflow-y: auto; background: linear-gradient(135deg, rgba(70,70,70,.95), rgba(135,135,135,.88)), #5f5f5f; border: 1px solid #d8d8d8; border-radius: 12px; padding: 12px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 10px; }
+.scan-bridge-thumbs-empty { width: 100%; height: 300px; display: flex; align-items: center; justify-content: center; color: #d7dfef; border: 1px dashed rgba(255,255,255,.28); border-radius: 9px; background: rgba(255,255,255,.04); font-size: 14px; text-align: center; padding: 0 20px; }
+.scan-bridge-thumb { position: relative; width: 108px; background: #fff; border-radius: 6px; overflow: hidden; box-shadow: 0 3px 10px rgba(0,0,0,.35); }
+.scan-bridge-thumb img { display: block; width: 100%; height: 140px; object-fit: cover; background: #eee; }
+.scan-bridge-thumb-pdf { width: 100%; height: 140px; display: flex; align-items: center; justify-content: center; background: #e9ecef; color: #495057; font-size: 28px; }
+.scan-bridge-thumb-page { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(35,47,62,.85); color: #fff; font-size: 10px; text-align: center; padding: 2px 0; font-weight: 700; }
+.scan-bridge-actions { display: flex; justify-content: space-between; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+.scan-bridge-actions button { flex: 1 1 auto; height: 42px; border-radius: 9px; font-weight: 700; font-size: 13px; padding: 0 16px; cursor: pointer; }
+.scan-bridge-btn-discard { color: #c32638; border: 1px solid #e6a0aa; background: #fff; }
+.scan-bridge-btn-discard:hover:not(:disabled) { color: #fff; background: #c32638; border-color: #c32638; }
+.scan-bridge-btn-clear { color: #3b465a; border: 1px solid #c8ced9; background: #fff; }
+.scan-bridge-btn-clear:hover:not(:disabled) { color: #fff; background: #596579; border-color: #596579; }
+.scan-bridge-btn-upload { border: 0; background: linear-gradient(135deg, #ff8a1c, #f26f00); box-shadow: 0 6px 13px rgba(255,121,0,.24); color: #fff; }
+.scan-bridge-btn-upload:hover:not(:disabled) { background: linear-gradient(135deg, #ff9a35, #ff7900); transform: translateY(-1px); }
+.scan-bridge-actions button:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+.scan-bridge-status-bar { margin-top: 12px; min-height: 34px; background: #f8fafc; border: 1px solid #e2e7f0; border-radius: 9px; display: flex; align-items: center; padding: 0 12px; font-size: 12px; color: #58657a; }
+.scan-bridge-status-bar:not(:empty)::before { content: "●"; color: #ff7900; font-size: 10px; margin-right: 7px; }
+.scan-bridge-pending-note { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: #fff8ec; border: 1px solid #ffe1b3; color: #8a5a12; border-radius: 8px; padding: 8px 12px; font-size: 12px; margin-bottom: 12px; }
+@media (max-width: 900px) {
+  .scan-bridge-box { max-width: 96vw; }
+  .scan-bridge-settings { border-right: 0; border-bottom: 1px solid #e1e5ed; }
+}

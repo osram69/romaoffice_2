@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { PDFDocument } from "pdf-lib";
 import { attachMailScanAction, getScannerConfigAction, listMailScansAction, removeMailScanAction, type MailScanSummary, type ScannerConfig } from "@/app/gestione-domiciliazioni-x9k2m7/actions";
 import type { ColorMode, ScanSource } from "@/lib/escl-scanner";
 
@@ -14,199 +15,249 @@ function saveBridgePort(port: string) {
   try { window.localStorage.setItem(BRIDGE_PORT_KEY, port); } catch { /* private mode / storage disabled */ }
 }
 
-type ScanOptions = { color: ColorMode; source: ScanSource; resolution: string };
+type ScanPage = { dataUrl: string | null };
+type Chunk = { id: number; pdfBase64: string; pages: ScanPage[] };
 
 function fmtDateTime(iso: string) {
   const d = new Date(iso);
   return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+// Converts a large byte array to base64 without spreading it into String.fromCharCode's argument
+// list (which overflows the call stack for anything beyond a few dozen KB of scanned PDF).
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  return btoa(binary);
+}
+function base64ToBytes(base64: string): Uint8Array {
+  return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+}
+
 export function DomMailScanPanel({ clientId, ragioneSociale, onClose, onPendingChange }: { clientId: number; ragioneSociale: string; onClose: () => void; onPendingChange: (hasPending: boolean) => void }) {
   const [bridgePort, setBridgePort] = useState(loadBridgePort);
   const [config, setConfig] = useState<ScannerConfig | null>(null);
-  const [options, setOptions] = useState<ScanOptions>({ color: "gray", source: "platen", resolution: "200" });
-  const [scans, setScans] = useState<MailScanSummary[]>([]);
-  const [loadingScans, setLoadingScans] = useState(true);
+  const [source, setSource] = useState<ScanSource>("platen");
+  const [color, setColor] = useState<ColorMode>("gray");
+  const [resolution, setResolution] = useState("200");
+  const [chunks, setChunks] = useState<Chunk[]>([]);
+  const [existingScan, setExistingScan] = useState<MailScanSummary | null>(null);
   const [status, setStatus] = useState<{ text: string; color: string } | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [removingExisting, setRemovingExisting] = useState(false);
 
-  async function refreshScans() {
-    setLoadingScans(true);
-    const result = await listMailScansAction(clientId);
-    setLoadingScans(false);
-    if (result.success) {
-      const found = result.scans ?? [];
-      setScans(found);
-      onPendingChange(found.length > 0);
-    } else {
-      setStatus({ text: result.message || "Errore nel caricamento delle scansioni", color: "red" });
-    }
-  }
   useEffect(() => {
-    refreshScans();
     getScannerConfigAction().then(cfg => {
       setConfig(cfg);
-      setOptions({ color: cfg.color, source: cfg.source, resolution: String(cfg.resolution) });
+      setSource(cfg.source);
+      setColor(cfg.color);
+      setResolution(String(cfg.resolution));
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    listMailScansAction(clientId).then(result => {
+      if (result.success) setExistingScan(result.scans?.[0] ?? null);
+    });
   }, [clientId]);
 
   function updateBridgePort(value: string) {
     setBridgePort(value);
     saveBridgePort(value);
   }
-  function updateOption<K extends keyof ScanOptions>(key: K, value: ScanOptions[K]) {
-    setOptions(prev => ({ ...prev, [key]: value }));
-  }
 
   function bridgeUrl(path: string) {
     return `http://127.0.0.1:${bridgePort || "17866"}${path}`;
   }
 
-  async function testScanner() {
+  async function doScan() {
     if (!config?.host) return;
-    setBusy(true);
-    setStatus({ text: "Verifica in corso...", color: "#555" });
-    try {
-      const params = new URLSearchParams({ host: config.host });
-      if (config.port) params.set("port", String(config.port));
-      if (config.https) params.set("https", "1");
-      const res = await fetch(bridgeUrl(`/capabilities?${params}`), { signal: AbortSignal.timeout(10000) });
-      const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.message || "Scanner non raggiungibile");
-      setStatus({ text: `Scanner raggiunto (piano ${data.platenSupported ? "sì" : "no"}, ADF ${data.feederSupported ? "sì" : "no"}).`, color: "green" });
-    } catch (error) {
-      setStatus({ text: bridgeErrorMessage(error), color: "red" });
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function scanAndAttach() {
-    if (!config?.host) return;
-    setBusy(true);
+    setScanning(true);
     setStatus({ text: "Scansione in corso...", color: "#555" });
     try {
       const res = await fetch(bridgeUrl("/scan"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          host: config.host,
-          port: config.port ?? undefined,
-          https: config.https,
-          color: options.color,
-          source: options.source,
-          resolution: Number(options.resolution) || 200,
+          host: config.host, port: config.port ?? undefined, https: config.https,
+          color, source, resolution: Number(resolution) || 200,
         }),
         signal: AbortSignal.timeout(120000),
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.message || "Scansione non riuscita");
 
-      setStatus({ text: "Salvataggio...", color: "#555" });
-      const attached = await attachMailScanAction(clientId, data.pdf_base64);
-      if (!attached.success) throw new Error(attached.message || "Salvataggio non riuscito");
-
-      setStatus({ text: "Scansione allegata.", color: "green" });
-      await refreshScans();
+      const pages: ScanPage[] = (data.pages ?? []).map((p: { base64: string; isImage: boolean; mimeType: string }) => ({
+        dataUrl: p.isImage ? `data:${p.mimeType};base64,${p.base64}` : null,
+      }));
+      const next = [...chunks, { id: Date.now() + Math.random(), pdfBase64: data.pdf_base64 as string, pages }];
+      setChunks(next);
+      setStatus({ text: `Aggiunta scansione (${pages.length} pagine). Totale blocchi: ${next.length}.`, color: "green" });
     } catch (error) {
       setStatus({ text: bridgeErrorMessage(error), color: "red" });
     } finally {
-      setBusy(false);
+      setScanning(false);
     }
   }
 
-  async function removeScan(scanId: number) {
-    if (!confirm("Eliminare questa scansione?")) return;
-    setBusy(true);
-    const result = await removeMailScanAction(scanId, clientId);
-    setBusy(false);
-    if (!result.success) { setStatus({ text: result.message || "Errore durante l'eliminazione", color: "red" }); return; }
-    const next = scans.filter(s => s.id !== scanId);
-    setScans(next);
-    onPendingChange(next.length > 0);
+  function discardLast() {
+    if (!chunks.length) return;
+    const next = chunks.slice(0, -1);
+    setChunks(next);
+    setStatus({ text: next.length ? "Ultima scansione rimossa." : "Tutte le scansioni sono state rimosse.", color: "#555" });
   }
 
+  function clearAll() {
+    if (!chunks.length) return;
+    if (!confirm("Vuoi azzerare tutte le scansioni accumulate?")) return;
+    setChunks([]);
+    setStatus({ text: "Buffer svuotato.", color: "#555" });
+  }
+
+  async function confirmUpload() {
+    if (!chunks.length) return;
+    setUploading(true);
+    setStatus({ text: "Unione pagine e caricamento...", color: "#555" });
+    try {
+      let mergedBase64: string;
+      if (chunks.length === 1) {
+        mergedBase64 = chunks[0].pdfBase64;
+      } else {
+        const merged = await PDFDocument.create();
+        for (const chunk of chunks) {
+          const doc = await PDFDocument.load(base64ToBytes(chunk.pdfBase64));
+          const copied = await merged.copyPages(doc, doc.getPageIndices());
+          copied.forEach(p => merged.addPage(p));
+        }
+        mergedBase64 = bytesToBase64(await merged.save());
+      }
+
+      const attached = await attachMailScanAction(clientId, mergedBase64);
+      if (!attached.success) throw new Error(attached.message || "Salvataggio non riuscito");
+
+      setStatus({ text: "Scansione allegata.", color: "green" });
+      setChunks([]);
+      setExistingScan(attached.scan ?? null);
+      onPendingChange(true);
+    } catch (error) {
+      setStatus({ text: bridgeErrorMessage(error), color: "red" });
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function removeExisting() {
+    if (!existingScan) return;
+    if (!confirm("Eliminare la scansione in sospeso?")) return;
+    setRemovingExisting(true);
+    const result = await removeMailScanAction(existingScan.id, clientId);
+    setRemovingExisting(false);
+    if (!result.success) { setStatus({ text: result.message || "Errore durante l'eliminazione", color: "red" }); return; }
+    setExistingScan(null);
+    onPendingChange(false);
+  }
+
+  const allPages = chunks.flatMap(c => c.pages);
+  const busy = scanning || uploading;
+
   return (
-    <div className="gestione-modal-overlay" onClick={onClose}>
-      <div className="gestione-modal-box" style={{ maxWidth: 640 }} onClick={e => e.stopPropagation()}>
-        <div className="gestione-modal-header">
-          <h2>Scansione posta — {ragioneSociale}</h2>
-          <button type="button" className="gestione-modal-close" aria-label="Chiudi" onClick={onClose}>×</button>
+    <div className="scan-bridge-overlay" onClick={onClose}>
+      <div className="scan-bridge-box" onClick={e => e.stopPropagation()}>
+        <div className="scan-bridge-header">
+          <div className="scan-bridge-brand">
+            <img src="/logo-mark.svg" alt="" />
+            <div>
+              <div className="scan-bridge-brand-name">ROMA OFFICE SHARING</div>
+              <div className="scan-bridge-brand-subtitle">Scansione posta — {ragioneSociale}</div>
+            </div>
+          </div>
+          <button type="button" className="scan-bridge-close" aria-label="Chiudi" onClick={onClose}>×</button>
         </div>
-        <div className="gestione-modal-body">
-          <p style={{ fontSize: 12, color: "#666", marginTop: 0 }}>
-            Richiede il bridge locale eSCL in esecuzione su questo PC (<code>npx tsx scripts/escl-bridge.ts</code>), sulla stessa rete dello scanner.
-          </p>
+
+        <div className="scan-bridge-body">
+          {existingScan && (
+            <div className="scan-bridge-pending-note">
+              Scansione già in sospeso ({fmtDateTime(existingScan.createdAt)}).
+              <a href={`/api/dom-mail-scans?id=${existingScan.id}`} target="_blank" rel="noopener noreferrer">Apri</a>
+              <button type="button" className="gestione-btn gestione-btn-outline" style={{ fontSize: 11, padding: "2px 8px" }} disabled={removingExisting} onClick={removeExisting}>Rimuovi</button>
+              <span style={{ marginLeft: "auto" }}>Scansionando qui sotto la sostituirai.</span>
+            </div>
+          )}
 
           {config && !config.host ? (
             <p style={{ fontSize: 12, color: "#A52A2A" }}>
               Nessuno scanner configurato. Un amministratore deve impostare IP e porta in <strong>Configurazione Web → Scanner posta</strong>.
             </p>
           ) : (
-            <p style={{ fontSize: 12, color: "#666" }}>
-              Scanner: <strong>{config?.host}{config?.port ? `:${config.port}` : ""}</strong> {config?.https ? "(HTTPS)" : ""} — modificabile in Configurazione Web.
-              {" "}Porta bridge locale: <input type="text" value={bridgePort} disabled={busy} onChange={e => updateBridgePort(e.target.value)} style={{ width: 60 }} />
-            </p>
+            <div className="scan-bridge-shell">
+              <div className="scan-bridge-settings">
+                <div className="scan-bridge-panel-title">Impostazioni scanner</div>
+
+                <div className="scan-bridge-field">
+                  <label>Sorgente</label>
+                  <select value={source} disabled={busy} onChange={e => setSource(e.target.value as ScanSource)}>
+                    <option value="platen">Piano</option>
+                    <option value="feeder">Caricatore (ADF)</option>
+                    <option value="feederDuplex">Caricatore fronte/retro</option>
+                  </select>
+                </div>
+                <div className="scan-bridge-field">
+                  <label>Colore</label>
+                  <select value={color} disabled={busy} onChange={e => setColor(e.target.value as ColorMode)}>
+                    <option value="gray">Bianco/nero</option>
+                    <option value="color">Colore</option>
+                  </select>
+                </div>
+                <div className="scan-bridge-field">
+                  <label>Risoluzione</label>
+                  <select value={resolution} disabled={busy} onChange={e => setResolution(e.target.value)}>
+                    <option value="150">150 dpi</option>
+                    <option value="200">200 dpi</option>
+                    <option value="300">300 dpi</option>
+                  </select>
+                </div>
+
+                <button type="button" className="scan-bridge-scan-btn" disabled={busy || !config?.host} onClick={doScan}>
+                  {scanning ? "Scansione in corso..." : "Scansiona documento"}
+                </button>
+
+                <div className="scan-bridge-hint">
+                  Scanner: <b>{config?.host}{config?.port ? `:${config.port}` : ""}</b>. Ogni scansione si aggiunge alle precedenti: usa il caricatore solo quando devi acquisire più fogli in una volta.
+                </div>
+                <div className="scan-bridge-field" style={{ marginTop: 10 }}>
+                  <label>Porta bridge locale</label>
+                  <input type="text" value={bridgePort} disabled={busy} onChange={e => updateBridgePort(e.target.value)} style={{ width: "100%", height: 34, borderRadius: 8, border: "1px solid #cfd6e2", padding: "0 10px", fontSize: 13 }} />
+                </div>
+              </div>
+
+              <div className="scan-bridge-preview-panel">
+                <div className="scan-bridge-preview-header">
+                  <h3 className="scan-bridge-preview-title">📄 Anteprima documento</h3>
+                  <span className="scan-bridge-summary">{chunks.length > 0 ? `${chunks.length} scansioni · ${allPages.length} pagine` : ""}</span>
+                </div>
+
+                <div className="scan-bridge-thumbs">
+                  {allPages.length === 0 ? (
+                    <div className="scan-bridge-thumbs-empty">Nessuna scansione acquisita.<br />Premi &quot;Scansiona documento&quot; per iniziare.</div>
+                  ) : (
+                    allPages.map((page, i) => (
+                      <div className="scan-bridge-thumb" key={i}>
+                        {page.dataUrl ? <img src={page.dataUrl} alt={`Pagina ${i + 1}`} /> : <div className="scan-bridge-thumb-pdf">📄</div>}
+                        <div className="scan-bridge-thumb-page">Pag. {i + 1}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="scan-bridge-actions">
+                  <button type="button" className="scan-bridge-btn-discard" disabled={busy || !chunks.length} onClick={discardLast}>Scarta ultima</button>
+                  <button type="button" className="scan-bridge-btn-clear" disabled={busy || !chunks.length} onClick={clearAll}>Svuota tutto</button>
+                  <button type="button" className="scan-bridge-btn-upload" disabled={busy || !chunks.length} onClick={confirmUpload}>{uploading ? "Caricamento..." : "Conferma upload"}</button>
+                </div>
+
+                <div className="scan-bridge-status-bar" style={status ? { color: status.color } : undefined}>{status?.text}</div>
+              </div>
+            </div>
           )}
-
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
-            <label style={{ fontSize: 12, flex: "1 1 120px" }}>
-              Colore
-              <select value={options.color} disabled={busy} onChange={e => updateOption("color", e.target.value as ColorMode)} style={{ width: "100%", marginTop: 2 }}>
-                <option value="gray">Bianco/nero</option>
-                <option value="color">Colore</option>
-              </select>
-            </label>
-            <label style={{ fontSize: 12, flex: "1 1 160px" }}>
-              Sorgente
-              <select value={options.source} disabled={busy} onChange={e => updateOption("source", e.target.value as ScanSource)} style={{ width: "100%", marginTop: 2 }}>
-                <option value="platen">Piano</option>
-                <option value="feeder">Caricatore (ADF)</option>
-                <option value="feederDuplex">Caricatore fronte/retro</option>
-              </select>
-            </label>
-            <label style={{ fontSize: 12, flex: "1 1 100px" }}>
-              Risoluzione
-              <select value={options.resolution} disabled={busy} onChange={e => updateOption("resolution", e.target.value)} style={{ width: "100%", marginTop: 2 }}>
-                <option value="150">150 dpi</option>
-                <option value="200">200 dpi</option>
-                <option value="300">300 dpi</option>
-              </select>
-            </label>
-          </div>
-
-          <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
-            <button type="button" className="gestione-btn gestione-btn-outline" disabled={busy || !config?.host} onClick={testScanner}>Verifica scanner</button>
-            <button type="button" className="gestione-btn gestione-btn-blue" disabled={busy || !config?.host} onClick={scanAndAttach}>Scansiona e allega</button>
-            {status && <span style={{ fontSize: 12, color: status.color }}>{status.text}</span>}
-          </div>
-
-          <p style={{ fontSize: 12, fontWeight: 700, color: "#232f3e", marginBottom: 4 }}>Scansioni allegate:</p>
-          {loadingScans ? (
-            <p style={{ fontSize: 12, color: "#999" }}>Caricamento...</p>
-          ) : scans.length === 0 ? (
-            <p style={{ fontSize: 12, color: "#999" }}>Nessuna scansione presente.</p>
-          ) : (
-            <table className="gestione-scheda-table gestione-scheda-table-paired">
-              <tbody>
-                {scans.map(scan => (
-                  <tr key={scan.id}>
-                    <td>
-                      <a className="gestione-file-link" href={`/api/dom-mail-scans?id=${scan.id}`} target="_blank" rel="noopener noreferrer">{fmtDateTime(scan.createdAt)}</a>
-                    </td>
-                    <td style={{ color: "#666" }}>{scan.scannedBy || "—"}</td>
-                    <td style={{ textAlign: "right" }}>
-                      <button type="button" className="gestione-btn gestione-btn-outline" style={{ fontSize: 11, padding: "3px 8px" }} disabled={busy} onClick={() => removeScan(scan.id)}>Rimuovi</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-        <div className="gestione-modal-footer">
-          <button type="button" className="gestione-btn gestione-btn-outline" onClick={onClose}>Chiudi</button>
         </div>
       </div>
     </div>

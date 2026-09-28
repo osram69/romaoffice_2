@@ -9,10 +9,14 @@
  *   GET  /ping                                        -> { ok: true }
  *   GET  /capabilities?host=<scanner-ip>&port=&https=  -> { ok, platenSupported, feederSupported }
  *   POST /scan   body: { host, port?, https?, resolution?, color?, source?, pageSize? }
- *                -> { success, pdf_base64, filename } | { success:false, message }
+ *                -> { success, pdf_base64, filename, pages: [{ base64, isImage, mimeType }] }
+ *                   | { success:false, message }
+ *                `pages` lets the browser show a thumbnail per scanned page immediately (most
+ *                eSCL devices return JPEG per page regardless of the requested format) without
+ *                waiting for/re-parsing the merged PDF.
  */
 import { createServer } from "node:http";
-import { getScannerCapabilities, scanToPdf, type ScanOptions } from "../src/lib/escl-scanner";
+import { getScannerCapabilities, pagesToPdf, scanPages, type ScanOptions } from "../src/lib/escl-scanner";
 
 const PORT = Number(process.argv[2]) || 17866;
 // Loopback-only: this bridge has no auth, so anyone who could reach it could trigger a scan or
@@ -64,11 +68,17 @@ const server = createServer(async (req, res) => {
     try {
       const payload = JSON.parse((await readBody(req)) || "{}") as Partial<ScanOptions>;
       if (!payload.host) return sendJson(res, 400, { success: false, message: "Parametro host mancante" });
-      const pdf = await scanToPdf(payload as ScanOptions);
+      const pages = await scanPages(payload as ScanOptions);
+      const pdf = await pagesToPdf(pages);
       return sendJson(res, 200, {
         success: true,
         pdf_base64: pdf.toString("base64"),
         filename: `scan_${new Date().toISOString().replace(/[:.]/g, "-")}.pdf`,
+        pages: pages.map(p => ({
+          base64: p.data.toString("base64"),
+          isImage: p.format !== "pdf",
+          mimeType: p.format === "jpeg" ? "image/jpeg" : p.format === "png" ? "image/png" : "application/pdf",
+        })),
       });
     } catch (error) {
       return sendJson(res, 502, { success: false, message: error instanceof Error ? error.message : "Errore durante la scansione" });
