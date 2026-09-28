@@ -8,7 +8,7 @@ import { isValidTaxCode } from "@/lib/codice-fiscale";
 import { LegalLinkModal } from "./LegalLinkModal";
 import { PrivacyNoticeContent } from "./LegalContent";
 
-export function ManualRequestModal({ product, lang }: { product: ProductOffer; lang: Lang }) {
+export function ManualRequestModal({ product, lang, linkStyle }: { product: ProductOffer; lang: Lang; linkStyle?: boolean }) {
   const it = lang === "it"; const copy = copyFor(product.code, lang); const id = useId(); const postal = product.code === "postal";
   const vatPlaceholder = postal ? undefined : (it ? "o “in costituzione”" : "or “being formed”");
   const dialog = useRef<HTMLDialogElement>(null); const trigger = useRef<HTMLButtonElement>(null); const first = useRef<HTMLInputElement>(null);
@@ -62,7 +62,7 @@ export function ManualRequestModal({ product, lang }: { product: ProductOffer; l
     }
   }
   return <>
-    <button type="button" ref={trigger} className="button secondary manual-request-trigger" onClick={() => { if (state !== "sending") { setState("idle"); setError(""); setFieldErrors({}); reset(); } setOpen(true); }}><ClipboardList aria-hidden="true" />{it ? "Compila il modulo online" : "Fill in the online form"}</button>
+    <button type="button" ref={trigger} className={linkStyle ? "text-button" : "button secondary manual-request-trigger"} onClick={() => { if (state !== "sending") { setState("idle"); setError(""); setFieldErrors({}); reset(); } setOpen(true); }}>{!linkStyle && <ClipboardList aria-hidden="true" />}{it ? "Compila il modulo online" : "Fill in the online form"}</button>
     {mounted && createPortal(
     <dialog ref={dialog} className="standard-offer-dialog" aria-labelledby={id} onCancel={close}>
       <div className="modal-heading"><div><span className="eyebrow">{copy.nameShort}</span><h2 id={id}>{it ? "Richiedi l’attivazione" : "Request activation"}</h2></div><button className="modal-close" onClick={close} aria-label={it ? "Chiudi modulo" : "Close form"}><X /></button></div>
