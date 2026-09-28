@@ -9,6 +9,7 @@ import { DomForm } from "./DomForm";
 import { DeleteIconButton } from "./DeleteIconButton";
 import { ActionFormButton } from "./ActionFormButton";
 import { ScadenzaEmailPanel } from "./ScadenzaEmailPanel";
+import { DomMailScanPanel } from "./DomMailScanPanel";
 import {
   updateDomiciliazioneAction, deleteDomiciliazioneAction,
   decadiDomiciliazioneAction, ripristinaDomiciliazioneAction, attivaDomiciliazioneAction,
@@ -79,6 +80,7 @@ function pairedRows(fields: Field[]) {
 export function DomiciliazioniTable({ rows, stato }: { rows: DomClient[]; stato: number }) {
   const [viewing, setViewing] = useState<DomClient | null>(null);
   const [editing, setEditing] = useState<DomClient | null>(null);
+  const [scanning, setScanning] = useState<DomClient | null>(null);
   const [schedaTab, setSchedaTab] = useState<"dati" | "scadenza" | "proforma">("dati");
   function openScheda(row: DomClient) { setViewing(row); setSchedaTab("dati"); }
   let lastLetter = "";
@@ -185,7 +187,7 @@ export function DomiciliazioniTable({ rows, stato }: { rows: DomClient[]; stato:
                           // Attive: full action row. The trash icon here "decade" the record
                           // (moves it to Decadute) — it never permanently deletes.
                           <div className="gestione-row-actions">
-                            <button type="button" className="gestione-action-btn gestione-action-allega" onClick={notYet}>Allega</button>
+                            <button type="button" className="gestione-action-btn gestione-action-allega" onClick={() => setScanning(row)}>Allega</button>
                             <button type="button" className="gestione-action-btn gestione-action-invia" onClick={notYet}>Invia</button>
                             <button type="button" className="gestione-action-btn gestione-action-pec" onClick={notYet}>PEC</button>
                             <button type="button" className="gestione-action-btn gestione-action-aperta" onClick={notYet}>Aperta</button>
@@ -300,6 +302,10 @@ export function DomiciliazioniTable({ rows, stato }: { rows: DomClient[]; stato:
             </div>
           </div>
         </div>
+      )}
+
+      {scanning && (
+        <DomMailScanPanel clientId={scanning.id} ragioneSociale={scanning.ragioneSociale} onClose={() => setScanning(null)} />
       )}
     </>
   );

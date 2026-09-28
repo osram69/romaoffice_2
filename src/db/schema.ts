@@ -239,6 +239,17 @@ export const domCustomerChallenges = pgTable("dom_customer_challenges", {
   consumedAt: timestamp("consumed_at", { withTimezone: true }),
 });
 
+// Incoming-mail scans attached via the "Allega" button (eSCL network-scanner bridge) on each
+// active domiciliazione. Unlike the fixed con/mod/all/doc/avc/rev document slots on domClients
+// (one file each, overwritable), a client can receive mail repeatedly, so each scan is its own
+// row/encrypted file (see dom-archive.ts's saveMailScanEncrypted, keyed by this row's id).
+export const domMailScans = pgTable("dom_mail_scans", {
+  id: serial("id").primaryKey(),
+  domClientId: integer("dom_client_id").notNull().references(() => domClients.id, { onDelete: "cascade" }),
+  scannedByUsername: text("scanned_by_username"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 // Renewal-specific pricing shown as upsell offers in scadenza emails — deliberately separate
 // from servicePrices (the public "new activation" tariffe), since renewal list prices differ.
 export const domRinnovoPrezzi = pgTable("dom_rinnovo_prezzi", {

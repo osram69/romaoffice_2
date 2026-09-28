@@ -36,8 +36,11 @@ function archiveKey() {
 function filePath(fileId: number, type: DocType) {
   return path.join(archiveDir(), `${fileId}_${type}.pdf.enc`);
 }
+function mailScanFilePath(scanId: number) {
+  return path.join(archiveDir(), `posta_${scanId}.pdf.enc`);
+}
 
-export async function saveEncrypted(fileId: number, type: DocType, data: Buffer) {
+async function encryptToFile(targetPath: string, data: Buffer) {
   const iv = randomBytes(16);
   const cipher = createCipheriv(CIPHER, archiveKey(), iv);
   const ciphertext = Buffer.concat([cipher.update(data), cipher.final()]);
@@ -45,11 +48,10 @@ export async function saveEncrypted(fileId: number, type: DocType, data: Buffer)
   const combined = Buffer.concat([Buffer.from(ciphertextB64, "utf8"), Buffer.from("::"), iv]);
   const dir = archiveDir();
   await mkdir(dir, { recursive: true });
-  await writeFile(filePath(fileId, type), Buffer.from(combined.toString("base64"), "utf8"));
+  await writeFile(targetPath, Buffer.from(combined.toString("base64"), "utf8"));
 }
-
-export async function readDecrypted(fileId: number, type: DocType): Promise<Buffer> {
-  const raw = await readFile(filePath(fileId, type), "utf8");
+async function decryptFromFile(sourcePath: string): Promise<Buffer> {
+  const raw = await readFile(sourcePath, "utf8");
   const combined = Buffer.from(raw, "base64");
   const separatorIndex = combined.indexOf("::");
   if (separatorIndex === -1) throw new Error("Formato file non valido");
@@ -60,6 +62,28 @@ export async function readDecrypted(fileId: number, type: DocType): Promise<Buff
   return Buffer.concat([decipher.update(ciphertext), decipher.final()]);
 }
 
+export async function saveEncrypted(fileId: number, type: DocType, data: Buffer) {
+  await encryptToFile(filePath(fileId, type), data);
+}
+
+export async function readDecrypted(fileId: number, type: DocType): Promise<Buffer> {
+  return decryptFromFile(filePath(fileId, type));
+}
+
 export async function removeEncrypted(fileId: number, type: DocType) {
   try { await unlink(filePath(fileId, type)); } catch { /* already gone */ }
+}
+
+// Mail scans (see dom_mail_scans in schema.ts): one encrypted file per scan, keyed by the row's
+// own id rather than by DocType, since a client can receive mail — and so be scanned — repeatedly.
+export async function saveMailScanEncrypted(scanId: number, data: Buffer) {
+  await encryptToFile(mailScanFilePath(scanId), data);
+}
+
+export async function readMailScanDecrypted(scanId: number): Promise<Buffer> {
+  return decryptFromFile(mailScanFilePath(scanId));
+}
+
+export async function removeMailScanEncrypted(scanId: number) {
+  try { await unlink(mailScanFilePath(scanId)); } catch { /* already gone */ }
 }

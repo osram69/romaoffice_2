@@ -15,6 +15,9 @@ import { createServer } from "node:http";
 import { getScannerCapabilities, scanToPdf, type ScanOptions } from "../src/lib/escl-scanner";
 
 const PORT = Number(process.argv[2]) || 17866;
+// Loopback-only: this bridge has no auth, so anyone who could reach it could trigger a scan or
+// (if the scanner IP were guessable) read one — matches the legacy pyscanner bridge's APP_HOST.
+const HOST = "127.0.0.1";
 
 function withCors(res: import("node:http").ServerResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -75,7 +78,7 @@ const server = createServer(async (req, res) => {
   sendJson(res, 404, { ok: false, message: "Non trovato" });
 });
 
-server.listen(PORT, () => {
-  console.log(`eSCL bridge in ascolto su http://localhost:${PORT}`);
-  console.log(`Prova:  curl "http://localhost:${PORT}/capabilities?host=<IP_SCANNER>"`);
+server.listen(PORT, HOST, () => {
+  console.log(`eSCL bridge in ascolto su http://${HOST}:${PORT}`);
+  console.log(`Prova:  curl "http://${HOST}:${PORT}/capabilities?host=<IP_SCANNER>"`);
 });

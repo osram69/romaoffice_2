@@ -108,6 +108,16 @@ GOOGLE_MAPS_API_KEY=OPTIONAL_REPLACE
 
 Generate `AUTH_SECRET` with `openssl rand -hex 32` — it must be at least 32 characters or every authenticated/rate-limited request (including `/api/domiciliation-request`) fails closed with a 503. Never prefix server secrets with `NEXT_PUBLIC_`. Rotate any accidentally exposed secret immediately.
 
+### Mail scanning (eSCL) on the domiciliazioni dashboard
+
+The **Allega** button next to each active domiciliazione (`/gestione-domiciliazioni-x9k2m7`) scans incoming mail from a network scanner/MFP and attaches the PDF to that company's record — replacing the old Python `pyscanner` TWAIN bridge. Because the site is hosted on Hostinger and the scanner sits on the office LAN, the scan itself cannot be driven from the server; the operator's own browser talks to a small local bridge instead:
+
+1. On the office PC (same network as the scanner), run `npx tsx scripts/escl-bridge.ts` (default port `17866`; pass a port number to use another one). It requires no drivers — it speaks [eSCL](https://mopria.org/spec-download) (AirScan), the plain-HTTP scanning protocol most modern network MFPs (HP, Canon, Epson, Brother...) support natively; see `src/lib/escl-scanner.ts` for the client implementation.
+2. In the **Allega** panel, enter the scanner's IP address once (remembered per browser via `localStorage`, never sent to or stored on the server) and pick color/source/resolution.
+3. **Verifica scanner** checks reachability; **Scansiona e allega** pulls the pages as one PDF and uploads it to the encrypted archive (same AES-256-CTR store as the other documents, keyed by the new `dom_mail_scans` row, so a client can have any number of scans over time). Previous scans are listed with a download link and can be removed.
+
+The bridge is CORS-open and only reachable from `127.0.0.1`/`localhost`, so it must run on the same machine as the operator's browser. The **Invia**, **PEC** and **Aperta** buttons next to Allega are not implemented yet.
+
 ## Hostinger deployment
 
 ### Option A — Hostinger Node.js hosting (recommended)
