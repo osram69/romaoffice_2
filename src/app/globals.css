@@ -81,14 +81,14 @@
 .whatsapp-fab{
   position:fixed;right:clamp(16px,3vw,32px);bottom:clamp(16px,3vw,32px);z-index:95;
   display:inline-flex;align-items:center;gap:.6em;height:54px;padding-inline:19px;
-  border-radius:999px;background:var(--ink);color:#fff;border:1px solid var(--ink);
+  border-radius:999px;background:#fff;color:var(--ink);border:1px solid var(--ink);
   box-shadow:0 6px 24px rgba(0,0,0,.22);font-size:.8rem;font-weight:600;letter-spacing:.09em;
   text-transform:uppercase;text-decoration:none;
   opacity:0;transform:translateY(14px) scale(.94);pointer-events:none;
   transition:opacity .32s cubic-bezier(.22,.61,.36,1),transform .32s cubic-bezier(.22,.61,.36,1),background .2s,color .2s;
 }
 .whatsapp-fab-visible{opacity:1;transform:none;pointer-events:auto}
-.whatsapp-fab:hover{background:#fff;color:var(--ink)}
+.whatsapp-fab:hover{background:var(--ink);color:#fff}
 .whatsapp-fab-glyph{width:21px;height:21px;flex:0 0 auto;fill:currentColor}
 @media(max-width:599px){
   .whatsapp-fab{width:54px;height:54px;padding:0;justify-content:center}
