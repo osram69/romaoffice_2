@@ -168,7 +168,7 @@ export function ScadenzaEmailPanel({ id, initialPrezzoRinnovo }: { id: number; i
         <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 8, fontSize: 12 }}>
           <span style={{ fontWeight: 700, color: "#232f3e" }}>Offerte in email:</span>
           {availableMonths.map(m => (
-            <label key={m} style={{ display: "flex", alignItems: "center", gap: 4, fontWeight: 600, color: "#232f3e" }}>
+            <label key={m} style={{ display: "flex", alignItems: "center", gap: 4, flex: "0 0 auto", whiteSpace: "nowrap", fontWeight: 600, color: "#232f3e" }}>
               <input type="checkbox" checked={selectedMonths.includes(m)} disabled={busy} onChange={e => toggleMonth(m, e.target.checked)} />
               {m} mesi
             </label>
