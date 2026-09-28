@@ -38,9 +38,11 @@ Nel pannello "Allega" (accessibile ad admin e operatore), colore/sorgente/risolu
 
 Rifà, nell'aspetto e nel comportamento, il pannello del vecchio tool (sfondo scuro con header brandizzato, pannello impostazioni a sinistra, anteprima a destra):
 
-- Ogni pressione di **Scansiona documento** aggiunge un blocco di pagine (dal piano: una pagina; dal caricatore: tutte quelle acquisite in quel passaggio) senza sostituire le precedenti — utile per comporre un unico documento da più passaggi (es. fronte da piano, retro da ADF).
+- Ogni pressione di **Scansiona documento** aggiunge pagine (dal piano: una; dal caricatore: tutte quelle acquisite in quel passaggio) a quelle già presenti — utile per comporre un unico documento da più passaggi (es. fronte da piano, retro da ADF). Ogni scansione viene subito scomposta in singoli PDF di una pagina ciascuno (`splitPdfPages`, con `pdf-lib`), così le operazioni sotto lavorano sempre sulla pagina, non sul blocco scansionato.
 - Ogni pagina viene mostrata come **miniatura reale** (non un'icona generica): il bridge restituisce anche le singole pagine così come le manda lo scanner — quasi sempre JPEG anche quando si richiede PDF, comportamento comune alla maggior parte delle multifunzione eSCL — mostrate direttamente come `<img>`. Se una pagina arrivasse eccezionalmente già come PDF, la miniatura mostra un'icona generica al suo posto (il PDF resta comunque incluso nel documento finale).
-- **Scarta ultima** rimuove l'ultimo blocco scansionato; **Svuota tutto** azzera tutto (con conferma); **Conferma upload** unisce tutti i blocchi in un unico PDF (client-side, con `pdf-lib`) e lo allega alla società — da quel momento sostituisce l'eventuale scansione già in sospeso.
+- **Clic su una miniatura** la ingrandisce in una lightbox (per verificare che sia leggibile) — se eccezionalmente non c'è anteprima (pagina arrivata come PDF), il clic apre invece quella singola pagina in una nuova scheda.
+- **Icona cestino** su ogni miniatura elimina quella pagina singolarmente; **trascinamento** (drag & drop) tra le miniature ne cambia l'ordine; **Svuota tutto** azzera tutte le pagine (con conferma).
+- **Conferma upload** unisce tutte le pagine, nell'ordine mostrato, in un unico PDF (client-side, con `pdf-lib`) e lo allega alla società — da quel momento sostituisce l'eventuale scansione già in sospeso.
 - Se la società ha già una scansione in sospeso da prima, il pannello lo segnala in alto con un link per aprirla e un pulsante per rimuoverla, senza dover per forza scansionare di nuovo.
 - Il nome della società compare **grande, in un riquadro arancione al centro dell'header** — deliberatamente più evidente del logo/nome del sito, per evitare che l'operatore scansioni per sbaglio la posta sulla società sbagliata.
 
