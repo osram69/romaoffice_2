@@ -208,11 +208,8 @@ export function DomMailScanPanel({ clientId, ragioneSociale, onClose, onPendingC
         <div className="scan-bridge-box" onClick={e => e.stopPropagation()}>
           <div className="scan-bridge-header">
             <div className="scan-bridge-brand">
-              <img src="/logo-mark.svg" alt="" />
-              <div>
-                <div className="scan-bridge-brand-name">ROMA OFFICE SHARING</div>
-                <div className="scan-bridge-brand-subtitle">Scansione posta</div>
-              </div>
+              <img src="/LogoFull_trasp.svg" alt="Roma Office Sharing" />
+              <div className="scan-bridge-brand-subtitle">Scansione posta</div>
             </div>
             <div className="scan-bridge-company" title={ragioneSociale}>{ragioneSociale}</div>
             <button type="button" className="scan-bridge-close" aria-label="Chiudi" onClick={onClose}>×</button>
