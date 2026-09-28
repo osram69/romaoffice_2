@@ -42,6 +42,9 @@ Rifà, nell'aspetto e nel comportamento, il pannello del vecchio tool (sfondo sc
 - Ogni pagina viene mostrata come **miniatura reale** (non un'icona generica): il bridge restituisce anche le singole pagine così come le manda lo scanner — quasi sempre JPEG anche quando si richiede PDF, comportamento comune alla maggior parte delle multifunzione eSCL — mostrate direttamente come `<img>`. Se una pagina arrivasse eccezionalmente già come PDF, la miniatura mostra un'icona generica al suo posto (il PDF resta comunque incluso nel documento finale).
 - **Scarta ultima** rimuove l'ultimo blocco scansionato; **Svuota tutto** azzera tutto (con conferma); **Conferma upload** unisce tutti i blocchi in un unico PDF (client-side, con `pdf-lib`) e lo allega alla società — da quel momento sostituisce l'eventuale scansione già in sospeso.
 - Se la società ha già una scansione in sospeso da prima, il pannello lo segnala in alto con un link per aprirla e un pulsante per rimuoverla, senza dover per forza scansionare di nuovo.
+- Il nome della società compare **grande, in un riquadro arancione al centro dell'header** — deliberatamente più evidente del logo/nome del sito, per evitare che l'operatore scansioni per sbaglio la posta sulla società sbagliata.
+
+> **Il bridge locale è un processo a parte, sul PC dell'ufficio: un `git push` su questo repository non lo aggiorna né lo riavvia.** Se dopo un aggiornamento le miniature smettono di comparire, il pannello lo segnala esplicitamente ("Scansione aggiunta, ma senza anteprima...") — significa che va aggiornato il codice sul PC (`git pull`) e riavviato `npx tsx scripts/escl-bridge.ts`.
 
 ## Storage: due archivi diversi, non uno
 

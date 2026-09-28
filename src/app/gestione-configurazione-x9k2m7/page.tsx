@@ -111,6 +111,8 @@ export default async function ConfigurazioneWebPage() {
           <div className="gestione-field" style={{ width: 120 }}>
             <label>Risoluzione predefinita</label>
             <select name="scannerResolutionDefault" defaultValue={String(payments?.scannerResolutionDefault ?? 200)}>
+              <option value="50">50 dpi</option>
+              <option value="100">100 dpi</option>
               <option value="150">150 dpi</option>
               <option value="200">200 dpi</option>
               <option value="300">300 dpi</option>

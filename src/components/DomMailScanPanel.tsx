@@ -86,12 +86,18 @@ export function DomMailScanPanel({ clientId, ragioneSociale, onClose, onPendingC
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.message || "Scansione non riuscita");
 
-      const pages: ScanPage[] = (data.pages ?? []).map((p: { base64: string; isImage: boolean; mimeType: string }) => ({
-        dataUrl: p.isImage ? `data:${p.mimeType};base64,${p.base64}` : null,
-      }));
+      // Fall back to one generic placeholder "page" when the bridge doesn't send per-page data
+      // (an older escl-bridge.ts still running, from before it started returning `pages`) — so the
+      // scan still shows up as a tile instead of silently vanishing from the preview.
+      const rawPages = (data.pages ?? []) as { base64: string; isImage: boolean; mimeType: string }[];
+      const pages: ScanPage[] = rawPages.length
+        ? rawPages.map(p => ({ dataUrl: p.isImage ? `data:${p.mimeType};base64,${p.base64}` : null }))
+        : [{ dataUrl: null }];
       const next = [...chunks, { id: Date.now() + Math.random(), pdfBase64: data.pdf_base64 as string, pages }];
       setChunks(next);
-      setStatus({ text: `Aggiunta scansione (${pages.length} pagine). Totale blocchi: ${next.length}.`, color: "green" });
+      setStatus(rawPages.length
+        ? { text: `Aggiunta scansione (${pages.length} pagine). Totale blocchi: ${next.length}.`, color: "green" }
+        : { text: "Scansione aggiunta, ma senza anteprima: riavvia il bridge locale (npx tsx scripts/escl-bridge.ts) con la versione più recente.", color: "#a66a00" });
     } catch (error) {
       setStatus({ text: bridgeErrorMessage(error), color: "red" });
     } finally {
@@ -167,9 +173,10 @@ export function DomMailScanPanel({ clientId, ragioneSociale, onClose, onPendingC
             <img src="/logo-mark.svg" alt="" />
             <div>
               <div className="scan-bridge-brand-name">ROMA OFFICE SHARING</div>
-              <div className="scan-bridge-brand-subtitle">Scansione posta — {ragioneSociale}</div>
+              <div className="scan-bridge-brand-subtitle">Scansione posta</div>
             </div>
           </div>
+          <div className="scan-bridge-company" title={ragioneSociale}>{ragioneSociale}</div>
           <button type="button" className="scan-bridge-close" aria-label="Chiudi" onClick={onClose}>×</button>
         </div>
 
@@ -210,6 +217,8 @@ export function DomMailScanPanel({ clientId, ragioneSociale, onClose, onPendingC
                 <div className="scan-bridge-field">
                   <label>Risoluzione</label>
                   <select value={resolution} disabled={busy} onChange={e => setResolution(e.target.value)}>
+                    <option value="50">50 dpi</option>
+                    <option value="100">100 dpi</option>
                     <option value="150">150 dpi</option>
                     <option value="200">200 dpi</option>
                     <option value="300">300 dpi</option>

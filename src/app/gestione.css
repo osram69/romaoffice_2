@@ -160,6 +160,10 @@ tr.gestione-letter-row { scroll-margin-top: 70px; }
 .scan-bridge-brand img { width: 34px; height: 34px; object-fit: contain; filter: drop-shadow(0 1px 3px rgba(0,0,0,.25)); }
 .scan-bridge-brand-name { font-size: 15px; font-weight: 800; letter-spacing: .5px; line-height: 1.2; }
 .scan-bridge-brand-subtitle { font-size: 11px; font-weight: 600; color: #ffb066; letter-spacing: .3px; }
+/* Deliberately the loudest thing in the header: the operator must never scan the wrong company's
+   mail by mistake, so the name it's currently scanning for is bigger/higher-contrast than the
+   Roma Office Sharing brand itself. */
+.scan-bridge-company { flex: 1 1 auto; min-width: 0; margin: 0 14px; text-align: center; background: #ff7900; color: #232f3e; font-size: 18px; font-weight: 800; letter-spacing: .2px; padding: 6px 16px; border-radius: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
 .scan-bridge-close { background: none; border: none; color: #fff; opacity: .9; font-size: 28px; font-weight: 300; line-height: 1; cursor: pointer; padding: 4px 8px; }
 .scan-bridge-close:hover { color: #ff7900; opacity: 1; }
 .scan-bridge-body { padding: 14px 16px; background: radial-gradient(circle at top left, rgba(255,121,0,.12), transparent 34%), #f4f6fa; }
