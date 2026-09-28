@@ -178,10 +178,10 @@ export function DomMailScanPanel({ clientId, ragioneSociale, onClose, onPendingC
       const attached = await attachMailScanAction(clientId, mergedBase64);
       if (!attached.success) throw new Error(attached.message || "Salvataggio non riuscito");
 
-      setStatus({ text: "Scansione allegata.", color: "green" });
-      setPages([]);
-      setExistingScan(attached.scan ?? null);
+      // Close rather than staying open on the "già in sospeso" note: once attached, the operator's
+      // next step is Invia/PEC/Aperta on the row, not another look at this panel.
       onPendingChange(true);
+      onClose();
     } catch (error) {
       setStatus({ text: bridgeErrorMessage(error), color: "red" });
     } finally {
