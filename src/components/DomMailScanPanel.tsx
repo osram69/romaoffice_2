@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { PDFDocument } from "pdf-lib";
 import { Trash2 } from "lucide-react";
-import { attachMailScanAction, getScannerConfigAction, listMailScansAction, removeMailScanAction, type MailScanSummary, type ScannerConfig } from "@/app/gestione-domiciliazioni-x9k2m7/actions";
+import { getScannerConfigAction, listMailScansAction, removeMailScanAction, type MailScanSummary, type ScannerConfig } from "@/app/gestione-domiciliazioni-x9k2m7/actions";
 import type { ColorMode, ScanSource } from "@/lib/escl-scanner";
 
 // The local bridge's default port (scripts/escl-bridge.ts, started as `npx tsx
@@ -210,9 +210,9 @@ export function DomMailScanPanel({ clientId, ragioneSociale, onClose, onPendingC
     setUploading(true);
     setStatus({ text: "Unione pagine e caricamento...", color: "#555" });
     try {
-      let mergedBase64: string;
+      let mergedBytes: Uint8Array;
       if (pages.length === 1) {
-        mergedBase64 = pages[0].pdfBase64;
+        mergedBytes = base64ToBytes(pages[0].pdfBase64);
       } else {
         const merged = await PDFDocument.create();
         for (const page of pages) {
@@ -220,11 +220,18 @@ export function DomMailScanPanel({ clientId, ragioneSociale, onClose, onPendingC
           const [copied] = await merged.copyPages(doc, [0]);
           merged.addPage(copied);
         }
-        mergedBase64 = bytesToBase64(await merged.save());
+        mergedBytes = await merged.save();
       }
 
-      const attached = await attachMailScanAction(clientId, mergedBase64);
-      if (!attached.success) throw new Error(attached.message || "Salvataggio non riuscito");
+      // A plain HTTP POST, not a Server Action: passing the merged PDF as a base64 string argument
+      // tripped a React Flight "Maximum array nesting exceeded" guard on multi-page scans (see the
+      // route for details) — a raw request body never goes through RSC serialization.
+      // (buffer.slice(...) as ArrayBuffer: same cast openPage() uses — Uint8Array's own .buffer is
+      // typed as the broader ArrayBufferLike, which Blob's constructor rejects.)
+      const arrayBuffer = mergedBytes.buffer.slice(mergedBytes.byteOffset, mergedBytes.byteOffset + mergedBytes.byteLength) as ArrayBuffer;
+      const res = await fetch(`/api/dom-mail-scans?clientId=${clientId}`, { method: "POST", headers: { "Content-Type": "application/pdf" }, body: new Blob([arrayBuffer]) });
+      const attached = await res.json();
+      if (!res.ok || !attached.success) throw new Error(attached.message || "Salvataggio non riuscito");
 
       // Close rather than staying open on the "già in sospeso" note: once attached, the operator's
       // next step is Invia/PEC/Aperta on the row, not another look at this panel.

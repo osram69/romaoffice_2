@@ -6,7 +6,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { domClients, domCustomerChallenges, domCustomerSessions, domMailScans, domRinnovoPrezzi, siteConfig } from "@/db/schema";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
-import { readMailScanDecrypted, removeEncrypted, removeMailScanEncrypted, saveEncrypted, saveMailScanEncrypted, type DocType, DOC_TYPES } from "@/lib/dom-archive";
+import { readMailScanDecrypted, removeEncrypted, removeMailScanEncrypted, saveEncrypted, type DocType, DOC_TYPES } from "@/lib/dom-archive";
 import { PRESENZA_FILE_BITS, cleanText } from "@/lib/dom-status";
 import { buildScadenzaEmailHtml, contractMonths, defaultScontoApplicabile, scadenzaDefaultMonths, scadenzaEmailSubject, scadenzaOfferMonths } from "@/lib/dom-scadenza-email";
 import { sendDomMail, type DomMailAccount } from "@/lib/mailer";
@@ -181,38 +181,11 @@ export async function listMailScansAction(domClientId: number): Promise<{ succes
   return { success: true, scans: rows.map(r => ({ id: r.id, createdAt: r.createdAt.toISOString(), scannedBy: r.scannedByUsername })) };
 }
 
-// Called from the "Allega" button's scan panel once the browser has already pulled the PDF from
-// the local eSCL bridge (src/lib/escl-scanner.ts / scripts/escl-bridge.ts) — this action only
-// persists it, it never talks to the scanner itself (the Hostinger-hosted server has no route to
-// the office LAN the scanner is on).
-//
-// A client has at most one pending scan at a time: pressing "Allega" again (e.g. because the first
-// scan came out wrong) REPLACES it rather than accumulating a second one, matching the legacy
-// tool's single scansione.pdf temp file.
-export async function attachMailScanAction(domClientId: number, pdfBase64: string): Promise<{ success: boolean; message?: string; scan?: MailScanSummary }> {
-  "use server";
-  const user = await requireStaff();
-  if (!pdfBase64) return { success: false, message: "Nessun PDF ricevuto dallo scanner" };
-  let buffer: Buffer;
-  try {
-    buffer = Buffer.from(pdfBase64, "base64");
-  } catch {
-    return { success: false, message: "PDF ricevuto non valido" };
-  }
-  if (buffer.subarray(0, 4).toString("ascii") !== "%PDF") return { success: false, message: "Il file ricevuto non è un PDF valido" };
-  try {
-    const previous = await db.select({ id: domMailScans.id }).from(domMailScans).where(eq(domMailScans.domClientId, domClientId));
-    for (const p of previous) await removeMailScanEncrypted(p.id);
-    if (previous.length) await db.delete(domMailScans).where(eq(domMailScans.domClientId, domClientId));
-
-    const [row] = await db.insert(domMailScans).values({ domClientId, scannedByUsername: user.username }).returning();
-    await saveMailScanEncrypted(row.id, buffer);
-    revalidatePath(BASE_PATH);
-    return { success: true, scan: { id: row.id, createdAt: row.createdAt.toISOString(), scannedBy: row.scannedByUsername } };
-  } catch (error) {
-    return { success: false, message: error instanceof Error ? error.message : "Errore durante il salvataggio della scansione" };
-  }
-}
+// The "Allega" button's scan panel used to persist the scanned PDF through a Server Action
+// (attachMailScanAction, removed) — passing the merged PDF as a base64 string argument tripped a
+// React Flight "Maximum array nesting exceeded" guard on multi-page scans (the string chunking
+// the RSC protocol does internally scales with length, not byte size). It's now POST /api/dom-
+// mail-scans (see that route), a plain HTTP body upload that never goes through RSC serialization.
 
 export async function removeMailScanAction(scanId: number, domClientId: number): Promise<{ success: boolean; message?: string }> {
   "use server";
