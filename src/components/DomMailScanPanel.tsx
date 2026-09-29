@@ -45,7 +45,7 @@ function totalPagesMb(pages: { pdfBase64: string }[]): string {
 // before it ever gets merged/base64'd cuts most batches down enough to stay well under the 25MB
 // Server Action body limit (next.config.ts), without the operator having to lower the scanner's
 // own resolution/color settings just to fit more pages in one upload.
-const REARCHIVE_JPEG_QUALITY = 0.6;
+const REARCHIVE_JPEG_QUALITY = 0.7;
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
