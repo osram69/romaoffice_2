@@ -77,7 +77,7 @@ export function RitiroCorrispondenzaPanel({ id }: { id: number }) {
   async function send() {
     const html = getEditorContent();
     if (!html.trim()) { setStatus({ text: "Testo email vuoto", color: "red" }); return; }
-    if (!confirm("Inviare questa richiesta di ritiro corrispondenza? Verrà inviata via PEC se presente, altrimenti via email ordinaria.")) return;
+    if (!confirm("Inviare questa richiesta di ritiro corrispondenza via email ordinaria?")) return;
     setSending(true);
     setStatus({ text: "Invio in corso...", color: "#555" });
     const formData = new FormData();
