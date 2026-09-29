@@ -125,6 +125,10 @@ export const siteConfig = pgTable("site_config", {
   scannerColorDefault: varchar("scanner_color_default", { length: 10 }).notNull().default("gray"),
   scannerSourceDefault: varchar("scanner_source_default", { length: 20 }).notNull().default("platen"),
   scannerResolutionDefault: integer("scanner_resolution_default").notNull().default(200),
+  // Admin-editable base template for the "richiesta ritiro corrispondenza" email (see
+  // src/lib/dom-ritiro-email.ts) — null until an admin customizes it in Configurazione Web, in
+  // which case DEFAULT_RITIRO_EMAIL_HTML there is used instead.
+  ritiroTestoTemplate: text("ritiro_testo_template"),
 });
 export const servicePrices = pgTable("service_prices", {
   id: serial("id").primaryKey(), service: varchar("service", { length: 30 }).notNull().references(() => serviceCatalog.code),
@@ -184,6 +188,7 @@ export const domClients = pgTable("dom_clients", {
   testoScadenza: text("testo_scadenza"),
   testoProforma: text("testo_proforma"),
   testoSospensione: text("testo_sospensione"),
+  testoRitiro: text("testo_ritiro"),
   amministratore: text("amministratore"),
   telefonoAmm: text("telefono_amm"),
   personaRif: text("persona_rif"),

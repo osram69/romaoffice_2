@@ -9,6 +9,7 @@ import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
 import { readMailScanDecrypted, removeEncrypted, removeMailScanEncrypted, saveEncrypted, type DocType, DOC_TYPES } from "@/lib/dom-archive";
 import { PRESENZA_FILE_BITS, cleanText } from "@/lib/dom-status";
 import { buildScadenzaEmailHtml, contractMonths, defaultScontoApplicabile, scadenzaDefaultMonths, scadenzaEmailSubject, scadenzaOfferMonths } from "@/lib/dom-scadenza-email";
+import { DEFAULT_RITIRO_EMAIL_HTML, ritiroEmailSubject } from "@/lib/dom-ritiro-email";
 import { sendDomMail, type DomMailAccount } from "@/lib/mailer";
 import { hashPassword } from "@/lib/customer-auth";
 import { passwordMeetsPolicy } from "@/lib/password-policy";
@@ -366,6 +367,54 @@ export async function inviaScadenzaAction(formData: FormData): Promise<{ success
 
   const prezzoRinnovo = prezzoRaw !== null && prezzoRaw !== "" ? Math.round(Number(prezzoRaw)) : client.prezzoRinnovo;
   await db.update(domClients).set({ scadenzaInviata: true, prezzoRinnovo, testoScadenza: html }).where(eq(domClients.id, id));
+  revalidatePath(BASE_PATH);
+  return { success: true };
+}
+
+// Draft the "richiesta ritiro corrispondenza" email for staff to review/edit before sending —
+// unlike scadenza this has no per-client dynamic content, so the base text is either the admin's
+// custom template (Configurazione Web, site_config.ritiroTestoTemplate) or DEFAULT_RITIRO_EMAIL_HTML.
+// Reuses a previously edited/sent draft (testoRitiro) unless `regenerate` asks for a fresh one.
+export async function getRitiroDraftAction(id: number, regenerate = false): Promise<{ success: boolean; message?: string; subject?: string; html?: string }> {
+  "use server";
+  await requireStaff();
+  const [client] = await db.select().from(domClients).where(eq(domClients.id, id)).limit(1);
+  if (!client) return { success: false, message: "Domiciliazione non trovata" };
+  const [config] = await db.select({ ritiroTestoTemplate: siteConfig.ritiroTestoTemplate }).from(siteConfig).where(eq(siteConfig.id, 1));
+  const stored = !regenerate ? client.testoRitiro?.trim() : "";
+  return {
+    success: true,
+    subject: ritiroEmailSubject(client),
+    html: stored || config?.ritiroTestoTemplate?.trim() || DEFAULT_RITIRO_EMAIL_HTML,
+  };
+}
+
+// Same recipient logic as inviaScadenzaAction (PEC with ordinary addresses CC'd when present,
+// otherwise the first ordinary address as recipient and the rest CC'd, plus a fixed internal CC).
+export async function inviaRitiroAction(formData: FormData): Promise<{ success: boolean; message?: string }> {
+  "use server";
+  await requireStaff();
+  const id = Number(formData.get("id"));
+  const html = String(formData.get("html") ?? "");
+
+  const [client] = await db.select().from(domClients).where(eq(domClients.id, id)).limit(1);
+  if (!client) return { success: false, message: "Domiciliazione non trovata" };
+  if (!html.trim()) return { success: false, message: "Testo email vuoto" };
+
+  const pec = cleanText(client.emailPec);
+  const ordinarie = cleanText(client.emailPosta).split(";").map(s => s.trim()).filter(Boolean);
+  const usaPec = Boolean(pec);
+  const to = usaPec ? pec : ordinarie[0];
+  if (!to) return { success: false, message: "Nessun indirizzo email valido per questa società" };
+  const ccList = usaPec ? [...ordinarie, "info@romaofficesharing.it"] : [...ordinarie.slice(1), "inviate@romaofficesharing.it"];
+
+  const result = await sendDomMail(usaPec ? "pec" : "ordinaria", {
+    to, cc: ccList.join(","), subject: ritiroEmailSubject(client),
+    text: html.replace(/<[^>]+>/g, " "), html,
+  });
+  if (!result.sent) return { success: false, message: `Invio non riuscito (${result.reason})` };
+
+  await db.update(domClients).set({ testoRitiro: html }).where(eq(domClients.id, id));
   revalidatePath(BASE_PATH);
   return { success: true };
 }

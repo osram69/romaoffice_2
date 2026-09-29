@@ -60,6 +60,16 @@ export async function updatePaymentsTestModeAction(formData: FormData) {
   revalidatePath("/attiva.html"); revalidatePath("/en/activate.html");
 }
 
+export async function updateRitiroTemplateAction(formData: FormData): Promise<{ success: boolean; message?: string }> {
+  "use server";
+  await requireAdmin();
+  const html = String(formData.get("html") ?? "").trim();
+  await db.update(siteConfig).set({ ritiroTestoTemplate: html || null }).where(eq(siteConfig.id, 1));
+  revalidatePath(BASE_PATH);
+  revalidatePath("/gestione-domiciliazioni-x9k2m7");
+  return { success: true };
+}
+
 export async function updateScannerConfigAction(formData: FormData) {
   "use server";
   await requireAdmin();

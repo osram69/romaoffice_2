@@ -9,6 +9,7 @@ import { DomForm } from "./DomForm";
 import { DeleteIconButton } from "./DeleteIconButton";
 import { ActionFormButton } from "./ActionFormButton";
 import { ScadenzaEmailPanel } from "./ScadenzaEmailPanel";
+import { RitiroCorrispondenzaPanel } from "./RitiroCorrispondenzaPanel";
 import { DomMailScanPanel } from "./DomMailScanPanel";
 import type { MailScanChannel } from "@/app/gestione-domiciliazioni-x9k2m7/actions";
 import {
@@ -110,7 +111,7 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds }: { rows: Dom
     if (!result.success) return;
     setPendingFor(row.id, false);
   }
-  const [schedaTab, setSchedaTab] = useState<"dati" | "scadenza" | "proforma">("dati");
+  const [schedaTab, setSchedaTab] = useState<"dati" | "scadenza" | "proforma" | "ritiro">("dati");
   function openScheda(row: DomClient) { setViewing(row); setSchedaTab("dati"); }
   let lastLetter = "";
   const decadute = stato === 2;
@@ -259,6 +260,7 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds }: { rows: Dom
                     <button type="button" className={`gestione-tab${schedaTab === "dati" ? " active" : ""}`} onClick={() => setSchedaTab("dati")}>Dati Società</button>
                     {inScadenza && <button type="button" className={`gestione-tab${schedaTab === "scadenza" ? " active" : ""}`} onClick={() => setSchedaTab("scadenza")}>Gestione Scadenza</button>}
                     {inScadenza && <button type="button" className={`gestione-tab${schedaTab === "proforma" ? " active" : ""}`} onClick={() => setSchedaTab("proforma")}>Invio Proforma</button>}
+                    <button type="button" className={`gestione-tab${schedaTab === "ritiro" ? " active" : ""}`} onClick={() => setSchedaTab("ritiro")}>Ritiro Corrispondenza</button>
                   </div>
                 );
               })()}
@@ -308,6 +310,10 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds }: { rows: Dom
 
               {schedaTab === "scadenza" && (
                 <ScadenzaEmailPanel key={viewing.id} id={viewing.id} initialPrezzoRinnovo={viewing.prezzoRinnovo} />
+              )}
+
+              {schedaTab === "ritiro" && (
+                <RitiroCorrispondenzaPanel key={viewing.id} id={viewing.id} />
               )}
 
               {schedaTab === "proforma" && (

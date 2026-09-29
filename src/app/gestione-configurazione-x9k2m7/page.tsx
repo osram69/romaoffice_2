@@ -6,6 +6,7 @@ import { serviceCatalog, siteConfig } from "@/db/schema";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
 import { updateOnlineDiscountAction, updatePaymentSettingsAction, updatePaymentsTestModeAction, updateScannerConfigAction, updateSmartFlagsAction } from "./actions";
 import { GestioneShell } from "@/components/GestioneNav";
+import { RitiroTemplateEditor } from "@/components/RitiroTemplateEditor";
 
 const checkboxRow = { display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "#232f3e" } as const;
 
@@ -122,7 +123,7 @@ export default async function ConfigurazioneWebPage() {
         </form>
       </section>
 
-      <section className="gestione-card" style={{ padding: 24 }}>
+      <section className="gestione-card" style={{ padding: 24, marginBottom: 24 }}>
         <h2 style={{ fontSize: 16, fontWeight: 700, color: "#232f3e", marginTop: 0 }}>Contratto Smart-Start (sede legale)</h2>
         <p style={{ fontSize: 12, color: "#666", marginTop: -6 }}>
           Quando attivi, compaiono come voci &quot;Smart 3+24&quot; / &quot;Smart 6+24&quot; nel menu a tendina di &quot;Compila il modulo online&quot;.
@@ -132,6 +133,14 @@ export default async function ConfigurazioneWebPage() {
           <label style={checkboxRow}><input type="checkbox" name="smart6x24Active" defaultChecked={legalUnit?.smart6x24Active ?? true} /> Smart 6+24 attivo</label>
           <button type="submit" className="gestione-btn gestione-btn-blue">Salva</button>
         </form>
+      </section>
+
+      <section className="gestione-card" style={{ padding: 24 }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: "#232f3e", marginTop: 0 }}>Richiesta ritiro corrispondenza</h2>
+        <p style={{ fontSize: 12, color: "#666", marginTop: -6 }}>
+          Testo di base usato dal tab &quot;Ritiro Corrispondenza&quot; nella scheda di ogni società (Gestione Domiciliazioni), quando quella società non ha già un testo proprio salvato/inviato in precedenza.
+        </p>
+        <RitiroTemplateEditor initialHtml={payments?.ritiroTestoTemplate ?? null} />
       </section>
     </GestioneShell>
   );
