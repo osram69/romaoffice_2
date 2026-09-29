@@ -5,7 +5,11 @@ import { serviceCatalog, servicePrices, serviceAddons } from "@/db/schema";
 async function seed() {
   await db.transaction(async tx => {
     await tx.insert(serviceCatalog).values([
-      { code: "legal_unit", vatBps: 2200, additionalDiscountBps: 1000, newActivationDiscountBps: 1000, offerValidUntil: new Date("2026-09-30T23:59:59+02:00"), termsRevision: "legal-2026-09-v1" },
+      // Only takes effect on a fresh database (onConflictDoNothing below) — once the row exists,
+      // the real offer end date lives in service_catalog.offer_valid_until, editable from the
+      // "Tariffe e Offerte" admin page (/gestione-tariffe-x9k2m7), not here. Kept in sync anyway
+      // so reseeding a wiped database doesn't silently reintroduce a stale/expired date.
+      { code: "legal_unit", vatBps: 2200, additionalDiscountBps: 1000, newActivationDiscountBps: 1000, offerValidUntil: new Date("2026-10-31T23:59:59+02:00"), termsRevision: "legal-2026-09-v1" },
       { code: "postal", vatBps: 2200, additionalDiscountBps: 1000, newActivationDiscountBps: 0, offerValidUntil: null, termsRevision: "postal-2026-09-v1" },
     ]).onConflictDoNothing();
     await tx.insert(servicePrices).values([

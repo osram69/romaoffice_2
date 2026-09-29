@@ -31,7 +31,7 @@ npx drizzle-kit push
 npx tsx scripts/seed-catalog.ts
 ```
 
-Valori postali iniziali: 6 mesi 300,00 € / offerta 280,00 €; 12 mesi 540,00 € / offerta 500,00 €. IVA 22% esclusa. Sconto aggiuntivo 10% per stesso referente/amministratore; nessuno sconto nuova attivazione per il servizio postale e nessuna scadenza promozionale inventata. Le offerte della sede legale conservano la scadenza 30 settembre 2026.
+Valori postali iniziali: 6 mesi 300,00 € / offerta 280,00 €; 12 mesi 540,00 € / offerta 500,00 €. IVA 22% esclusa. Sconto aggiuntivo 10% per stesso referente/amministratore; nessuno sconto nuova attivazione per il servizio postale e nessuna scadenza promozionale inventata. Le offerte della sede legale hanno una scadenza (`service_catalog.offer_valid_until`), modificabile in qualsiasi momento in **Tariffe e Offerte** (`/gestione-tariffe-x9k2m7`) senza toccare il codice — non riportarla qui come valore fisso, perché va sempre disallineata rispetto a quella davvero configurata.
 
 Il sito legge le tabelle ad ogni richiesta delle pagine interessate, senza listini numerici di fallback nel frontend. Non serve ricompilare per modificare i prezzi. Il server controlla la versione dell'intero catalogo/condizioni e rifiuta preventivi d'acquisto non più aggiornati. Gli importi accettati sono salvati in `orders.quote_data`: PDF, email e provider di pagamento usano lo stesso snapshot.
 
