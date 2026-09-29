@@ -5,16 +5,10 @@ import { Trash2 } from "lucide-react";
 import { attachMailScanAction, getScannerConfigAction, listMailScansAction, removeMailScanAction, type MailScanSummary, type ScannerConfig } from "@/app/gestione-domiciliazioni-x9k2m7/actions";
 import type { ColorMode, ScanSource } from "@/lib/escl-scanner";
 
-// Only the local bridge's own port is a per-operator/browser setting (each PC runs its own bridge
-// instance against the one shared scanner) — everything else (scanner IP, defaults) is configured
-// once for the whole office in Configurazione Web (see getScannerConfigAction) and just fetched here.
-const BRIDGE_PORT_KEY = "ros_escl_bridge_port";
-function loadBridgePort(): string {
-  try { return window.localStorage.getItem(BRIDGE_PORT_KEY) || "17866"; } catch { return "17866"; }
-}
-function saveBridgePort(port: string) {
-  try { window.localStorage.setItem(BRIDGE_PORT_KEY, port); } catch { /* private mode / storage disabled */ }
-}
+// The local bridge's default port (scripts/escl-bridge.ts, started as `npx tsx
+// scripts/escl-bridge.ts`) — everything else (scanner IP, defaults) is configured once for the
+// whole office in Configurazione Web (see getScannerConfigAction) and just fetched here.
+const BRIDGE_PORT = "17866";
 
 // Each scanned page is its own single-page PDF from the moment it's split out of the scan
 // response — so delete/reorder/final-merge can all just operate on a flat, ordered array without
@@ -54,17 +48,19 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-/** Re-encodes a scanned JPEG page at REARCHIVE_JPEG_QUALITY and wraps it into its own single-page
- * PDF (same full-page-image layout as the server-side pagesToPdf), returning both the PDF and the
- * recompressed JPEG (reused as the on-screen thumbnail, since it's visually indistinguishable from
- * the original for a text document but a fraction of the size). */
-async function buildCompressedPagePdf(jpegBase64: string): Promise<{ pdfBase64: string; thumbnailBase64: string }> {
+/** Re-encodes a scanned JPEG page at REARCHIVE_JPEG_QUALITY, applying the operator's
+ * brightness/contrast adjustment (both -50..50, 0 = untouched), and wraps it into its own
+ * single-page PDF (same full-page-image layout as the server-side pagesToPdf), returning both the
+ * PDF and the recompressed JPEG (reused as the on-screen thumbnail, since it's visually
+ * indistinguishable from the original for a text document but a fraction of the size). */
+async function buildCompressedPagePdf(jpegBase64: string, brightness: number, contrast: number): Promise<{ pdfBase64: string; thumbnailBase64: string }> {
   const img = await loadImage(`data:image/jpeg;base64,${jpegBase64}`);
   const canvas = document.createElement("canvas");
   canvas.width = img.naturalWidth;
   canvas.height = img.naturalHeight;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas non disponibile per la compressione");
+  if (brightness || contrast) ctx.filter = `brightness(${100 + brightness}%) contrast(${100 + contrast}%)`;
   ctx.drawImage(img, 0, 0);
   const thumbnailBase64 = canvas.toDataURL("image/jpeg", REARCHIVE_JPEG_QUALITY).split(",")[1];
   const doc = await PDFDocument.create();
@@ -90,11 +86,12 @@ async function splitPdfPages(pdfBase64: string): Promise<string[]> {
 }
 
 export function DomMailScanPanel({ clientId, ragioneSociale, onClose, onPendingChange }: { clientId: number; ragioneSociale: string; onClose: () => void; onPendingChange: (hasPending: boolean) => void }) {
-  const [bridgePort, setBridgePort] = useState(loadBridgePort);
   const [config, setConfig] = useState<ScannerConfig | null>(null);
   const [source, setSource] = useState<ScanSource>("platen");
   const [color, setColor] = useState<ColorMode>("gray");
   const [resolution, setResolution] = useState("200");
+  const [brightness, setBrightness] = useState(0);
+  const [contrast, setContrast] = useState(0);
   const [pages, setPages] = useState<PageItem[]>([]);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [zoomed, setZoomed] = useState<PageItem | null>(null);
@@ -116,13 +113,8 @@ export function DomMailScanPanel({ clientId, ragioneSociale, onClose, onPendingC
     });
   }, [clientId]);
 
-  function updateBridgePort(value: string) {
-    setBridgePort(value);
-    saveBridgePort(value);
-  }
-
   function bridgeUrl(path: string) {
-    return `http://127.0.0.1:${bridgePort || "17866"}${path}`;
+    return `http://127.0.0.1:${BRIDGE_PORT}${path}`;
   }
 
   async function doScan() {
@@ -148,7 +140,7 @@ export function DomMailScanPanel({ clientId, ragioneSociale, onClose, onPendingC
         // Normal case: the bridge sent a real JPEG per page — recompress each one instead of
         // using the bridge's own full-quality embedded PDF, see buildCompressedPagePdf.
         for (let i = 0; i < rawPages.length; i++) {
-          const { pdfBase64, thumbnailBase64 } = await buildCompressedPagePdf(rawPages[i].base64);
+          const { pdfBase64, thumbnailBase64 } = await buildCompressedPagePdf(rawPages[i].base64, brightness, contrast);
           newPages.push({ id: `${Date.now()}-${i}-${Math.random().toString(36).slice(2)}`, pdfBase64, thumbnailUrl: `data:image/jpeg;base64,${thumbnailBase64}` });
         }
       } else {
@@ -307,18 +299,18 @@ export function DomMailScanPanel({ clientId, ragioneSociale, onClose, onPendingC
                       <option value="300">300 dpi</option>
                     </select>
                   </div>
+                  <div className="scan-bridge-field">
+                    <label>Luminosità {brightness > 0 ? `+${brightness}` : brightness}</label>
+                    <input type="range" min={-50} max={50} step={5} value={brightness} disabled={busy} onChange={e => setBrightness(Number(e.target.value))} />
+                  </div>
+                  <div className="scan-bridge-field">
+                    <label>Contrasto {contrast > 0 ? `+${contrast}` : contrast}</label>
+                    <input type="range" min={-50} max={50} step={5} value={contrast} disabled={busy} onChange={e => setContrast(Number(e.target.value))} />
+                  </div>
 
                   <button type="button" className="scan-bridge-scan-btn" disabled={busy || !config?.host} onClick={doScan}>
                     {scanning ? "Scansione in corso..." : "Scansiona documento"}
                   </button>
-
-                  <div className="scan-bridge-hint">
-                    Scanner: <b>{config?.host}{config?.port ? `:${config.port}` : ""}</b>. Ogni scansione aggiunge pagine alle precedenti — clicca una miniatura per ingrandirla, trascinala per riordinarla, usa il cestino per eliminarla.
-                  </div>
-                  <div className="scan-bridge-field" style={{ marginTop: 10 }}>
-                    <label>Porta bridge locale</label>
-                    <input type="text" value={bridgePort} disabled={busy} onChange={e => updateBridgePort(e.target.value)} style={{ width: "100%", height: 34, borderRadius: 8, border: "1px solid #cfd6e2", padding: "0 10px", fontSize: 13 }} />
-                  </div>
                 </div>
 
                 <div className="scan-bridge-preview-panel">
