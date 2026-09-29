@@ -38,6 +38,42 @@ function base64ToBytes(base64: string): Uint8Array {
   return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
 }
 
+// The scanner's own JPEG (200dpi/gray by default) is already near-lossless quality — far more
+// than a legibility check on a scanned business letter needs — so re-encoding it at this quality
+// before it ever gets merged/base64'd cuts most batches down enough to stay well under the 25MB
+// Server Action body limit (next.config.ts), without the operator having to lower the scanner's
+// own resolution/color settings just to fit more pages in one upload.
+const REARCHIVE_JPEG_QUALITY = 0.6;
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Impossibile decodificare l'immagine scansionata"));
+    img.src = src;
+  });
+}
+
+/** Re-encodes a scanned JPEG page at REARCHIVE_JPEG_QUALITY and wraps it into its own single-page
+ * PDF (same full-page-image layout as the server-side pagesToPdf), returning both the PDF and the
+ * recompressed JPEG (reused as the on-screen thumbnail, since it's visually indistinguishable from
+ * the original for a text document but a fraction of the size). */
+async function buildCompressedPagePdf(jpegBase64: string): Promise<{ pdfBase64: string; thumbnailBase64: string }> {
+  const img = await loadImage(`data:image/jpeg;base64,${jpegBase64}`);
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas non disponibile per la compressione");
+  ctx.drawImage(img, 0, 0);
+  const thumbnailBase64 = canvas.toDataURL("image/jpeg", REARCHIVE_JPEG_QUALITY).split(",")[1];
+  const doc = await PDFDocument.create();
+  const image = await doc.embedJpg(base64ToBytes(thumbnailBase64));
+  const page = doc.addPage([image.width, image.height]);
+  page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
+  return { pdfBase64: bytesToBase64(await doc.save()), thumbnailBase64 };
+}
+
 /** Splits a (possibly multi-page) scanned PDF into one single-page PDF per page — always the real
  * page count straight from the PDF structure, so it's correct even if the bridge's per-page
  * thumbnail data is missing (older bridge) or shorter than the actual page count. */
@@ -107,12 +143,24 @@ export function DomMailScanPanel({ clientId, ragioneSociale, onClose, onPendingC
       if (!res.ok || !data.success) throw new Error(data.message || "Scansione non riuscita");
 
       const rawPages = (data.pages ?? []) as { base64: string; isImage: boolean; mimeType: string }[];
-      const singlePagePdfs = await splitPdfPages(data.pdf_base64 as string);
-      const newPages: PageItem[] = singlePagePdfs.map((pdfBase64, i) => ({
-        id: `${Date.now()}-${i}-${Math.random().toString(36).slice(2)}`,
-        pdfBase64,
-        thumbnailUrl: rawPages[i]?.isImage ? `data:${rawPages[i].mimeType};base64,${rawPages[i].base64}` : null,
-      }));
+      const newPages: PageItem[] = [];
+      if (rawPages.length && rawPages.every(p => p.isImage)) {
+        // Normal case: the bridge sent a real JPEG per page — recompress each one instead of
+        // using the bridge's own full-quality embedded PDF, see buildCompressedPagePdf.
+        for (let i = 0; i < rawPages.length; i++) {
+          const { pdfBase64, thumbnailBase64 } = await buildCompressedPagePdf(rawPages[i].base64);
+          newPages.push({ id: `${Date.now()}-${i}-${Math.random().toString(36).slice(2)}`, pdfBase64, thumbnailUrl: `data:image/jpeg;base64,${thumbnailBase64}` });
+        }
+      } else {
+        // Fallback: scanner/bridge returned a PDF page directly (no per-page JPEG to recompress) —
+        // keep the previous behaviour (full quality, generic icon instead of a real thumbnail).
+        const singlePagePdfs = await splitPdfPages(data.pdf_base64 as string);
+        singlePagePdfs.forEach((pdfBase64, i) => newPages.push({
+          id: `${Date.now()}-${i}-${Math.random().toString(36).slice(2)}`,
+          pdfBase64,
+          thumbnailUrl: rawPages[i]?.isImage ? `data:${rawPages[i].mimeType};base64,${rawPages[i].base64}` : null,
+        }));
+      }
       setPages(prev => [...prev, ...newPages]);
       setStatus(rawPages.length
         ? { text: `Aggiunte ${newPages.length} pagine. Totale: ${pages.length + newPages.length}.`, color: "green" }
