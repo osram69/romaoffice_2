@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import type { InferSelectModel } from "drizzle-orm";
 import type { domClients } from "@/db/schema";
 import { cleanText } from "@/lib/dom-status";
@@ -26,9 +26,23 @@ const STATI = [
   { value: -1, label: "Vuota" },
 ];
 
-export function DomForm({ client, action, deleteAction, onClose }: { client?: DomClient; action: (formData: FormData) => void; deleteAction?: (formData: FormData) => void; onClose?: () => void }) {
+export function DomForm({ client, action, deleteAction, onClose }: { client?: DomClient; action: (formData: FormData) => void | Promise<void>; deleteAction?: (formData: FormData) => void; onClose?: () => void }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // A plain `action={...}` form submission gives no feedback at all when it succeeds — the modal
+  // just sits there with the values the operator typed, looking exactly like a no-op even though
+  // the save went through (the underlying table only updates once this form goes away and the
+  // "Scheda Società" data is re-read). Closing on success is that feedback.
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    setSaving(true);
+    await action(formData);
+    setSaving(false);
+    onClose?.();
+  }
 
   const row = (left: React.ReactNode, right?: React.ReactNode) => (
     <tr>{left}{right ?? <><th /><td /></>}</tr>
@@ -45,7 +59,7 @@ export function DomForm({ client, action, deleteAction, onClose }: { client?: Do
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <form action={action}>
+      <form onSubmit={handleSubmit}>
         {client && <input type="hidden" name="id" value={client.id} />}
         <table className="gestione-scheda-table gestione-scheda-table-paired gestione-scheda-table-edit">
           <tbody>
@@ -122,9 +136,9 @@ export function DomForm({ client, action, deleteAction, onClose }: { client?: Do
         )}
 
         <div style={{ display: "flex", gap: 10, marginTop: 10, justifyContent: "flex-end" }}>
-          {onClose && <button type="button" onClick={onClose} disabled={uploading} className="gestione-btn gestione-btn-outline" style={{ padding: "9px 20px" }}>Chiudi</button>}
-          <button type="submit" disabled={uploading} className="gestione-btn gestione-btn-blue" style={{ padding: "9px 20px" }}>
-            {client ? "Salva modifiche" : "Crea domiciliazione"}
+          {onClose && <button type="button" onClick={onClose} disabled={uploading || saving} className="gestione-btn gestione-btn-outline" style={{ padding: "9px 20px" }}>Chiudi</button>}
+          <button type="submit" disabled={uploading || saving} className="gestione-btn gestione-btn-blue" style={{ padding: "9px 20px" }}>
+            {saving ? "Salvataggio..." : client ? "Salva modifiche" : "Crea domiciliazione"}
           </button>
         </div>
       </form>
