@@ -32,6 +32,14 @@ function base64ToBytes(base64: string): Uint8Array {
   return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
 }
 
+// Base64 inflates the underlying bytes by ~33% — this estimates the real (decoded) size of the
+// buffer so the operator can see it approaching the Server Action body limit (next.config.ts)
+// before "Conferma upload" fails, rather than finding out only after a rejected upload.
+function totalPagesMb(pages: { pdfBase64: string }[]): string {
+  const bytes = pages.reduce((sum, p) => sum + p.pdfBase64.length * 0.75, 0);
+  return (bytes / (1024 * 1024)).toFixed(1);
+}
+
 // The scanner's own JPEG (200dpi/gray by default) is already near-lossless quality — far more
 // than a legibility check on a scanned business letter needs — so re-encoding it at this quality
 // before it ever gets merged/base64'd cuts most batches down enough to stay well under the 25MB
@@ -242,17 +250,24 @@ export function DomMailScanPanel({ clientId, ragioneSociale, onClose, onPendingC
 
   const busy = scanning || uploading;
 
+  // A click on the overlay used to close the panel — with no undo, that silently threw away every
+  // scanned-but-not-yet-uploaded page. The panel now only closes via the × button, and even that
+  // asks first once there's a buffer that would be lost.
+  function requestClose() {
+    if (pages.length && !confirm("Ci sono pagine scansionate non ancora caricate. Chiudere comunque e perderle?")) return;
+    onClose();
+  }
+
   return (
     <>
-      <div className="scan-bridge-overlay" onClick={onClose}>
+      <div className="scan-bridge-overlay">
         <div className="scan-bridge-box" onClick={e => e.stopPropagation()}>
           <div className="scan-bridge-header">
             <div className="scan-bridge-brand">
               <img src="/LogoFull_trasp.svg" alt="Roma Office Sharing" />
-              <div className="scan-bridge-brand-subtitle">Scansione posta</div>
             </div>
-            <div className="scan-bridge-company" title={ragioneSociale}>{ragioneSociale}</div>
-            <button type="button" className="scan-bridge-close" aria-label="Chiudi" onClick={onClose}>×</button>
+            <div className="scan-bridge-company" title={ragioneSociale}>Scansione Posta {ragioneSociale}</div>
+            <button type="button" className="scan-bridge-close" aria-label="Chiudi" onClick={requestClose}>×</button>
           </div>
 
           <div className="scan-bridge-body">
@@ -316,7 +331,7 @@ export function DomMailScanPanel({ clientId, ragioneSociale, onClose, onPendingC
                 <div className="scan-bridge-preview-panel">
                   <div className="scan-bridge-preview-header">
                     <h3 className="scan-bridge-preview-title">📄 Anteprima documento</h3>
-                    <span className="scan-bridge-summary">{pages.length > 0 ? `${pages.length} pagine` : ""}</span>
+                    <span className="scan-bridge-summary">{pages.length > 0 ? `${pages.length} pagine · ${totalPagesMb(pages)} MB` : ""}</span>
                   </div>
 
                   <div className="scan-bridge-thumbs">
