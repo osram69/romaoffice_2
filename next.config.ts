@@ -4,9 +4,9 @@ const nextConfig: NextConfig = {
   // limit — without this, uploadDomDocumentAction's/attachMailScanAction's request is rejected
   // before it ever runs, and (since the framework-level rejection isn't a normal {success:false}
   // response) the client gets a bare, undebuggable React error instead of a real message. A
-  // 20+ page mail scan (merged into one PDF, then base64-inflated ~33% on top) still hit 25MB
-  // even after client-side JPEG recompression, so this heads further room for large batches.
-  experimental: { serverActions: { bodySizeLimit: "50mb" } },
+  // 20+ page mail scan (merged into one PDF, then base64-inflated ~33% on top) still hit 25MB and
+  // then 50MB even after client-side JPEG recompression, so this leaves further room still.
+  experimental: { serverActions: { bodySizeLimit: "100mb" } },
   async headers() {
     return [
       { source: "/:path*", headers: [{ key: "X-Content-Type-Options", value: "nosniff" }, { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" }] },
