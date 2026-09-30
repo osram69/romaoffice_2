@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { uploadDomDocumentAction, removeDomDocumentAction } from "@/app/gestione-domiciliazioni-x9k2m7/actions";
 import { PRESENZA_FILE_BITS } from "@/lib/dom-status";
 import type { DocType } from "@/lib/dom-archive";
+import { ContractProcessorPanel } from "./ContractProcessorPanel";
 
 const DOC_UPLOADS: { lab: string; key: DocType }[] = [
   { lab: "Contratto", key: "con" },
@@ -74,6 +75,8 @@ function UploadRow({ id, docType, label, present, onChange, onBusyChange }: { id
 
 export function DomDocumentUploads({ id, presenzaFile: initialPresenzaFile, onUploadingChange }: { id: number; presenzaFile: number; onUploadingChange?: (uploading: boolean) => void }) {
   const [presenzaFile, setPresenzaFile] = useState(initialPresenzaFile);
+  const [contractFile, setContractFile] = useState<File | null>(null);
+  const [processing, setProcessing] = useState(false);
   const busyRows = useRef(new Set<DocType>());
 
   function reportBusy(docType: DocType, busy: boolean) {
@@ -88,11 +91,11 @@ export function DomDocumentUploads({ id, presenzaFile: initialPresenzaFile, onUp
       <table className="gestione-scheda-table gestione-scheda-table-paired gestione-scheda-table-edit">
         <tbody>
           <tr>
-            <th><label>Contratto completo (PDF 16 pagine)</label></th>
+            <th><label>Contratto completo (PDF multi-pagina)</label></th>
             <td colSpan={3}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                <input type="file" accept="application/pdf" style={{ width: "auto", maxWidth: 200 }} />
-                <button type="button" className="gestione-upload-btn" title="Carica e processa" onClick={() => alert("Funzione non ancora disponibile.")}>💾 Carica e Processa</button>
+                <input type="file" accept="application/pdf" style={{ width: "auto", maxWidth: 200 }} onChange={e => setContractFile(e.target.files?.[0] ?? null)} />
+                <button type="button" className="gestione-upload-btn" title="Carica e processa" disabled={!contractFile} onClick={() => setProcessing(true)}>💾 Carica e Processa</button>
               </div>
             </td>
           </tr>
@@ -104,6 +107,15 @@ export function DomDocumentUploads({ id, presenzaFile: initialPresenzaFile, onUp
           ))}
         </tbody>
       </table>
+
+      {processing && contractFile && (
+        <ContractProcessorPanel
+          clientId={id}
+          file={contractFile}
+          onClose={() => setProcessing(false)}
+          onUploaded={setPresenzaFile}
+        />
+      )}
     </div>
   );
 }
