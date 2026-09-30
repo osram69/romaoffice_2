@@ -236,11 +236,14 @@ tr.gestione-letter-row { scroll-margin-top: 70px; }
    shell above, adds its own lane/thumbnail/signature-placement styling. */
 .contract-proc-lane { margin-bottom: 14px; }
 .contract-proc-lane-title { font-size: 12px; font-weight: 700; color: #232f3e; margin-bottom: 6px; }
-.contract-proc-thumbs { min-height: 90px; background: linear-gradient(135deg, rgba(70,70,70,.95), rgba(135,135,135,.88)), #5f5f5f; border: 1px solid #d8d8d8; border-radius: 10px; padding: 10px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 8px; }
-.contract-proc-zones { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.contract-proc-thumbs { min-height: 90px; max-height: 420px; overflow-y: auto; background: linear-gradient(135deg, rgba(70,70,70,.95), rgba(135,135,135,.88)), #5f5f5f; border: 1px solid #d8d8d8; border-radius: 10px; padding: 10px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 8px; }
+.contract-proc-zones { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
 .contract-proc-empty { color: #d7dfef; font-size: 12px; align-self: center; margin: auto; }
 .contract-proc-thumb { position: relative; width: 76px; background: #fff; border-radius: 5px; overflow: hidden; box-shadow: 0 3px 8px rgba(0,0,0,.35); cursor: grab; }
 .contract-proc-thumb img { display: block; width: 100%; height: 100px; object-fit: cover; cursor: zoom-in; }
+.contract-proc-thumb-num { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(35,47,62,.85); color: #fff; font-size: 10px; text-align: center; padding: 2px 0; font-weight: 700; pointer-events: none; }
+.contract-proc-thumb-sig-btn { position: absolute; top: 2px; left: 2px; z-index: 1; width: 19px; height: 19px; border-radius: 50%; border: none; background: rgba(20,20,20,.65); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+.contract-proc-thumb-sig-btn:hover { background: #ff7900; }
 .contract-proc-thumb-sig { position: absolute; top: 2px; right: 2px; background: #ff7900; color: #fff; font-size: 11px; width: 17px; height: 17px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 .contract-proc-placement { margin-top: 14px; border-top: 1px solid #e1e5ed; padding-top: 12px; }
 .contract-proc-preview { position: relative; display: inline-block; max-width: 100%; user-select: none; }

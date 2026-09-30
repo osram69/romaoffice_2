@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { PenLine } from "lucide-react";
 import { PDFDocument } from "pdf-lib";
 import { getFirmaDomiciliatarioAction } from "@/app/gestione-domiciliazioni-x9k2m7/actions";
 import { uploadDomDocumentAction } from "@/app/gestione-domiciliazioni-x9k2m7/actions";
@@ -27,17 +28,18 @@ function loadPdfjs(): Promise<PdfjsModule> {
   return pdfjsPromise;
 }
 
-type Zone = "con" | "all" | "mod" | "avc";
+type Zone = "con" | "all" | "mod" | "avc" | "doc";
 const ZONES: { key: Zone; label: string }[] = [
   { key: "con", label: "Contratto" },
   { key: "all", label: "Allegato 1" },
   { key: "mod", label: "Modulo" },
   { key: "avc", label: "Allegato 3" },
+  { key: "doc", label: "Documento" },
 ];
 type Lane = "unassigned" | Zone;
 type ContractPage = { id: string; sourceIndex: number; thumbnailUrl: string };
 type Lanes = Record<Lane, ContractPage[]>;
-const EMPTY_LANES: Lanes = { unassigned: [], con: [], all: [], mod: [], avc: [] };
+const EMPTY_LANES: Lanes = { unassigned: [], con: [], all: [], mod: [], avc: [], doc: [] };
 
 type SignaturePlacement = { pageId: string; xFrac: number; yFrac: number; wFrac: number; hFrac: number };
 
@@ -53,7 +55,7 @@ function base64ToBytes(base64: string): Uint8Array {
   return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
 }
 function totalAssignedMb(lanes: Lanes): string {
-  const zones: Lane[] = ["con", "all", "mod", "avc"];
+  const zones: Lane[] = ZONES.map(z => z.key);
   const bytes = zones.reduce((sum, lane) => sum + lanes[lane].reduce((s, p) => s + p.thumbnailUrl.length * 0.75, 0), 0);
   return (bytes / (1024 * 1024)).toFixed(1);
 }
@@ -77,6 +79,8 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
   const [placementPageId, setPlacementPageId] = useState<string | null>(null);
   const [signature, setSignature] = useState<SignaturePlacement | null>(null);
   const [quality, setQuality] = useState(DEFAULT_QUALITY);
+  const [zoomedPageId, setZoomedPageId] = useState<string | null>(null);
+  const [thumbWidth, setThumbWidth] = useState(76);
   const previewRef = useRef<HTMLDivElement>(null);
   // The full-resolution render of each page, kept around so the quality slider can re-encode a
   // JPEG on the fly without re-rendering the PDF (slow) every time it moves.
@@ -127,7 +131,7 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
 
   function movePage(id: string, targetLane: Lane, targetIndex: number) {
     setLanes(prev => {
-      const next: Lanes = { unassigned: [...prev.unassigned], con: [...prev.con], all: [...prev.all], mod: [...prev.mod], avc: [...prev.avc] };
+      const next: Lanes = { unassigned: [...prev.unassigned], con: [...prev.con], all: [...prev.all], mod: [...prev.mod], avc: [...prev.avc], doc: [...prev.doc] };
       let moving: ContractPage | undefined;
       (Object.keys(next) as Lane[]).forEach(lane => {
         const idx = next[lane].findIndex(p => p.id === id);
@@ -153,7 +157,7 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
         const canvas = canvasesRef.current.get(p.id);
         return canvas ? { ...p, thumbnailUrl: canvas.toDataURL("image/jpeg", next) } : p;
       });
-      return { unassigned: recompress(prev.unassigned), con: recompress(prev.con), all: recompress(prev.all), mod: recompress(prev.mod), avc: recompress(prev.avc) };
+      return { unassigned: recompress(prev.unassigned), con: recompress(prev.con), all: recompress(prev.all), mod: recompress(prev.mod), avc: recompress(prev.avc), doc: recompress(prev.doc) };
     });
   }
 
@@ -209,7 +213,7 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
   }
 
   function requestClose() {
-    const hasWork = lanes.con.length + lanes.all.length + lanes.mod.length + lanes.avc.length > 0;
+    const hasWork = ZONES.some(z => lanes[z.key].length > 0);
     if (hasWork && !confirm("Chiudere senza caricare? Il lavoro di riordino/firma andrà perso.")) return;
     onClose();
   }
@@ -265,20 +269,26 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
   }
 
   const placement = placementPageId ? findPage(lanes, placementPageId) : null;
+  const zoomed = zoomedPageId ? findPage(lanes, zoomedPageId) : null;
 
   function thumb(page: ContractPage, lane: Lane, index: number) {
     return (
       <div
         key={page.id}
         className="contract-proc-thumb"
+        style={{ width: thumbWidth }}
         draggable
         onDragStart={() => setDragId(page.id)}
         onDragOver={e => e.preventDefault()}
         onDrop={e => { e.stopPropagation(); handleDrop(lane, index); }}
-        title="Trascina per riordinare o spostare"
+        title="Trascina per riordinare o spostare, clicca per ingrandire"
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- transient canvas-rendered data URL */}
-        <img src={page.thumbnailUrl} alt={`Pagina`} onClick={() => openPlacement(page.id)} />
+        <img src={page.thumbnailUrl} alt="Pagina" style={{ height: Math.round(thumbWidth * (100 / 76)) }} onClick={() => setZoomedPageId(page.id)} />
+        <span className="contract-proc-thumb-num">{page.sourceIndex + 1}</span>
+        <button type="button" className="contract-proc-thumb-sig-btn" title="Posiziona qui la firma" onClick={e => { e.stopPropagation(); openPlacement(page.id); }}>
+          <PenLine size={12} />
+        </button>
         {signature?.pageId === page.id && <span className="contract-proc-thumb-sig" title="Firma posizionata qui">✒</span>}
       </div>
     );
@@ -301,12 +311,21 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
           {!loading && (
             <>
               <p style={{ fontSize: 12, color: "#666", marginTop: 0 }}>
-                Trascina le pagine (in qualunque ordine siano state scansionate) nelle caselle giuste. Clicca su una pagina per posizionarci la firma del domiciliatario.
+                Trascina le pagine (in qualunque ordine siano state scansionate) nelle caselle giuste. Il numero sulla miniatura è la pagina originale nel PDF caricato. Clicca su una pagina per ingrandirla, o sull&apos;icona ✎ per posizionarci la firma del domiciliatario.
               </p>
 
-              <div className="gestione-field" style={{ maxWidth: 340, marginBottom: 12 }}>
-                <label>Compressione {Math.round(quality * 100)}% · {totalAssignedMb(lanes)} MB assegnati</label>
-                <input type="range" min={0.3} max={0.95} step={0.05} value={quality} onChange={e => applyQuality(Number(e.target.value))} />
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 24, alignItems: "flex-end", marginBottom: 12 }}>
+                <div className="gestione-field" style={{ maxWidth: 340, marginBottom: 0 }}>
+                  <label>Compressione {Math.round(quality * 100)}% · {totalAssignedMb(lanes)} MB assegnati</label>
+                  <input type="range" min={0.3} max={0.95} step={0.05} value={quality} onChange={e => applyQuality(Number(e.target.value))} />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#232f3e", marginBottom: 4 }}>Dimensione miniature</label>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button type="button" className="gestione-btn gestione-btn-outline" style={{ padding: "2px 12px" }} disabled={thumbWidth <= 60} onClick={() => setThumbWidth(w => Math.max(60, w - 20))}>−</button>
+                    <button type="button" className="gestione-btn gestione-btn-outline" style={{ padding: "2px 12px" }} disabled={thumbWidth >= 180} onClick={() => setThumbWidth(w => Math.min(180, w + 20))}>+</button>
+                  </div>
+                </div>
               </div>
 
               <div className="contract-proc-lane" onDragOver={e => e.preventDefault()} onDrop={() => handleDrop("unassigned", lanes.unassigned.length)}>
@@ -362,6 +381,14 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
           )}
         </div>
       </div>
+
+      {zoomed && (
+        <div className="scan-bridge-zoom-overlay" onClick={() => setZoomedPageId(null)}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- transient canvas-rendered data URL */}
+          <img src={zoomed.page.thumbnailUrl} alt="Pagina ingrandita" />
+          <button type="button" className="scan-bridge-zoom-close" aria-label="Chiudi anteprima" onClick={() => setZoomedPageId(null)}>×</button>
+        </div>
+      )}
     </div>
   );
 }
