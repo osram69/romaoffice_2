@@ -357,7 +357,7 @@ export async function inviaScadenzaAction(formData: FormData): Promise<{ success
   const usaPec = Boolean(pec);
   const to = usaPec ? pec : ordinarie[0];
   if (!to) return { success: false, message: "Nessun indirizzo email valido per questa società" };
-  const ccList = usaPec ? [...ordinarie, "info@romaofficesharing.it"] : [...ordinarie.slice(1), "inviate@romaofficesharing.it"];
+  const ccList = [...(usaPec ? ordinarie : ordinarie.slice(1)), "info@romaofficesharing.it"];
 
   const result = await sendDomMail(usaPec ? "pec" : "ordinaria", {
     to, cc: ccList.join(","), subject: scadenzaEmailSubject(client),
@@ -391,7 +391,8 @@ export async function getRitiroDraftAction(id: number, regenerate = false): Prom
 
 // Unlike inviaScadenzaAction, this never uses PEC even when the client has one on file (staff's
 // explicit choice — a pickup reminder isn't the kind of formal notice PEC is meant for): always
-// the "ordinaria" account, to the first ordinary address with the rest CC'd, plus a fixed internal CC.
+// the "ordinaria" account, to the first ordinary address with the rest CC'd, plus posta@ as the
+// fixed internal CC (scadenza's is info@ instead — different inbox, staff's explicit choice).
 export async function inviaRitiroAction(formData: FormData): Promise<{ success: boolean; message?: string }> {
   "use server";
   await requireStaff();
@@ -405,7 +406,7 @@ export async function inviaRitiroAction(formData: FormData): Promise<{ success: 
   const ordinarie = cleanText(client.emailPosta).split(";").map(s => s.trim()).filter(Boolean);
   const to = ordinarie[0];
   if (!to) return { success: false, message: "Nessun indirizzo email ordinario per questa società" };
-  const ccList = [...ordinarie.slice(1), "inviate@romaofficesharing.it"];
+  const ccList = [...ordinarie.slice(1), "posta@romaofficesharing.it"];
 
   const result = await sendDomMail("ordinaria", {
     to, cc: ccList.join(","), subject: ritiroEmailSubject(client),
