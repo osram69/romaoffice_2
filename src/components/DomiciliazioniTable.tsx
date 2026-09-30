@@ -102,6 +102,31 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds }: { rows: Dom
   // statusMsg — "Invio..." while in flight, then the result (green on success, red on error).
   const [rowStatus, setRowStatus] = useState<Record<number, { text: string; color: string }>>({});
 
+  // "Allega" starts a fresh scan for this client — the previous row status ("Mail inviata a ...",
+  // an error, or a stale "Invio...") belongs to whatever was last sent and would otherwise linger
+  // under the row looking like it's still about the scan being attached now.
+  //
+  // It's also easy to Allega a client, get distracted, and Allega a *different* client without
+  // noticing the first one was never actually sent (Invia/PEC/Aperta) — `pending` still has it, so
+  // warn before starting a new scan and leaving that one stranded.
+  function openScanning(row: DomClient) {
+    const strandedIds = [...pending].filter(id => id !== row.id);
+    if (strandedIds.length) {
+      const label = strandedIds.map(id => rows.find(r => r.id === id)?.ragioneSociale).filter((n): n is string => Boolean(n)).join(", ");
+      if (!confirm(`La scansione di ${label} è ancora in sospeso (non inviata con Invia/PEC/Aperta). Procedere comunque con una nuova scansione per "${row.ragioneSociale}"?`)) return;
+      // Confirmed abandoning it: Invia/PEC/Aperta go back to dimmed for that row so it doesn't
+      // keep looking sendable — the scan itself is untouched, still reachable from its own panel.
+      strandedIds.forEach(id => setPendingFor(id, false));
+    }
+    setRowStatus(prev => {
+      if (!(row.id in prev)) return prev;
+      const next = { ...prev };
+      delete next[row.id];
+      return next;
+    });
+    setScanning(row);
+  }
+
   async function handleSendMailScan(row: DomClient, channel: MailScanChannel) {
     setSendingId(row.id);
     setRowStatus(prev => ({ ...prev, [row.id]: { text: "Invio...", color: "#555" } }));
@@ -217,7 +242,7 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds }: { rows: Dom
                           // Attive: full action row. The trash icon here "decade" the record
                           // (moves it to Decadute) — it never permanently deletes.
                           <div className="gestione-row-actions">
-                            <button type="button" className="gestione-action-btn gestione-action-allega" onClick={() => setScanning(row)}>Allega</button>
+                            <button type="button" className="gestione-action-btn gestione-action-allega" onClick={() => openScanning(row)}>Allega</button>
                             <button type="button" className="gestione-action-btn gestione-action-invia" disabled={!pending.has(row.id) || sendingId === row.id} onClick={() => handleSendMailScan(row, "ordinaria")}>Invia</button>
                             <button type="button" className="gestione-action-btn gestione-action-pec" disabled={!pending.has(row.id) || sendingId === row.id} onClick={() => handleSendMailScan(row, "pec")}>PEC</button>
                             <button type="button" className="gestione-action-btn gestione-action-aperta" disabled={!pending.has(row.id) || sendingId === row.id} onClick={() => handleSendMailScan(row, "aperta")}>Aperta</button>
