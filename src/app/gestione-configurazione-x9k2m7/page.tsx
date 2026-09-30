@@ -7,6 +7,8 @@ import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
 import { updateOnlineDiscountAction, updatePaymentSettingsAction, updatePaymentsTestModeAction, updateScannerConfigAction, updateSmartFlagsAction } from "./actions";
 import { GestioneShell } from "@/components/GestioneNav";
 import { RitiroTemplateEditor } from "@/components/RitiroTemplateEditor";
+import { FirmaDomiciliatarioUpload } from "@/components/FirmaDomiciliatarioUpload";
+import { decryptBytes } from "@/lib/dom-archive";
 
 const checkboxRow = { display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "#232f3e" } as const;
 
@@ -22,6 +24,7 @@ export default async function ConfigurazioneWebPage() {
   ]);
   const testBypassToken = process.env.PAYMENTS_TEST_BYPASS_TOKEN;
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+  const firmaPreview = payments?.firmaDomiciliatarioPng ? `data:image/png;base64,${decryptBytes(payments.firmaDomiciliatarioPng).toString("base64")}` : null;
 
   return (
     <GestioneShell role={user.role} active="configurazione" username={user.username}>
@@ -133,6 +136,14 @@ export default async function ConfigurazioneWebPage() {
           <label style={checkboxRow}><input type="checkbox" name="smart6x24Active" defaultChecked={legalUnit?.smart6x24Active ?? true} /> Smart 6+24 attivo</label>
           <button type="submit" className="gestione-btn gestione-btn-blue">Salva</button>
         </form>
+      </section>
+
+      <section className="gestione-card" style={{ padding: 24, marginBottom: 24 }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: "#232f3e", marginTop: 0 }}>Firma domiciliatario</h2>
+        <p style={{ fontSize: 12, color: "#666", marginTop: -6 }}>
+          PNG trasparente usato dallo strumento &quot;Carica Contratto e processa&quot; (Gestione Domiciliazioni) per firmare la pagina &quot;Timbro e firma DOMICILIATARIO&quot;. Conservata cifrata (AES-256) nel database, non come file — sopravvive ad ogni pubblicazione del sito.
+        </p>
+        <FirmaDomiciliatarioUpload previewDataUrl={firmaPreview} />
       </section>
 
       <section className="gestione-card" style={{ padding: 24 }}>

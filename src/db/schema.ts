@@ -129,6 +129,12 @@ export const siteConfig = pgTable("site_config", {
   // src/lib/dom-ritiro-email.ts) — null until an admin customizes it in Configurazione Web, in
   // which case DEFAULT_RITIRO_EMAIL_HTML there is used instead.
   ritiroTestoTemplate: text("ritiro_testo_template"),
+  // AES-256-CTR encrypted (dom-archive.ts encryptBytes/decryptBytes) PNG of the domiciliatario's
+  // signature stamp, used by the contract-processing tool to sign the "Timbro e firma
+  // DOMICILIATARIO" page. Lives in the database, not a file: this repo's git history is public, so
+  // it must never be committed, and a DB row (unlike a file under public_html/hbuilds) survives
+  // every redeploy without needing its own persistent-storage arrangement.
+  firmaDomiciliatarioPng: text("firma_domiciliatario_png"),
 });
 export const servicePrices = pgTable("service_prices", {
   id: serial("id").primaryKey(), service: varchar("service", { length: 30 }).notNull().references(() => serviceCatalog.code),

@@ -54,25 +54,37 @@ function mailScanFilePath(scanId: number) {
   return path.join(mailScanDir(), `posta_${scanId}.pdf.enc`);
 }
 
-async function encryptToFile(targetPath: string, data: Buffer) {
+// Same AES-256-CTR scheme as the file-based archive below, just returning the encoded string
+// directly instead of writing it to a path — for the one asset that belongs in a DB column, not a
+// file: the domiciliatario signature (see firmaDomiciliatarioPng in siteConfig). Storing it in the
+// database rather than in a file, and encrypted rather than plain, means it survives a redeploy
+// (this project's git repo is public — it must never end up committed as a plain file) and isn't
+// readable from a database dump alone.
+export function encryptBytes(data: Buffer): string {
   const iv = randomBytes(16);
   const cipher = createCipheriv(CIPHER, archiveKey(), iv);
   const ciphertext = Buffer.concat([cipher.update(data), cipher.final()]);
   const ciphertextB64 = ciphertext.toString("base64");
   const combined = Buffer.concat([Buffer.from(ciphertextB64, "utf8"), Buffer.from("::"), iv]);
-  await mkdir(path.dirname(targetPath), { recursive: true });
-  await writeFile(targetPath, Buffer.from(combined.toString("base64"), "utf8"));
+  return combined.toString("base64");
 }
-async function decryptFromFile(sourcePath: string): Promise<Buffer> {
-  const raw = await readFile(sourcePath, "utf8");
-  const combined = Buffer.from(raw, "base64");
+export function decryptBytes(encoded: string): Buffer {
+  const combined = Buffer.from(encoded, "base64");
   const separatorIndex = combined.indexOf("::");
-  if (separatorIndex === -1) throw new Error("Formato file non valido");
+  if (separatorIndex === -1) throw new Error("Formato dati non valido");
   const ciphertextB64 = combined.subarray(0, separatorIndex).toString("utf8");
   const iv = combined.subarray(separatorIndex + 2);
   const ciphertext = Buffer.from(ciphertextB64, "base64");
   const decipher = createDecipheriv(CIPHER, archiveKey(), iv);
   return Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+}
+
+async function encryptToFile(targetPath: string, data: Buffer) {
+  await mkdir(path.dirname(targetPath), { recursive: true });
+  await writeFile(targetPath, encryptBytes(data));
+}
+async function decryptFromFile(sourcePath: string): Promise<Buffer> {
+  return decryptBytes(await readFile(sourcePath, "utf8"));
 }
 
 export async function saveEncrypted(fileId: number, type: DocType, data: Buffer) {

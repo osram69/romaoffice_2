@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { serviceCatalog, siteConfig } from "@/db/schema";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
+import { encryptBytes } from "@/lib/dom-archive";
 
 const BASE_PATH = "/gestione-configurazione-x9k2m7";
 
@@ -67,6 +68,26 @@ export async function updateRitiroTemplateAction(formData: FormData): Promise<{ 
   await db.update(siteConfig).set({ ritiroTestoTemplate: html || null }).where(eq(siteConfig.id, 1));
   revalidatePath(BASE_PATH);
   revalidatePath("/gestione-domiciliazioni-x9k2m7");
+  return { success: true };
+}
+
+export async function updateFirmaDomiciliatarioAction(formData: FormData): Promise<{ success: boolean; message?: string }> {
+  "use server";
+  await requireAdmin();
+  const file = formData.get("firma");
+  if (!(file instanceof File) || !file.size) return { success: false, message: "Nessun file selezionato" };
+  const buffer = Buffer.from(await file.arrayBuffer());
+  if (buffer.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a") return { success: false, message: "Il file deve essere un PNG" };
+  await db.update(siteConfig).set({ firmaDomiciliatarioPng: encryptBytes(buffer) }).where(eq(siteConfig.id, 1));
+  revalidatePath(BASE_PATH);
+  return { success: true };
+}
+
+export async function removeFirmaDomiciliatarioAction(): Promise<{ success: boolean }> {
+  "use server";
+  await requireAdmin();
+  await db.update(siteConfig).set({ firmaDomiciliatarioPng: null }).where(eq(siteConfig.id, 1));
+  revalidatePath(BASE_PATH);
   return { success: true };
 }
 

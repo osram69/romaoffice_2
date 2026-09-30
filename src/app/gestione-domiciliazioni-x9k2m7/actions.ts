@@ -6,7 +6,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { domClients, domCustomerChallenges, domCustomerSessions, domMailScans, domRinnovoPrezzi, siteConfig } from "@/db/schema";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
-import { readMailScanDecrypted, removeEncrypted, removeMailScanEncrypted, saveEncrypted, type DocType, DOC_TYPES } from "@/lib/dom-archive";
+import { decryptBytes, readMailScanDecrypted, removeEncrypted, removeMailScanEncrypted, saveEncrypted, type DocType, DOC_TYPES } from "@/lib/dom-archive";
 import { PRESENZA_FILE_BITS, cleanText } from "@/lib/dom-status";
 import { buildScadenzaEmailHtml, contractMonths, defaultScontoApplicabile, scadenzaDefaultMonths, scadenzaEmailSubject, scadenzaOfferMonths } from "@/lib/dom-scadenza-email";
 import { DEFAULT_RITIRO_EMAIL_HTML, ritiroEmailSubject } from "@/lib/dom-ritiro-email";
@@ -173,6 +173,18 @@ export async function getScannerConfigAction(): Promise<ScannerConfig> {
     source: row?.scannerSourceDefault === "feeder" || row?.scannerSourceDefault === "feederDuplex" ? row.scannerSourceDefault : "platen",
     resolution: row?.scannerResolutionDefault ?? 200,
   };
+}
+
+// Read-only for any staff role, like getScannerConfigAction above — only admins can upload/replace
+// it, in Configurazione Web. Decrypted here (server-side, staff-authenticated) and handed to the
+// contract-processing tool as a data URL; never written to disk or exposed unauthenticated.
+export async function getFirmaDomiciliatarioAction(): Promise<{ success: boolean; dataUrl?: string }> {
+  "use server";
+  await requireStaff();
+  const [row] = await db.select({ firmaDomiciliatarioPng: siteConfig.firmaDomiciliatarioPng }).from(siteConfig).where(eq(siteConfig.id, 1)).limit(1);
+  if (!row?.firmaDomiciliatarioPng) return { success: false };
+  const png = decryptBytes(row.firmaDomiciliatarioPng);
+  return { success: true, dataUrl: `data:image/png;base64,${png.toString("base64")}` };
 }
 
 export async function listMailScansAction(domClientId: number): Promise<{ success: boolean; message?: string; scans?: MailScanSummary[] }> {
