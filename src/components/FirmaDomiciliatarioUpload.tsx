@@ -44,7 +44,7 @@ export function FirmaDomiciliatarioUpload({ previewDataUrl }: { previewDataUrl: 
         <img src={previewDataUrl} alt="Firma domiciliatario attuale" style={{ height: 60, background: "#f4f6fa", border: "1px solid #dce1ea", borderRadius: 8, padding: 6 }} />
       )}
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        <input ref={inputRef} type="file" accept="image/png" disabled={busy} style={{ width: "auto" }} />
+        <input ref={inputRef} type="file" accept="image/png" disabled={busy} className="gestione-file-input" style={{ width: "auto" }} />
         <button type="button" className="gestione-btn gestione-btn-blue" disabled={busy} onClick={upload}>{previewDataUrl ? "Sostituisci" : "Carica"}</button>
         {previewDataUrl && <button type="button" className="gestione-btn gestione-btn-outline" disabled={busy} onClick={remove}>Rimuovi</button>}
         {status && <span style={{ fontSize: 12, color: status.color }}>{status.text}</span>}

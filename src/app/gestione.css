@@ -135,6 +135,18 @@ tr.gestione-letter-row { scroll-margin-top: 70px; }
 .gestione-scheda-table-edit input[type="file"]::-webkit-file-upload-button:hover { background: #eef2f5; }
 .gestione-scheda-table-edit textarea { min-height: 26px; resize: vertical; }
 
+/* Same "Scegli file" button treatment as the edit-scheda tables above, for a file input outside
+   that table (e.g. Configurazione Web's Firma domiciliatario) — the browser's bare default button
+   there reads as unclear/easy to miss next to the rest of the styled form controls. */
+.gestione-file-input { cursor: pointer; }
+.gestione-file-input::file-selector-button,
+.gestione-file-input::-webkit-file-upload-button {
+  cursor: pointer; border: 1px solid #c8c8c8; border-radius: 4px; background: #f8f9fa; color: #232f3e;
+  font-size: inherit; font-weight: 600; padding: 6px 14px; margin-right: 10px;
+}
+.gestione-file-input::file-selector-button:hover,
+.gestione-file-input::-webkit-file-upload-button:hover { background: #eef2f5; }
+
 .gestione-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 200; display: flex; align-items: flex-start; justify-content: center; padding: 24px; overflow-y: auto; }
 /* No internal scrollbar: the box is exactly as tall as its content. The overlay itself already
    scrolls (overflow-y:auto below), so a modal taller than the viewport scrolls the whole page

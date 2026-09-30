@@ -8,7 +8,10 @@ import { uploadDomDocumentAction } from "@/app/gestione-domiciliazioni-x9k2m7/ac
 // can assemble PDFs but can't render one to an image, same limitation noted in escl-scanner.ts) so
 // it's loaded from a CDN as an ES module rather than added as a project dependency, mirroring the
 // CDN-loaded TinyMCE pattern already used elsewhere (ScadenzaEmailPanel and friends).
-const PDFJS_VERSION = "6.3.289";
+// Pinned to a mature release rather than "latest": 6.x relies on very recent JS engine features
+// (a brand-new Map method) that threw "getOrInsertComputed is not a function" in production —
+// 4.10.38 is the final, widely-deployed 4.x release and doesn't have that problem.
+const PDFJS_VERSION = "4.10.38";
 type PdfjsModule = typeof import("pdfjs-dist");
 let pdfjsPromise: Promise<PdfjsModule> | null = null;
 function loadPdfjs(): Promise<PdfjsModule> {
