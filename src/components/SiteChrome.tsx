@@ -20,7 +20,7 @@ export function Header({ lang: initialLang }: { lang: Lang; alternate: string })
   const [open, setOpen] = useState(false); const dialog = useRef<HTMLDialogElement>(null); const trigger = useRef<HTMLButtonElement>(null);
   const home = it ? "/" : "/en/index.html"; const area = it ? "/area-clienti.html" : "/en/customer-area.html";
   const links = it
-    ? [["/", t.home], ["/uffici-arredati.html", t.offices], ["/servizi-domiciliazione.html", t.domiciliation], ["/tariffe.html", t.pricing], ["/gallery.html", t.gallery], ["/chi-siamo.html", t.about], ["/contatti.html", t.contact]]
+    ? [["/", t.home], ["/uffici-arredati.html", t.offices], ["/servizi-domiciliazione-sede-roma.html", t.domiciliation], ["/tariffe.html", t.pricing], ["/gallery.html", t.gallery], ["/chi-siamo.html", t.about], ["/contatti.html", t.contact]]
     : [["/en/index.html", t.home], ["/en/offices-furnished.html", t.offices], ["/en/domiliation-services.html", t.domiciliation], ["/en/pricing.html", t.pricing], ["/en/gallery.html", t.gallery], ["/en/about.html", t.about], ["/en/contact.html", t.contact]];
   const close = () => { dialog.current?.close(); setOpen(false); trigger.current?.focus(); };
   useEffect(() => { document.documentElement.lang = lang; }, [lang]);

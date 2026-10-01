@@ -14,6 +14,7 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: "/domiciliazione-sede-legale.html", destination: "/domiciliazione-sede-legale-roma.html", permanent: true },
+      { source: "/servizi-domiciliazione.html", destination: "/servizi-domiciliazione-sede-roma.html", permanent: true },
     ];
   },
   async headers() {

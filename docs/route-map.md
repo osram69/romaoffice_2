@@ -7,7 +7,7 @@
 | `/ufficio-giornaliero.html` — Ufficio giornaliero | `/en/day-office.html` — Day office |
 | `/ufficio-temporaneo.html` — Ufficio temporaneo | `/en/temporary-office.html` — Temporary office |
 | `/sale-corsi.html` — Sale corsi e riunioni | `/en/course-rooms.html` — Training and meeting rooms |
-| `/servizi-domiciliazione.html` — Servizi di domiciliazione | `/en/domiliation-services.html` — Domiciliation services |
+| `/servizi-domiciliazione-sede-roma.html` — Servizi di domiciliazione sede a Roma (redirect 301 da `/servizi-domiciliazione.html`, vedi `next.config.ts`) | `/en/domiliation-services.html` — Domiciliation services |
 | `/domiciliazione-postale.html` — Domiciliazione Postale Roma | `/en/postal-domiliation.html` — Postal Domiciliation Rome |
 | `/domiciliazione-sede-legale-roma.html` — Domiciliazione Sede Legale Roma (redirect 301 da `/domiciliazione-sede-legale.html`, vedi `next.config.ts`) | `/en/legal-headquarters-domiliation.html` — Registered Office Rome |
 | `/domiciliazione-professionale.html` — Domiciliazione professionale | `/en/professional-domiliation.html` — Professional domiciliation |
