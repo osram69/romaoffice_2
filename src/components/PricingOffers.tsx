@@ -40,7 +40,7 @@ function SmartStartCard({ lang, product }: { lang: Lang; product: ProductOffer }
       {product.smart3x24Active && <div><b>Smart-Start 3+24</b><p>{it ? "Prima tranche: 3 mesi a 20 €/mese (60 € + IVA) — poi contratto 24 mesi" : "First instalment: 3 months at €20/month (€60 + VAT) — then a 24-month agreement"}</p></div>}
       {product.smart6x24Active && <div><b>Smart-Start 6+24</b><p>{it ? "Prima tranche: 6 mesi a 20 €/mese (120 € + IVA) — poi contratto 24 mesi" : "First instalment: 6 months at €20/month (€120 + VAT) — then a 24-month agreement"}</p></div>}
     </div>
-    <p className="form-note">{it ? "Il contratto Smart-Start ha una struttura a due tranche non gestibile dal pagamento online automatico: richiedilo con il modulo online o telefonicamente, lo prepariamo su misura." : "The Smart-Start agreement has a two-instalment structure that the automated online checkout cannot handle: request it via the online form or by phone and we will prepare it for you."}</p>
+    <p className="form-note">{it ? "La seconda tranche da 24 mesi ha un costo maggiorato rispetto al contratto standard 24 mesi. Inoltre il contratto Smart-Start ha una struttura a due tranche non gestibile dal pagamento online automatico: richiedilo con il modulo online o telefonicamente, lo prepariamo su misura." : "The second, 24-month instalment costs more than the standard 24-month agreement. In addition, the Smart-Start agreement has a two-instalment structure that the automated online checkout cannot handle: request it via the online form or by phone and we will prepare it for you."}</p>
   </div>;
 }
 
