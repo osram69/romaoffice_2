@@ -15,10 +15,15 @@ export function smtpConfigured(): boolean {
 /** Never throws: a failed email must not break the request flow, but must be reported. */
 export async function sendMail(payload: MailPayload): Promise<MailResult> {
   if (!smtpConfigured()) { console.error("Mail not sent: SMTP_HOST/SMTP_USER/SMTP_PASS are not all set"); return { sent: false, reason: "smtp-not-configured" }; }
+  const fromAddress = process.env.MAIL_FROM || (process.env.SMTP_USER as string);
+  // A bare address in the From header shows up in most mail clients as just its local part
+  // ("info" for info@romaofficesharing.it) instead of a real sender name — same fix already
+  // applied to the dom-specific accounts below (accountEnv), just not here until now.
+  const fromName = process.env.MAIL_FROM_NAME || "Roma Office Sharing";
   return deliver({
     host: process.env.SMTP_HOST as string, port: Number(process.env.SMTP_PORT || 465),
     user: process.env.SMTP_USER as string, pass: process.env.SMTP_PASS as string,
-    from: process.env.MAIL_FROM || (process.env.SMTP_USER as string),
+    from: `"${fromName}" <${fromAddress}>`,
   }, payload);
 }
 
