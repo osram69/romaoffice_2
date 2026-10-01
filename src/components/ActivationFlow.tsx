@@ -333,9 +333,9 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
             <p><span>{it ? "Durata" : "Duration"}</span><b>{copy.months(priced.months)}</b></p>
             <p><span>{it ? "Tariffa di listino" : "Standard rate"}</span><b>{formatEur(priced.listCents, lang)} {it ? "+ IVA" : "+ VAT"}</b></p>
             {priced.offerApplied && <p className="offer-line"><span>{it ? "Offerta" : "Offer"}</span><b>{formatEur(priced.baseCents, lang)} {it ? "+ IVA" : "+ VAT"}</b></p>}
-            {priced.newActivationDiscountCents > 0 && <p><span>{it ? "Sconto una-tantum nuove attivazioni (10%)" : "One-off new activation discount (10%)"}</span><b>-{formatEur(priced.newActivationDiscountCents, lang)}</b></p>}
+            {priced.newActivationDiscountCents > 0 && <p><span className="price-label-compact">{it ? "Sconto una-tantum nuove attivazioni (10%)" : "One-off new activation discount (10%)"}</span><b>-{formatEur(priced.newActivationDiscountCents, lang)}</b></p>}
             {priced.additionalDomiciliationDiscountCents > 0 && <p><span>{it ? "Sconto domiciliazioni aggiuntive (10%)" : "Additional address service discount (10%)"}</span><b>-{formatEur(priced.additionalDomiciliationDiscountCents, lang)}</b></p>}
-            {priced.onlineDiscountCents > 0 && <p className="online-discount-line"><span><BadgePercent/>{it ? `Sconto una-tantum attivazione online (${product.onlineDiscountBps / 100}%)` : `One-off online activation discount (${product.onlineDiscountBps / 100}%)`}</span><b>-{formatEur(priced.onlineDiscountCents, lang)}</b></p>}
+            {priced.onlineDiscountCents > 0 && <p className="online-discount-line"><span className="price-label-compact"><BadgePercent/>{it ? `Sconto una-tantum attivazione online (${product.onlineDiscountBps / 100}%)` : `One-off online activation discount (${product.onlineDiscountBps / 100}%)`}</span><b>-{formatEur(priced.onlineDiscountCents, lang)}</b></p>}
             {priced.addonLines.map(line => <p key={line.code}><span>{it ? line.titleIt : line.titleEn} × {line.quantity}</span><b>{formatEur(line.totalCents, lang)}</b></p>)}
             <p><span>{it ? "Imponibile" : "Net amount"}</span><b>{formatEur(priced.netCents, lang)}</b></p>
             <p><span>{it ? "IVA" : "VAT"} {product.vatBps / 100}%</span><b>{formatEur(priced.vatCents, lang)}</b></p>

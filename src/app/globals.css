@@ -53,6 +53,7 @@
 .activation-summary .price-box{background:#fff;margin:1.5rem 0}
 .activation-summary .check-list{margin:0}
 .offer-line b{color:var(--gold-dark)}
+.price-label-compact{font-size:.82em;display:flex;align-items:center;gap:.3rem}
 .otp-input{font-size:1.6rem;letter-spacing:.5rem;text-align:center;max-width:240px}
 .activation-block h3{font-family:Georgia,serif;color:var(--ink);font-size:1.6rem;margin:0 0 .5rem}
 .payment-options label{font-weight:700}
