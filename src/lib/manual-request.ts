@@ -43,8 +43,8 @@ export function buildManualRequestEmail(input: ManualRequestInput, product: Prod
     [it ? "Data prevista di attivazione" : "Expected activation date", input.startDate],
     [it ? "Servizio" : "Service", copy.name],
     [it ? "Durata/tariffa" : "Duration/rate", rate],
-    [it ? "Nuova attivazione" : "New activation", input.newActivation ? (it ? "Sì" : "Yes") : "No"],
-    [it ? "Domiciliazione aggiuntiva" : "Additional address service", input.additionalDomiciliation ? (it ? "Sì" : "Yes") : "No"],
+    ...(product.code === "legal_unit" && product.newActivationDiscountEnabled ? [[it ? "Nuova attivazione" : "New activation", input.newActivation ? (it ? "Sì" : "Yes") : "No"]] : []),
+    ...(product.code === "legal_unit" && product.additionalDiscountEnabled ? [[it ? "Domiciliazione aggiuntiva" : "Additional address service", input.additionalDomiciliation ? (it ? "Sì" : "Yes") : "No"]] : []),
     ["Email", input.email],
     ...(input.notes ? [[it ? "Note" : "Notes", input.notes]] : []),
   ];

@@ -5,7 +5,7 @@ export type PaymentMethod = "stripe" | "paypal" | "sumup" | "bank_transfer" | "o
 export type PriceTier = { months: number; listCents: number; offerCents: number | null; newActivation: boolean; additionalDomiciliation: boolean };
 export type Addon = { code: string; titleIt: string; titleEn: string; priceCents: number; annualCents: number; billing: string; maxQuantity: number; selectable: boolean };
 export type SelectedAddon = { code: string; quantity: number };
-export type ProductOffer = { code: ServiceCode; vatBps: number; additionalDiscountBps: number; newActivationDiscountBps: number; offerValidUntil: string | null; termsRevision: string; version: string; tiers: PriceTier[]; addons: Addon[]; smart3x24Active: boolean; smart6x24Active: boolean; onlineDiscountEnabled: boolean; onlineDiscountBps: number };
+export type ProductOffer = { code: ServiceCode; vatBps: number; additionalDiscountBps: number; additionalDiscountEnabled: boolean; newActivationDiscountBps: number; newActivationDiscountEnabled: boolean; offerValidUntil: string | null; termsRevision: string; version: string; tiers: PriceTier[]; addons: Addon[]; smart3x24Active: boolean; smart6x24Active: boolean; onlineDiscountEnabled: boolean; onlineDiscountBps: number };
 export type Catalog = Record<ServiceCode, ProductOffer>;
 export type Quote = {
   service: ServiceCode; catalogVersion: string; months: number; listCents: number; baseCents: number; offerApplied: boolean;
@@ -20,11 +20,11 @@ export function quote(product: ProductOffer, input: { months: number; newActivat
   const tier = tierFor(product, input.months); if (!tier) return null;
   const offerApplied = offerActive(product, input.now) && tier.offerCents !== null;
   const baseCents = offerApplied ? tier.offerCents! : tier.listCents;
-  const newActivationEligible = product.code === "legal_unit" && offerApplied && tier.newActivation;
+  const newActivationEligible = product.code === "legal_unit" && product.newActivationDiscountEnabled && offerApplied && tier.newActivation;
   const newActivationDiscountCents = newActivationEligible && flag(input.newActivation) ? Math.round(baseCents * product.newActivationDiscountBps / 10000) : 0;
   // Postal never offers this discount — enforced here regardless of the tier's own DB flag,
   // which historically defaulted to true for every service including postal.
-  const additionalDomiciliationEligible = product.code !== "postal" && tier.additionalDomiciliation;
+  const additionalDomiciliationEligible = product.code !== "postal" && product.additionalDiscountEnabled && tier.additionalDomiciliation;
   const additionalDomiciliationDiscountCents = additionalDomiciliationEligible && flag(input.additionalDomiciliation) ? Math.round((baseCents - newActivationDiscountCents) * product.additionalDiscountBps / 10000) : 0;
   // Only granted when the caller explicitly marks this as the self-service online flow
   // (ActivationFlow) — a manually-quoted or staff-processed request never gets it, by design.
@@ -46,9 +46,14 @@ export function formatEur(cents: number, lang: Lang = "it") { return new Intl.Nu
 export function monthlyEquivalent(cents: number, months: number, lang: Lang = "it") { return formatEur(Math.round(cents / months), lang); }
 export function renewalNote(product: ProductOffer, lang: Lang) {
   const it = lang === "it";
-  return offerActive(product)
-    ? (it ? "Il canone di rinnovo resta quello mostrato in tabella (colonna “Offerta”, dove presente): non si torna al listino barrato. Lo sconto nuove attivazioni si applica una sola volta, alla prima sottoscrizione." : "The renewal fee stays the amount shown in the table (the “Offer” column, where present): it never reverts to the struck-through standard rate. The new-activation discount applies once only, at first sign-up.")
-    : (it ? "Le offerte promozionali sono scadute: il canone applicato, anche ai rinnovi, è quello di listino." : "Promotional offers have expired: the standard rate applies, including at renewal.");
+  if (!offerActive(product)) return it ? "Le offerte promozionali sono scadute: il canone applicato, anche ai rinnovi, è quello di listino." : "Promotional offers have expired: the standard rate applies, including at renewal.";
+  const base = it
+    ? "Il canone di rinnovo resta quello mostrato in tabella (colonna “Offerta”, dove presente): non si torna al listino barrato."
+    : "The renewal fee stays the amount shown in the table (the “Offer” column, where present): it never reverts to the struck-through standard rate.";
+  // Postal never offers this discount (pricing.ts quote()), and it can be switched off for
+  // legal_unit in Configurazione Web — this note shouldn't dangle a reference to it either way.
+  if (product.code !== "legal_unit" || !product.newActivationDiscountEnabled) return base;
+  return base + (it ? " Lo sconto nuove attivazioni si applica una sola volta, alla prima sottoscrizione." : " The new-activation discount applies once only, at first sign-up.");
 }
 export function validity(product: ProductOffer, lang: Lang) {
   if (!product.offerValidUntil) return lang === "it" ? "Attuale offerta" : "Current offer";

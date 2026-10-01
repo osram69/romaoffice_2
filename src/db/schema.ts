@@ -91,6 +91,12 @@ export const serviceCatalog = pgTable("service_catalog", {
   vatBps: integer("vat_bps").notNull().default(2200),
   additionalDiscountBps: integer("additional_discount_bps").notNull().default(1000),
   newActivationDiscountBps: integer("new_activation_discount_bps").notNull().default(0),
+  // Admin on/off switch for the two legal_unit discounts below, configurable in Configurazione
+  // Web — when off, every trace (price calculation, site wording, PDF fields, emails) disappears,
+  // not just the discount amount. Postal never offers either discount at all (pricing.ts hardcodes
+  // that regardless of these columns), so these only have an effect on the legal_unit row.
+  additionalDiscountEnabled: boolean("additional_discount_enabled").notNull().default(true),
+  newActivationDiscountEnabled: boolean("new_activation_discount_enabled").notNull().default(true),
   offerValidUntil: timestamp("offer_valid_until", { withTimezone: true }),
   termsRevision: text("terms_revision").notNull(), active: boolean("active").notNull().default(true),
   // Smart-Start (3+24 / 6+24 two-tranche legal_unit agreements) has a fixed structure that

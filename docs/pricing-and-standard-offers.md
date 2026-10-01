@@ -31,7 +31,9 @@ npx drizzle-kit push
 npx tsx scripts/seed-catalog.ts
 ```
 
-Valori postali iniziali: 6 mesi 300,00 € / offerta 280,00 €; 12 mesi 540,00 € / offerta 500,00 €. IVA 22% esclusa. Sconto aggiuntivo 10% per stesso referente/amministratore; nessuno sconto nuova attivazione per il servizio postale e nessuna scadenza promozionale inventata. Le offerte della sede legale hanno una scadenza (`service_catalog.offer_valid_until`), modificabile in qualsiasi momento in **Tariffe e Offerte** (`/gestione-tariffe-x9k2m7`) senza toccare il codice — non riportarla qui come valore fisso, perché va sempre disallineata rispetto a quella davvero configurata.
+Valori postali iniziali: 6 mesi 300,00 € / offerta 280,00 €; 12 mesi 540,00 € / offerta 500,00 €. IVA 22% esclusa. Il servizio postale non prevede né lo sconto domiciliazioni aggiuntive né lo sconto nuove attivazioni — esclusione fissa in `quote()` (`src/lib/pricing.ts`), non legata ai due interruttori sotto, che riguardano solo la sede legale — e nessuna scadenza promozionale inventata. Le offerte della sede legale hanno una scadenza (`service_catalog.offer_valid_until`), modificabile in qualsiasi momento in **Tariffe e Offerte** (`/gestione-tariffe-x9k2m7`) senza toccare il codice — non riportarla qui come valore fisso, perché va sempre disallineata rispetto a quella davvero configurata.
+
+Lo sconto domiciliazioni aggiuntive e lo sconto nuove attivazioni della sede legale si possono disattivare singolarmente in **Configurazione Web** (`service_catalog.additional_discount_enabled` / `new_activation_discount_enabled`): quando spenti, ogni traccia sparisce — calcolo prezzi, sito, PDF del preventivo, email di richiesta manuale e di offerta standard.
 
 Il sito legge le tabelle ad ogni richiesta delle pagine interessate, senza listini numerici di fallback nel frontend. Non serve ricompilare per modificare i prezzi. Il server controlla la versione dell'intero catalogo/condizioni e rifiuta preventivi d'acquisto non più aggiornati. Gli importi accettati sono salvati in `orders.quote_data`: PDF, email e provider di pagamento usano lo stesso snapshot.
 
@@ -77,7 +79,7 @@ L'header desktop e il menu mobile richiamano `/LogoFull_trasp.svg` come immagine
 - Inserire il vero SVG e il modulo PDF originale; confrontare hash PDF locale e allegato ricevuto.
 - Configurare SMTP e Twilio; provare un invio e un SMS reali con destinatari autorizzati.
 - Modificare temporaneamente un prezzo nel database di staging e verificare aggiornamento della tabella e blocco di una richiesta con versione precedente.
-- Provare entrambe le durate postali, sconto aggiuntivo e somma degli extra/IVA.
+- Provare entrambe le durate postali e la somma degli extra/IVA (nessuno sconto aggiuntivo o nuova attivazione previsto per il postale, vedi sopra).
 - Verificare che senza accettazione postale o senza OTP gli endpoint di pagamento restituiscano errore.
 - Verificare i ritorni da PayPal/Stripe/SumUp con servizio postale e importo/valuta corretti.
 - Verificare bonifico e pagamento in sede come **in attesa**, non pagati.

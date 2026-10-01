@@ -143,8 +143,8 @@ export async function buildRequestPdf(opts: { data: RequestData; lang: Lang; sho
   writer.field(it ? "Descrizione" : "Description", copy.description);
   writer.field(it ? "Durata" : "Duration", copy.months(data.months));
   writer.field(it ? "Data di inizio contratto" : "Contract start date", data.startDate);
-  writer.field(it ? "Nuova attivazione (nuovo cliente/società)" : "New activation (new client/company)", data.newActivation ? (it ? "Sì" : "Yes") : it ? "No" : "No");
-  if (!postal) writer.field(it ? "Domiciliazione aggiuntiva (stesso referente/amministratore)" : "Additional address service (same contact/administrator)", data.additionalDomiciliation ? (it ? "Sì" : "Yes") : it ? "No" : "No");
+  if (!postal && product.newActivationDiscountEnabled) writer.field(it ? "Nuova attivazione (nuovo cliente/società)" : "New activation (new client/company)", data.newActivation ? (it ? "Sì" : "Yes") : it ? "No" : "No");
+  if (!postal && product.additionalDiscountEnabled) writer.field(it ? "Domiciliazione aggiuntiva (stesso referente/amministratore)" : "Additional address service (same contact/administrator)", data.additionalDomiciliation ? (it ? "Sì" : "Yes") : it ? "No" : "No");
 
   if (priced) {
     // Keep the whole quotation block together: forcing a break here (rather than letting each

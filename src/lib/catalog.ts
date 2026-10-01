@@ -20,8 +20,8 @@ export async function getCatalog(): Promise<Catalog> {
     const row = services.find(s => s.code === code);
     if (!row) throw new Error(`Catalogue not configured: ${code}. Run scripts/seed-catalog.ts.`);
     const offer: ProductOffer = {
-      code, vatBps: row.vatBps, additionalDiscountBps: row.additionalDiscountBps,
-      newActivationDiscountBps: row.newActivationDiscountBps, offerValidUntil: row.offerValidUntil?.toISOString() ?? null,
+      code, vatBps: row.vatBps, additionalDiscountBps: row.additionalDiscountBps, additionalDiscountEnabled: row.additionalDiscountEnabled,
+      newActivationDiscountBps: row.newActivationDiscountBps, newActivationDiscountEnabled: row.newActivationDiscountEnabled, offerValidUntil: row.offerValidUntil?.toISOString() ?? null,
       termsRevision: row.termsRevision, version: "",
       smart3x24Active: row.smart3x24Active, smart6x24Active: row.smart6x24Active,
       onlineDiscountEnabled, onlineDiscountBps,

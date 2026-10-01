@@ -33,7 +33,13 @@ export function offerTerms(product: ProductOffer, lang: Lang): OfferTerms {
       `Document archive (Doxa-type binders, 8x23x33cm, up to ${archive.maxQuantity} binders): ${formatEur(archive.priceCents, lang)}/month per binder`,
       `Forwarding stored mail to your office (${formatEur(price("legal_forwarding").priceCents, lang)} service charge + courier or postal shipping cost)`,
     ],
-    paragraphs: [validity(product, lang), it ? `Sconto una-tantum del ${product.newActivationDiscountBps / 100}% per nuove attivazioni sulle durate contrassegnate, entro la validità dell’offerta.` : `A one-off ${product.newActivationDiscountBps / 100}% new-activation discount applies to marked durations within the offer period.`, renewalNote(product, lang), additionalNote(product, lang), it ? `Prezzi IVA ${product.vatBps / 100}% esclusa. L’utilizzo dell’indirizzo è soggetto al contratto e alla verifica della documentazione.` : `Prices exclude ${product.vatBps / 100}% VAT. Address use is subject to the agreement and document checks.`],
+    paragraphs: [
+      validity(product, lang),
+      ...(product.newActivationDiscountEnabled ? [it ? `Sconto una-tantum del ${product.newActivationDiscountBps / 100}% per nuove attivazioni sulle durate contrassegnate, entro la validità dell’offerta.` : `A one-off ${product.newActivationDiscountBps / 100}% new-activation discount applies to marked durations within the offer period.`] : []),
+      renewalNote(product, lang),
+      ...(product.additionalDiscountEnabled ? [additionalNote(product, lang)] : []),
+      it ? `Prezzi IVA ${product.vatBps / 100}% esclusa. L’utilizzo dell’indirizzo è soggetto al contratto e alla verifica della documentazione.` : `Prices exclude ${product.vatBps / 100}% VAT. Address use is subject to the agreement and document checks.`,
+    ],
     paymentHeading: it ? "Pagamento anticipato" : "Payment in advance", payment: [it ? "Bonifico bancario o pagamento online tramite Stripe, PayPal o SumUp." : "Bank transfer or online payment via Stripe, PayPal or SumUp."], deposit: it ? "NOTA: non è previsto deposito cauzionale" : "NOTE: no security deposit is required",
   }; }
   const secretary = price("virtual_secretary"), archive = price("archive");

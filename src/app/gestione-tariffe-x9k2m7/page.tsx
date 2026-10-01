@@ -68,14 +68,18 @@ export default async function AdminDashboardPage() {
 
               <form action={updateServiceAction} style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "end", borderBottom: "1px solid #eee", paddingBottom: 20, marginBottom: 20 }}>
                 <input type="hidden" name="code" value={service.code} />
-                <div className="gestione-field" style={{ width: 220 }}>
-                  <label>Sconto domiciliazioni aggiuntive (%)</label>
-                  <input name="additionalDiscountBps" type="number" step="0.01" min="0" max="100" defaultValue={service.additionalDiscountBps / 100} />
-                </div>
-                <div className="gestione-field" style={{ width: 200 }}>
-                  <label>Sconto nuove attivazioni (%)</label>
-                  <input name="newActivationDiscountBps" type="number" step="0.01" min="0" max="100" defaultValue={service.newActivationDiscountBps / 100} />
-                </div>
+                {service.code === "legal_unit" && (
+                  <>
+                    <div className="gestione-field" style={{ width: 220 }}>
+                      <label>Sconto domiciliazioni aggiuntive (%)</label>
+                      <input name="additionalDiscountBps" type="number" step="0.01" min="0" max="100" defaultValue={service.additionalDiscountBps / 100} />
+                    </div>
+                    <div className="gestione-field" style={{ width: 200 }}>
+                      <label>Sconto nuove attivazioni (%)</label>
+                      <input name="newActivationDiscountBps" type="number" step="0.01" min="0" max="100" defaultValue={service.newActivationDiscountBps / 100} />
+                    </div>
+                  </>
+                )}
                 <div className="gestione-field" style={{ width: 180 }}>
                   <label>Offerta valida fino al</label>
                   <input name="offerValidUntil" type="date" defaultValue={service.offerValidUntil ? service.offerValidUntil.toISOString().slice(0, 10) : ""} />
@@ -92,7 +96,7 @@ export default async function AdminDashboardPage() {
                   <table className="gestione-table">
                     <thead>
                       <tr>
-                        <th>Mesi</th><th>Listino (€)</th><th>Offerta (€)</th><th>Nuova attiv.</th><th>Dom. aggiuntiva</th><th>Attivo</th><th></th>
+                        <th>Mesi</th><th>Listino (€)</th><th>Offerta (€)</th>{service.code === "legal_unit" && <><th>Nuova attiv.</th><th>Dom. aggiuntiva</th></>}<th>Attivo</th><th></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -106,8 +110,12 @@ export default async function AdminDashboardPage() {
                           </td>
                           <td><input form={`tier-${tier.id}`} name="listCents" type="number" step="0.01" min="0" defaultValue={euro(tier.listCents)} style={inputStyle} /></td>
                           <td><input form={`tier-${tier.id}`} name="offerCents" type="number" step="0.01" min="0" defaultValue={euro(tier.offerCents)} style={inputStyle} /></td>
-                          <td style={{ textAlign: "center" }}><input form={`tier-${tier.id}`} name="newActivation" type="checkbox" defaultChecked={tier.newActivation} /></td>
-                          <td style={{ textAlign: "center" }}><input form={`tier-${tier.id}`} name="additionalDomiciliation" type="checkbox" defaultChecked={tier.additionalDomiciliation} /></td>
+                          {service.code === "legal_unit" && (
+                            <>
+                              <td style={{ textAlign: "center" }}><input form={`tier-${tier.id}`} name="newActivation" type="checkbox" defaultChecked={tier.newActivation} /></td>
+                              <td style={{ textAlign: "center" }}><input form={`tier-${tier.id}`} name="additionalDomiciliation" type="checkbox" defaultChecked={tier.additionalDomiciliation} /></td>
+                            </>
+                          )}
                           <td style={{ textAlign: "center" }}><input form={`tier-${tier.id}`} name="active" type="checkbox" defaultChecked={tier.active} /></td>
                           <td style={{ display: "flex", gap: 6 }}><button form={`tier-${tier.id}`} type="submit" className="gestione-btn gestione-btn-blue">Salva</button><DeleteIconButton id={tier.id} action={deletePriceAction} label={`durata ${tier.months} mesi`} /></td>
                         </tr>
@@ -122,8 +130,12 @@ export default async function AdminDashboardPage() {
                     <div className="gestione-field" style={{ width: 100 }}><label>Mesi</label><input name="months" type="number" min="1" required /></div>
                     <div className="gestione-field" style={{ width: 140 }}><label>Listino (€)</label><input name="listCents" type="number" step="0.01" min="0" required /></div>
                     <div className="gestione-field" style={{ width: 140 }}><label>Offerta (€)</label><input name="offerCents" type="number" step="0.01" min="0" /></div>
-                    <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 600 }}><input type="checkbox" name="newActivation" /> Nuova attiv.</label>
-                    <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 600 }}><input type="checkbox" name="additionalDomiciliation" /> Dom. aggiuntiva</label>
+                    {service.code === "legal_unit" && (
+                      <>
+                        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 600 }}><input type="checkbox" name="newActivation" /> Nuova attiv.</label>
+                        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 600 }}><input type="checkbox" name="additionalDomiciliation" /> Dom. aggiuntiva</label>
+                      </>
+                    )}
                     <button type="submit" className="gestione-btn gestione-btn-blue">Aggiungi</button>
                   </form>
                 </details>

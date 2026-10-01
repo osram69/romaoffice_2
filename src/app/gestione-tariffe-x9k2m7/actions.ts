@@ -30,9 +30,13 @@ export async function updateServiceAction(formData: FormData) {
   await requireAdmin();
   const code = String(formData.get("code") ?? "") as ServiceCode;
   const offerValidUntilRaw = String(formData.get("offerValidUntil") ?? "").trim();
+  // Postal's form (page.tsx) doesn't submit these two fields at all — it has neither discount —
+  // so only touch them when actually present, instead of zeroing them out on every postal save.
+  const discountFields = formData.has("additionalDiscountBps")
+    ? { additionalDiscountBps: Math.round(Number(formData.get("additionalDiscountBps")) * 100), newActivationDiscountBps: Math.round(Number(formData.get("newActivationDiscountBps")) * 100) }
+    : {};
   await db.update(serviceCatalog).set({
-    additionalDiscountBps: Math.round(Number(formData.get("additionalDiscountBps")) * 100),
-    newActivationDiscountBps: Math.round(Number(formData.get("newActivationDiscountBps")) * 100),
+    ...discountFields,
     offerValidUntil: offerValidUntilRaw ? new Date(`${offerValidUntilRaw}T23:59:59+02:00`) : null,
     active: formData.get("active") === "on",
   }).where(eq(serviceCatalog.code, code));
