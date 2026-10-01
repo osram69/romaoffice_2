@@ -9,7 +9,7 @@
 | `/sale-corsi.html` — Sale corsi e riunioni | `/en/course-rooms.html` — Training and meeting rooms |
 | `/servizi-domiciliazione.html` — Servizi di domiciliazione | `/en/domiliation-services.html` — Domiciliation services |
 | `/domiciliazione-postale.html` — Domiciliazione Postale Roma | `/en/postal-domiliation.html` — Postal Domiciliation Rome |
-| `/domiciliazione-sede-legale.html` — Domiciliazione Sede Legale Roma | `/en/legal-headquarters-domiliation.html` — Registered Office Rome |
+| `/domiciliazione-sede-legale-roma.html` — Domiciliazione Sede Legale Roma (redirect 301 da `/domiciliazione-sede-legale.html`, vedi `next.config.ts`) | `/en/legal-headquarters-domiliation.html` — Registered Office Rome |
 | `/domiciliazione-professionale.html` — Domiciliazione professionale | `/en/professional-domiliation.html` — Professional domiciliation |
 | `/domiciliazione-ditta-individuale.html` — Domiciliazione ditta individuale | `/en/sole-proprietorship-domiliation.html` — Sole proprietorship domiciliation |
 | `/domiciliazione-unita-locale.html` — Domiciliazione unità locale | `/en/local-unit-domiliation.html` — Local unit domiciliation |

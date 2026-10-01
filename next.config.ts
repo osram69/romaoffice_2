@@ -9,6 +9,13 @@ const nextConfig: NextConfig = {
   // Route Handler (POST /api/dom-mail-scans) instead, which isn't subject to this limit at all, so
   // 25MB (uploadDomDocumentAction's actual need) is enough again.
   experimental: { serverActions: { bodySizeLimit: "25mb" } },
+  // Permanent redirect so the page's existing Search Console history/backlinks carry over to the
+  // new URL instead of starting from zero (and so the old URL doesn't start 404ing).
+  async redirects() {
+    return [
+      { source: "/domiciliazione-sede-legale.html", destination: "/domiciliazione-sede-legale-roma.html", permanent: true },
+    ];
+  },
   async headers() {
     return [
       { source: "/:path*", headers: [{ key: "X-Content-Type-Options", value: "nosniff" }, { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" }] },

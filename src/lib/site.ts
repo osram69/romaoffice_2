@@ -23,7 +23,7 @@ export const routeMap: Record<string, string> = {
   "sale-corsi.html": "en/course-rooms.html",
   "servizi-domiciliazione.html": "en/domiliation-services.html",
   "domiciliazione-postale.html": "en/postal-domiliation.html",
-  "domiciliazione-sede-legale.html": "en/legal-headquarters-domiliation.html",
+  "domiciliazione-sede-legale-roma.html": "en/legal-headquarters-domiliation.html",
   "domiciliazione-professionale.html": "en/professional-domiliation.html",
   "domiciliazione-ditta-individuale.html": "en/sole-proprietorship-domiliation.html",
   "domiciliazione-unita-locale.html": "en/local-unit-domiliation.html",
@@ -70,7 +70,7 @@ export const ui = {
 export const services = {
   it: [
     { icon: "desk", title: "Uffici arredati", text: "Uffici pronti all’uso, eleganti e funzionali, disponibili anche per un solo giorno.", href: "/uffici-arredati.html" },
-    { icon: "building", title: "Domiciliazione Sede Legale", text: "Eleggi o trasferisci la sede della tua attività a Roma, con ricezione della corrispondenza e ritiro tramite il rappresentante o un delegato.", href: "/domiciliazione-sede-legale.html" },
+    { icon: "building", title: "Domiciliazione Sede Legale", text: "Eleggi o trasferisci la sede della tua attività a Roma, con ricezione della corrispondenza e ritiro tramite il rappresentante o un delegato.", href: "/domiciliazione-sede-legale-roma.html" },
     { icon: "mail", title: "Domiciliazione Postale", text: "Un indirizzo professionale per ricevere e custodire la tua posta, separato da quello di casa. Ritiro o inoltro da concordare con la reception.", href: "/domiciliazione-postale.html" },
     { icon: "monitor", title: "Uffici Virtuali", text: "Presenza professionale, segreteria e servizi d’ufficio senza costi fissi.", href: "/segreteria-virtuale.html" },
   ],
@@ -93,7 +93,7 @@ const itPages: Record<string, PageDef> = {
   "sale-corsi.html": { title: "Sale corsi e riunioni", eyebrow: "INCONTRARSI A ROMA", description: "Spazi modulari e tecnologici per corsi, colloqui e meeting.", kind: "rooms", bullets: ["Schermo e videoconferenza", "Layout configurabile", "Assistenza reception"] },
   "servizi-domiciliazione.html": { title: "Servizi di domiciliazione", eyebrow: "LA TUA SEDE A ROMA", description: "Un indirizzo a Roma, servizi di ricezione posta e una reception a cui affidarti. Scegli tra sede legale, recapito postale e soluzioni per professionisti.", kind: "service", bullets: ["Domiciliazione postale", "Sede legale", "Domiciliazione professionale e unità locale"] },
   "domiciliazione-postale.html": { title: "Domiciliazione Postale Roma", eyebrow: "CORRISPONDENZA", description: "Ricevi la posta aziendale presso un indirizzo prestigioso e affidabile.", kind: "service", bullets: ["Notifica della nuova corrispondenza", "Custodia riservata", "Ritiro o inoltro su richiesta"] },
-  "domiciliazione-sede-legale.html": { title: "Domiciliazione Sede Legale Roma", eyebrow: "SEDE LEGALE", description: "Stabilisci la sede legale della tua attività in un palazzo di prestigio nel centro di Roma.", kind: "legal" },
+  "domiciliazione-sede-legale-roma.html": { title: "Domiciliazione Sede Legale Roma", eyebrow: "SEDE LEGALE", description: "Stabilisci la sede legale della tua attività in un palazzo di prestigio nel centro di Roma.", kind: "legal" },
   "domiciliazione-professionale.html": { title: "Domiciliazione professionale", eyebrow: "PER PROFESSIONISTI", description: "Un recapito professionale separato dalla residenza, nel cuore di Roma.", kind: "service", bullets: ["Uso dell’indirizzo professionale", "Gestione posta", "Immagine autorevole"] },
   "domiciliazione-ditta-individuale.html": { title: "Domiciliazione ditta individuale", eyebrow: "PER IMPRENDITORI", description: "Una sede professionale per la tua impresa individuale.", kind: "service", bullets: ["Indirizzo commerciale", "Gestione corrispondenza", "Servizi attivabili su misura"] },
   "domiciliazione-unita-locale.html": { title: "Domiciliazione unità locale", eyebrow: "PRESENZA A ROMA", description: "Apri un’unità locale a Roma con supporto professionale.", kind: "service", bullets: ["Indirizzo nel centro di Roma", "Assistenza documentale", "Spazi disponibili su richiesta"] },
