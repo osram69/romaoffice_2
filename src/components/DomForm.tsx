@@ -91,7 +91,7 @@ export function DomForm({ client, action, deleteAction, onClose }: { client?: Do
                 </select>
               )),
               field("Stato", (
-                <select name="stato" defaultValue={client?.stato ?? 1}>
+                <select name="stato" defaultValue={client?.stato ?? 0}>
                   {STATI.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                 </select>
               ))
