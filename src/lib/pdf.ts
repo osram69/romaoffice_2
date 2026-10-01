@@ -156,7 +156,7 @@ export async function buildRequestPdf(opts: { data: RequestData; lang: Lang; sho
     if (priced.offerApplied) writer.row(it ? `Offerta ${priced.months} mesi` : `${priced.months}-month offer`, `${formatEur(priced.baseCents, lang)} ${it ? "+ IVA" : "+ VAT"}`);
     if (priced.newActivationDiscountCents) writer.row(it ? "Sconto una-tantum nuove attivazioni (10%)" : "One-off new activation discount (10%)", `- ${formatEur(priced.newActivationDiscountCents, lang)}`);
     if (priced.additionalDomiciliationDiscountCents) writer.row(it ? "Sconto domiciliazioni aggiuntive (10%)" : "Additional address service discount (10%)", `- ${formatEur(priced.additionalDomiciliationDiscountCents, lang)}`);
-    if (priced.onlineDiscountCents) writer.row(it ? `Sconto attivazione online (${product.onlineDiscountBps / 100}%)` : `Online activation discount (${product.onlineDiscountBps / 100}%)`, `- ${formatEur(priced.onlineDiscountCents, lang)}`);
+    if (priced.onlineDiscountCents) writer.row(it ? `Sconto una-tantum attivazione online (${product.onlineDiscountBps / 100}%)` : `One-off online activation discount (${product.onlineDiscountBps / 100}%)`, `- ${formatEur(priced.onlineDiscountCents, lang)}`);
     for (const line of priced.addonLines) writer.row(`${it ? line.titleIt : line.titleEn} x ${line.quantity}`, formatEur(line.totalCents, lang));
     writer.row(it ? "Imponibile" : "Net amount", formatEur(priced.netCents, lang));
     writer.row(`${it ? "IVA" : "VAT"} ${product.vatBps / 100}%`, formatEur(priced.vatCents, lang));
