@@ -118,12 +118,10 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds }: { rows: Dom
       // keep looking sendable — the scan itself is untouched, still reachable from its own panel.
       strandedIds.forEach(id => setPendingFor(id, false));
     }
-    setRowStatus(prev => {
-      if (!(row.id in prev)) return prev;
-      const next = { ...prev };
-      delete next[row.id];
-      return next;
-    });
+    // Clears every row's leftover status, not just this one — otherwise a "Mail inviata a ..."
+    // from an earlier send on a *different* company kept sitting there indefinitely, looking like
+    // it was still about something currently happening.
+    setRowStatus(prev => (Object.keys(prev).length ? {} : prev));
     setScanning(row);
   }
 
