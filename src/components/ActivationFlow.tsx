@@ -267,6 +267,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
           <OfferTermsConsent product={product} lang={lang} accepted={form.termsAccepted} onAccept={() => setForm(f => ({ ...f, termsAccepted: true }))}/>{err("terms")}<p className="form-note">{it ? "La procedura online sostituisce la restituzione del modulo via email: i dati e l’accettazione vengono inviati al centro. Attivazione soggetta a verifica e contratto." : "The online process replaces returning the form by email: your details and acceptance are sent to the centre. Activation is subject to review and agreement."}</p>
 <div className="honeypot" aria-hidden="true"><label>Website<input value={form.website} onChange={e => setForm({ ...form, website: e.target.value })} tabIndex={-1} autoComplete="off" /></label></div>
           <button className="button primary" disabled={busy}>{busy && <LoaderCircle className="spin" />}{t.sendCode}</button>
+          <p className="form-note">{it ? "* campi obbligatori" : "* required fields"}</p>
         </form>}
 
         {step === 2 && <div className="activation-block">

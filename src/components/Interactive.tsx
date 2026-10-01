@@ -74,6 +74,7 @@ export function ContactForm({ lang }: { lang: Lang }) {
       {err("consent")}
     </div>
     <button className="button primary" disabled={state === "loading"}>{state === "loading" && <LoaderCircle className="spin" />}{labels.submit}</button>
+    <p className="form-note">{it ? "* campi obbligatori" : "* required fields"}</p>
     <div aria-live="polite" className={`form-status ${state}`}>{state === "success" ? (it ? "Grazie! La richiesta è stata inviata." : "Thank you! Your enquiry has been sent.") : state === "error" ? (it ? "Invio non riuscito. Riprova o chiamaci." : "Submission failed. Please retry or call us.") : ""}</div>
   </form>;
 }
