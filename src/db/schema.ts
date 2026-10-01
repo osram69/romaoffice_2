@@ -108,19 +108,25 @@ export const serviceCatalog = pgTable("service_catalog", {
 // specific service's pricing — e.g. which payment methods appear at checkout.
 export const siteConfig = pgTable("site_config", {
   id: integer("id").primaryKey().default(1),
-  stripeEnabled: boolean("stripe_enabled").notNull().default(true),
+  // Stripe and SumUp are both just "pay by card" to a customer, so the site only ever shows one
+  // under a single "Carta di credito" label — they're mutually exclusive by construction (one
+  // column, not two booleans that could both end up true) rather than relying on admin discipline.
+  // "none" turns the card option off entirely without touching paypalEnabled/bankTransferEnabled.
+  cardProcessor: varchar("card_processor", { length: 10 }).notNull().default("stripe"),
   paypalEnabled: boolean("paypal_enabled").notNull().default(true),
-  sumupEnabled: boolean("sumup_enabled").notNull().default(true),
   bankTransferEnabled: boolean("bank_transfer_enabled").notNull().default(true),
   // Extra discount granted only when the customer completes the self-service online activation
   // flow (ActivationFlow) — not when staff quote or process a request manually.
   onlineDiscountEnabled: boolean("online_discount_enabled").notNull().default(false),
   onlineDiscountBps: integer("online_discount_bps").notNull().default(1000),
-  // When on, Stripe/PayPal/SumUp disappear from the public checkout (bank transfer stays, since it
-  // never touches a payment gateway) so real customers can't pay while payments are being tested —
-  // a request carrying the correct PAYMENTS_TEST_BYPASS_TOKEN still sees them, routed to sandbox
-  // credentials, so staff can keep testing without exposing it publicly.
-  paymentsTestMode: boolean("payments_test_mode").notNull().default(false),
+  // Sandbox switches (Configurazione Web): when on, checkout/verification uses the *_TEST
+  // credentials (see src/lib/payments.ts) instead of the live ones. Deliberately NOT hidden from
+  // the public checkout while sandboxed — staff's explicit choice, flagged instead by a "TEST"
+  // badge next to the method's name — so treat it as "this is in a testing window" when flipping
+  // it on. One flag for cardProcessor (applies to whichever of Stripe/SumUp is selected, since only
+  // one can ever be active) plus one for PayPal.
+  cardProcessorTestMode: boolean("card_processor_test_mode").notNull().default(false),
+  paypalTestMode: boolean("paypal_test_mode").notNull().default(false),
   // Network scanner (eSCL) reached by the "Allega" mail-scan panel on the domiciliazioni
   // dashboard — one shared physical scanner for the whole office, so its address/defaults are
   // configured once here rather than per-operator/browser. Per-scan choices (color/source/dpi)

@@ -53,20 +53,21 @@ export async function updateOnlineDiscountAction(formData: FormData) {
 export async function updatePaymentSettingsAction(formData: FormData) {
   "use server";
   await requireAdmin();
+  const cardProcessorRaw = String(formData.get("cardProcessor") ?? "none");
   await db.update(siteConfig).set({
-    stripeEnabled: formData.get("stripeEnabled") === "on",
+    cardProcessor: ["none", "stripe", "sumup"].includes(cardProcessorRaw) ? cardProcessorRaw : "none",
     paypalEnabled: formData.get("paypalEnabled") === "on",
-    sumupEnabled: formData.get("sumupEnabled") === "on",
     bankTransferEnabled: formData.get("bankTransferEnabled") === "on",
   }).where(eq(siteConfig.id, 1));
   revalidatePath(BASE_PATH);
 }
 
-export async function updatePaymentsTestModeAction(formData: FormData) {
+export async function updateProviderTestModesAction(formData: FormData) {
   "use server";
   await requireAdmin();
   await db.update(siteConfig).set({
-    paymentsTestMode: formData.get("paymentsTestMode") === "on",
+    cardProcessorTestMode: formData.get("cardProcessorTestMode") === "on",
+    paypalTestMode: formData.get("paypalTestMode") === "on",
   }).where(eq(siteConfig.id, 1));
   revalidatePath(BASE_PATH);
   revalidatePath("/attiva.html"); revalidatePath("/en/activate.html");

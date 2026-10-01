@@ -1,47 +1,45 @@
-import { timingSafeEqual } from "node:crypto";
 import { db } from "@/db";
 import { siteConfig } from "@/db/schema";
 import type { ProviderKey } from "./payments";
 export { type PaymentSettings, enabledPaymentMethodsList, pricingPageDescription } from "./payment-copy";
-import type { PaymentSettings } from "./payment-copy";
+import type { CardProcessor, PaymentSettings } from "./payment-copy";
 
-const DEFAULTS = { stripeEnabled: true, paypalEnabled: true, sumupEnabled: true, bankTransferEnabled: true, paymentsTestMode: false };
+const DEFAULTS = { cardProcessor: "stripe" as CardProcessor, paypalEnabled: true, bankTransferEnabled: true, cardProcessorTestMode: false, paypalTestMode: false };
 
 async function siteConfigRow() {
   const [row] = await db.select().from(siteConfig).limit(1);
   return row ?? DEFAULTS;
 }
 
-/** Constant-time so a mistyped token can't be distinguished from a correct one by timing. */
-function testTokenMatches(testToken?: string): boolean {
-  const secret = process.env.PAYMENTS_TEST_BYPASS_TOKEN;
-  if (!secret || !testToken) return false;
-  const a = Buffer.from(testToken); const b = Buffer.from(secret);
-  return a.length === b.length && timingSafeEqual(a, b);
-}
-
-/** Raw, unmasked toggle — used once a request has already been let through to decide which
- * credential set (live or sandbox) to use, never to decide whether to let it through. */
-export async function paymentsTestMode(): Promise<boolean> {
-  return (await siteConfigRow()).paymentsTestMode;
-}
-
-/** What a given request should see/be allowed to use: while payments test mode is on, Stripe/
- * PayPal/SumUp are hidden from everyone except a request carrying the correct
- * PAYMENTS_TEST_BYPASS_TOKEN. Bank transfer is never affected — it doesn't touch a gateway. */
-export async function getPaymentSettings(testToken?: string): Promise<PaymentSettings> {
+/** Which providers currently use their sandbox (*_TEST) credentials — see src/lib/payments.ts.
+ * Deliberately independent of whether the provider is enabled/visible: a sandboxed provider stays
+ * in the public checkout like any other (staff's explicit choice), it just doesn't move real money
+ * while on. Stripe and SumUp share one switch (cardProcessorTestMode) since only one of them is
+ * ever the active card processor — the inactive one's "true" here is moot, it's never reachable. */
+export async function getProviderTestModes(): Promise<Record<ProviderKey, boolean>> {
   const row = await siteConfigRow();
-  if (row.paymentsTestMode && !testTokenMatches(testToken)) {
-    return { stripeEnabled: false, paypalEnabled: false, sumupEnabled: false, bankTransferEnabled: row.bankTransferEnabled };
-  }
-  return { stripeEnabled: row.stripeEnabled, paypalEnabled: row.paypalEnabled, sumupEnabled: row.sumupEnabled, bankTransferEnabled: row.bankTransferEnabled };
+  const cardProcessor = row.cardProcessor as CardProcessor;
+  return {
+    stripe: cardProcessor === "stripe" && row.cardProcessorTestMode,
+    sumup: cardProcessor === "sumup" && row.cardProcessorTestMode,
+    paypal: row.paypalTestMode,
+  };
 }
 
-export async function paymentMethodEnabled(method: ProviderKey | "bank_transfer" | "on_site", testToken?: string): Promise<boolean> {
+export async function getPaymentSettings(): Promise<PaymentSettings> {
+  const row = await siteConfigRow();
+  return {
+    cardProcessor: row.cardProcessor as CardProcessor, cardProcessorTestMode: row.cardProcessorTestMode,
+    paypalEnabled: row.paypalEnabled, paypalTestMode: row.paypalTestMode,
+    bankTransferEnabled: row.bankTransferEnabled,
+  };
+}
+
+export async function paymentMethodEnabled(method: ProviderKey | "bank_transfer" | "on_site"): Promise<boolean> {
   if (method === "on_site") return true;
-  const settings = await getPaymentSettings(testToken);
-  if (method === "stripe") return settings.stripeEnabled;
+  const settings = await getPaymentSettings();
+  if (method === "stripe") return settings.cardProcessor === "stripe";
+  if (method === "sumup") return settings.cardProcessor === "sumup";
   if (method === "paypal") return settings.paypalEnabled;
-  if (method === "sumup") return settings.sumupEnabled;
   return settings.bankTransferEnabled;
 }

@@ -18,7 +18,7 @@ type FormState = {
 type BankDetails = { holder: string; iban: string; bic: string; bank: string; causale: string; amount: string };
 type FinalizeResult = { paymentMethod: string; orderRef: string; shortRef?: string; emailSent: boolean; pdfBase64?: string; message?: string; totalCents?: number; bankTransferDetails?: BankDetails; paymentUnavailable?: boolean; paymentConfirmed?: boolean };
 
-export function ActivationFlow({ lang, catalog: initialCatalog, initialService, paymentSettings, testToken }: { lang: Lang; catalog: Catalog; initialService: ServiceCode; paymentSettings: PaymentSettings; testToken?: string }) {
+export function ActivationFlow({ lang, catalog: initialCatalog, initialService, paymentSettings }: { lang: Lang; catalog: Catalog; initialService: ServiceCode; paymentSettings: PaymentSettings }) {
   const it = lang === "it";
   const [catalog, setCatalog] = useState(initialCatalog);
   const service = initialService; const product = catalog[service]; const postal = service === "postal";
@@ -32,9 +32,8 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
   const [status, setStatus] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const firstAvailablePayment = () => {
-    if (paymentSettings.stripeEnabled) return "stripe";
+    if (paymentSettings.cardProcessor !== "none") return paymentSettings.cardProcessor;
     if (paymentSettings.paypalEnabled) return "paypal";
-    if (paymentSettings.sumupEnabled) return "sumup";
     if (paymentSettings.bankTransferEnabled) return "bank_transfer";
     return postal ? "on_site" : "stripe";
   };
@@ -68,7 +67,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
     verify: it ? "VERIFICA IL CODICE" : "VERIFY CODE", resend: it ? "Invia di nuovo" : "Resend",
     back: it ? "Modifica i dati" : "Edit data",
     payTitle: it ? "Invio della richiesta e pagamento" : "Submit request and payment",
-    payHint: it ? "La richiesta verrà inviata via email. Puoi pagare con PayPal, Stripe o SumUp oppure scegliere il bonifico bancario." : "Your request will be sent by email. You can pay by PayPal, Stripe or SumUp, or choose a bank transfer.",
+    payHint: it ? "La richiesta verrà inviata via email. Puoi pagare con PayPal, carta di credito oppure scegliere il bonifico bancario." : "Your request will be sent by email. You can pay by PayPal, credit card, or choose a bank transfer.",
     submit: it ? "INVIA RICHIESTA E PROCEDI" : "SUBMIT REQUEST & CONTINUE",
     required: it ? "Campo obbligatorio" : "Required field",
     invalidEmail: it ? "Inserisci un indirizzo email valido" : "Enter a valid email address",
@@ -184,7 +183,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
   async function finalize() {
     setBusy(true); setStatus("");
     try {
-      const res = await fetch("/api/domiciliation-request/finalize", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId, paymentMethod: payment, testToken }) });
+      const res = await fetch("/api/domiciliation-request/finalize", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId, paymentMethod: payment }) });
       const data = await res.json();
       if (!res.ok) {
         if (data.error === "prices-changed") { setStatus(it ? "Tariffe o condizioni aggiornate. Ricarica la pagina e controlla il nuovo riepilogo prima di proseguire." : "Prices or terms have changed. Reload and review the new summary before continuing."); return; }
@@ -286,14 +285,13 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
           <p className="form-note">{t.payHint}</p>
           <fieldset><legend>{it ? "Modalità di pagamento" : "Payment method"}</legend>
             <div className="option-grid payment-options">
-              {paymentSettings.stripeEnabled && <label className={payment === "stripe" ? "selected" : ""}><input type="radio" name="payment" checked={payment === "stripe"} onChange={() => setPayment("stripe")} />Stripe</label>}
-              {paymentSettings.paypalEnabled && <label className={payment === "paypal" ? "selected" : ""}><input type="radio" name="payment" checked={payment === "paypal"} onChange={() => setPayment("paypal")} />PayPal</label>}
-              {paymentSettings.sumupEnabled && <label className={payment === "sumup" ? "selected" : ""}><input type="radio" name="payment" checked={payment === "sumup"} onChange={() => setPayment("sumup")} />SumUp</label>}
+              {paymentSettings.cardProcessor !== "none" && <label className={payment === paymentSettings.cardProcessor ? "selected" : ""}><input type="radio" name="payment" checked={payment === paymentSettings.cardProcessor} onChange={() => setPayment(paymentSettings.cardProcessor as "stripe" | "sumup")} />{it ? "Carta di credito" : "Credit card"}{paymentSettings.cardProcessorTestMode && <sup className="payment-test-badge">TEST</sup>}</label>}
+              {paymentSettings.paypalEnabled && <label className={payment === "paypal" ? "selected" : ""}><input type="radio" name="payment" checked={payment === "paypal"} onChange={() => setPayment("paypal")} />PayPal{paymentSettings.paypalTestMode && <sup className="payment-test-badge">TEST</sup>}</label>}
               {paymentSettings.bankTransferEnabled && <label className={payment === "bank_transfer" ? "selected" : ""}><input type="radio" name="payment" checked={payment === "bank_transfer"} onChange={() => setPayment("bank_transfer")} />{it ? "Bonifico bancario" : "Bank transfer"}</label>}
               {postal && <label className={payment === "on_site" ? "selected" : ""}><input type="radio" name="payment" checked={payment === "on_site"} onChange={() => setPayment("on_site")} />{it ? "In sede: contanti / Bancomat / carta" : "On site: cash / debit card / credit card"}</label>}
             </div>
           </fieldset>
-          {postal && <p className="form-note">{it ? "Pagamento anticipato. Nessun deposito cauzionale. Puoi utilizzare Stripe o SumUp per pagare con carta da remoto." : "Payment in advance. No security deposit. Use Stripe or SumUp to pay remotely by card."}</p>}
+          {postal && <p className="form-note">{it ? "Pagamento anticipato. Nessun deposito cauzionale. Puoi pagare con carta da remoto." : "Payment in advance. No security deposit. You can pay remotely by card."}</p>}
           {payment === "bank_transfer" && <p className="form-note">{it ? "Invieremo alla tua email tutti i dati di pagamento con il modulo di richiesta allegato in PDF." : "We will email you all payment details with the request form attached as a PDF."}</p>}
           <div className="inline-actions">
             <button className="button primary" onClick={finalize} disabled={busy}>{busy && <LoaderCircle className="spin" />}{t.submit}</button>

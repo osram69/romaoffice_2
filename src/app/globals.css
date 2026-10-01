@@ -56,6 +56,7 @@
 .otp-input{font-size:1.6rem;letter-spacing:.5rem;text-align:center;max-width:240px}
 .activation-block h3{font-family:Georgia,serif;color:var(--ink);font-size:1.6rem;margin:0 0 .5rem}
 .payment-options label{font-weight:700}
+.payment-test-badge{margin-left:.35rem;font-size:.6rem;font-weight:800;letter-spacing:.04em;color:#fff;background:var(--error);padding:.1rem .35rem;border-radius:3px;vertical-align:super}
 .activation .success-panel{text-align:left;align-items:flex-start}
 .bank-details p{margin:.4rem 0}
 .bank-details-list{display:grid;grid-template-columns:auto 1fr;gap:.3rem 1rem;background:#fff;border:1px solid var(--border,#e2ddd3);border-radius:8px;padding:1rem 1.2rem;margin:.6rem 0}

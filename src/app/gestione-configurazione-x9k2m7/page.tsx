@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { serviceCatalog, siteConfig } from "@/db/schema";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
-import { updateDiscountTogglesAction, updateOnlineDiscountAction, updatePaymentSettingsAction, updatePaymentsTestModeAction, updateScannerConfigAction, updateSmartFlagsAction } from "./actions";
+import { updateDiscountTogglesAction, updateOnlineDiscountAction, updatePaymentSettingsAction, updateProviderTestModesAction, updateScannerConfigAction, updateSmartFlagsAction } from "./actions";
 import { GestioneShell } from "@/components/GestioneNav";
 import { RitiroTemplateEditor } from "@/components/RitiroTemplateEditor";
 import { FirmaDomiciliatarioUpload } from "@/components/FirmaDomiciliatarioUpload";
@@ -22,8 +22,6 @@ export default async function ConfigurazioneWebPage() {
     db.select().from(serviceCatalog).where(eq(serviceCatalog.code, "legal_unit")),
     db.select().from(siteConfig).where(eq(siteConfig.id, 1)),
   ]);
-  const testBypassToken = process.env.PAYMENTS_TEST_BYPASS_TOKEN;
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
   const firmaPreview = payments?.firmaDomiciliatarioPng ? `data:image/png;base64,${decryptBytes(payments.firmaDomiciliatarioPng).toString("base64")}` : null;
 
   return (
@@ -36,35 +34,31 @@ export default async function ConfigurazioneWebPage() {
       <section className="gestione-card" style={{ padding: 24, marginBottom: 24 }}>
         <h2 style={{ fontSize: 16, fontWeight: 700, color: "#232f3e", marginTop: 0 }}>Metodi di pagamento</h2>
         <p style={{ fontSize: 12, color: "#666", marginTop: -6 }}>
-          I metodi disattivati non compaiono nella pagina di attivazione online. &quot;In sede&quot; (solo domiciliazione postale) non è tra questi perché non passa da un provider online.
+          Stripe e SumUp sono entrambi solo &quot;pagamento con carta&quot; per il cliente, quindi sul sito compare un&apos;unica voce &quot;Carta di credito&quot; — scegli quale dei due la elabora davvero (mai entrambi insieme). I metodi disattivati non compaiono nella pagina di attivazione online. &quot;In sede&quot; (solo domiciliazione postale) non è tra questi perché non passa da un provider online.
         </p>
         <form action={updatePaymentSettingsAction} style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "center" }}>
-          <label style={checkboxRow}><input type="checkbox" name="stripeEnabled" defaultChecked={payments?.stripeEnabled ?? true} /> Stripe</label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center" }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#232f3e" }}>Carta di credito tramite:</span>
+            <label style={checkboxRow}><input type="radio" name="cardProcessor" value="none" defaultChecked={(payments?.cardProcessor ?? "stripe") === "none"} /> Nessuno</label>
+            <label style={checkboxRow}><input type="radio" name="cardProcessor" value="stripe" defaultChecked={(payments?.cardProcessor ?? "stripe") === "stripe"} /> Stripe</label>
+            <label style={checkboxRow}><input type="radio" name="cardProcessor" value="sumup" defaultChecked={(payments?.cardProcessor ?? "stripe") === "sumup"} /> SumUp</label>
+          </div>
           <label style={checkboxRow}><input type="checkbox" name="paypalEnabled" defaultChecked={payments?.paypalEnabled ?? true} /> PayPal</label>
-          <label style={checkboxRow}><input type="checkbox" name="sumupEnabled" defaultChecked={payments?.sumupEnabled ?? true} /> SumUp</label>
           <label style={checkboxRow}><input type="checkbox" name="bankTransferEnabled" defaultChecked={payments?.bankTransferEnabled ?? true} /> Bonifico bancario</label>
           <button type="submit" className="gestione-btn gestione-btn-blue">Salva</button>
         </form>
       </section>
 
       <section className="gestione-card" style={{ padding: 24, marginBottom: 24 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, color: "#232f3e", marginTop: 0 }}>Modalità test pagamenti</h2>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: "#232f3e", marginTop: 0 }}>Modalità sandbox pagamenti</h2>
         <p style={{ fontSize: 12, color: "#666", marginTop: -6 }}>
-          Quando attiva, Stripe/PayPal/SumUp scompaiono dalla pagina di attivazione pubblica (il bonifico resta sempre visibile, non passa da un provider). Usa il link con il codice qui sotto per continuare a testare i pagamenti in sandbox: solo chi apre quel link li vede e può usarli.
+          Quando attivo, il metodo usa le credenziali sandbox (variabili d&apos;ambiente <code>*_TEST</code>) invece di quelle reali. Resta visibile e selezionabile anche dai clienti sul sito — non viene nascosto — quindi disattivalo appena finito di testare: finché è acceso compare un badge <strong>TEST</strong> accanto al nome del metodo nella pagina di attivazione, proprio per non dimenticartelo acceso. Un solo interruttore per &quot;Carta di credito&quot;, valido per Stripe o SumUp a seconda di quale hai scelto sopra.
         </p>
-        <form action={updatePaymentsTestModeAction} style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "center" }}>
-          <label style={checkboxRow}><input type="checkbox" name="paymentsTestMode" defaultChecked={payments?.paymentsTestMode ?? false} /> Attiva</label>
+        <form action={updateProviderTestModesAction} style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "center" }}>
+          <label style={checkboxRow}><input type="checkbox" name="cardProcessorTestMode" defaultChecked={payments?.cardProcessorTestMode ?? false} /> Carta di credito sandbox</label>
+          <label style={checkboxRow}><input type="checkbox" name="paypalTestMode" defaultChecked={payments?.paypalTestMode ?? false} /> PayPal sandbox</label>
           <button type="submit" className="gestione-btn gestione-btn-blue">Salva</button>
         </form>
-        {testBypassToken ? (
-          <p style={{ fontSize: 12, color: "#666", marginTop: 12, wordBreak: "break-all" }}>
-            Link di test: <code>{siteUrl}/attiva.html?test={testBypassToken}</code> · <code>{siteUrl}/en/activate.html?test={testBypassToken}</code>
-          </p>
-        ) : (
-          <p style={{ fontSize: 12, color: "#A52A2A", marginTop: 12 }}>
-            Imposta la variabile d&apos;ambiente PAYMENTS_TEST_BYPASS_TOKEN per generare il link di test.
-          </p>
-        )}
       </section>
 
       <section className="gestione-card" style={{ padding: 24, marginBottom: 24 }}>

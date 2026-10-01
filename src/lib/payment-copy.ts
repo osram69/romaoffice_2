@@ -4,7 +4,8 @@ import type { Lang } from "./site";
 // @/db) at module scope, so anything importing from it — even a pure helper — pulls that
 // server-only dependency into any client component that uses it. This file has no such import,
 // so ActivationFlow.tsx (a client component) can use enabledPaymentMethodsList() directly.
-export type PaymentSettings = { stripeEnabled: boolean; paypalEnabled: boolean; sumupEnabled: boolean; bankTransferEnabled: boolean };
+export type CardProcessor = "none" | "stripe" | "sumup";
+export type PaymentSettings = { cardProcessor: CardProcessor; cardProcessorTestMode: boolean; paypalEnabled: boolean; paypalTestMode: boolean; bankTransferEnabled: boolean };
 
 function joinList(items: string[], conjunction: string): string {
   if (items.length === 0) return "";
@@ -16,9 +17,8 @@ function joinList(items: string[], conjunction: string): string {
 export function enabledPaymentMethodsList(settings: PaymentSettings, lang: Lang): string {
   const it = lang === "it";
   const parts: string[] = [];
-  if (settings.stripeEnabled) parts.push("Stripe");
+  if (settings.cardProcessor !== "none") parts.push(it ? "carta di credito" : "credit card");
   if (settings.paypalEnabled) parts.push("PayPal");
-  if (settings.sumupEnabled) parts.push("SumUp");
   if (settings.bankTransferEnabled) parts.push(it ? "bonifico" : "bank transfer");
   return joinList(parts, it ? "o" : "or");
 }
