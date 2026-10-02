@@ -1,3 +1,4 @@
+import type { PaymentSettings } from "./payment-copy";
 export type Lang = "it" | "en";
 export type ServiceCode = "legal_unit" | "postal";
 export type DurationMonths = 3 | 6 | 12 | 24 | 36 | 48;
@@ -5,7 +6,7 @@ export type PaymentMethod = "stripe" | "paypal" | "sumup" | "bank_transfer" | "o
 export type PriceTier = { months: number; listCents: number; offerCents: number | null; newActivation: boolean; additionalDomiciliation: boolean };
 export type Addon = { code: string; titleIt: string; titleEn: string; priceCents: number; annualCents: number; billing: string; maxQuantity: number; selectable: boolean };
 export type SelectedAddon = { code: string; quantity: number };
-export type ProductOffer = { code: ServiceCode; vatBps: number; additionalDiscountBps: number; additionalDiscountEnabled: boolean; newActivationDiscountBps: number; newActivationDiscountEnabled: boolean; offerValidUntil: string | null; termsRevision: string; version: string; tiers: PriceTier[]; addons: Addon[]; smart3x24Active: boolean; smart6x24Active: boolean; onlineDiscountEnabled: boolean; onlineDiscountBps: number };
+export type ProductOffer = { code: ServiceCode; vatBps: number; additionalDiscountBps: number; additionalDiscountEnabled: boolean; newActivationDiscountBps: number; newActivationDiscountEnabled: boolean; offerValidUntil: string | null; termsRevision: string; version: string; tiers: PriceTier[]; addons: Addon[]; smart3x24Active: boolean; smart6x24Active: boolean; onlineDiscountEnabled: boolean; onlineDiscountBps: number; includedOpenings: number; paymentSettings: PaymentSettings };
 export type Catalog = Record<ServiceCode, ProductOffer>;
 export type Quote = {
   service: ServiceCode; catalogVersion: string; months: number; listCents: number; baseCents: number; offerApplied: boolean;

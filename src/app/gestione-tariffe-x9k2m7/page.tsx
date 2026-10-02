@@ -81,6 +81,10 @@ export default async function AdminDashboardPage() {
                     </div>
                   </>
                 )}
+                <div className="gestione-field" style={{ width: 170 }}>
+                  <label>Aperture incluse/mese</label>
+                  <input name="includedOpenings" type="number" step="1" min="0" defaultValue={service.includedOpenings} />
+                </div>
                 <div className="gestione-field" style={{ width: 180 }}>
                   <label>Offerta valida fino al</label>
                   <input name="offerValidUntil" type="date" defaultValue={service.offerValidUntil ? service.offerValidUntil.toISOString().slice(0, 10) : ""} />

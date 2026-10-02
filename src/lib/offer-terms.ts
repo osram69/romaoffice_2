@@ -1,8 +1,19 @@
+import type { PaymentSettings } from "./payment-copy";
 import { copyFor, formatEur, renewalNote, validity, type ProductOffer, type Lang } from "./pricing";
+function onlinePaymentLine(settings: PaymentSettings, lang: Lang) {
+  const it = lang === "it";
+  const online = [...(settings.cardProcessor !== "none" ? [it ? "carta di credito" : "credit card"] : []), ...(settings.paypalEnabled ? ["PayPal"] : [])];
+  const onlineText = online.join(it ? " o " : " or ");
+  if (settings.bankTransferEnabled && online.length) return it ? `Bonifico bancario o pagamento online tramite ${onlineText}.` : `Bank transfer or online payment via ${onlineText}.`;
+  if (settings.bankTransferEnabled) return it ? "Bonifico bancario." : "Bank transfer.";
+  if (online.length) return it ? `Pagamento online tramite ${onlineText}.` : `Online payment via ${onlineText}.`;
+  return it ? "Contattaci per i metodi di pagamento." : "Contact us for payment methods.";
+}
 export type OfferTerms = { heading: string; included: string[]; extrasHeading: string; extras: string[]; paragraphs: string[]; paymentHeading: string; payment: string[]; deposit: string };
 export function offerTerms(product: ProductOffer, lang: Lang): OfferTerms {
   const it = lang === "it";
   const price = (code: string) => { const a = product.addons.find(a => a.code === code); if (!a) throw new Error(`Missing catalogue addon: ${code}`); return a; };
+  const n = product.includedOpenings;
   const amount = (cents: number) => `${new Intl.NumberFormat(it ? "it-IT" : "en-GB", { maximumFractionDigits: 2 }).format(cents / 100)}€`;
   if (product.code === "legal_unit") { const officeHours = price("legal_office_hours"), secretary = price("legal_secretary"), archive = price("legal_archive"); return {
     heading: it ? "La domiciliazione sede legale / unità locale comprende:" : "The registered office / local unit address service includes:",
@@ -11,25 +22,25 @@ export function offerTerms(product: ProductOffer, lang: Lang): OfferTerms {
       "Logo aziendale esposto all’ingresso al piano (su richiesta e previa approvazione dell’amministrazione)",
       "Accettazione raccomandate e pacchi",
       "Scansione corrispondenza, atti giudiziari e raccomandate in modalità busta chiusa per privacy, con inoltro a Vs indirizzo email entro le 24h dal ricevimento",
-      "Apertura e scansione della corrispondenza su richiesta (10 aperture/mese gratuite incluse)",
+      `Apertura e scansione della corrispondenza su richiesta (${n} aperture/mese gratuite incluse)`,
     ] : [
       "Business mailing address",
       "Company logo displayed at the floor entrance (on request and subject to management approval)",
       "Acceptance of registered letters and parcels",
       "Scanning of the sealed envelopes of correspondence, court documents and registered mail to protect privacy, forwarded to your email address within 24 hours of receipt",
-      "Opening and scanning of correspondence on request (10 openings per month included at no charge)",
+      `Opening and scanning of correspondence on request (${n} openings per month included at no charge)`,
     ],
     extrasHeading: it ? "Servizi opzionali a pagamento:" : "Optional paid services:",
     extras: it ? [
       `Affitto ufficio temporaneo attrezzato, per lavorare in sede o ricevere clienti — utile in particolare per l’unità locale, che presuppone un’attività reale sul posto: ${amount(officeHours.priceCents)} + IVA/ora`,
       `Segreteria Virtuale, con numero telefonico dedicato e risposta a nome della Vs società: ${amount(secretary.priceCents)}/mese (+ ${amount(secretary.annualCents)} per canone annuo numero Voip)`,
-      `Apertura corrispondenza (oltre le 10 incluse): ${amount(price("legal_extra_opening").priceCents)} per busta`,
+      `Apertura corrispondenza (oltre le ${n} incluse): ${amount(price("legal_extra_opening").priceCents)} per busta`,
       `Servizio archivio documentazione (faldoni tipo doxa dimensioni 8x23x33cm, max ${archive.maxQuantity} faldoni): ${amount(archive.priceCents)}/mese per faldone`,
       `Inoltro corrispondenza in giacenza a Vs sede (${amount(price("legal_forwarding").priceCents)} servizio + costo spedizione tramite corriere o poste)`,
     ] : [
       `Temporary equipped office rental, to work on site or receive clients — useful in particular for a local unit, which presumes genuine on-site activity: ${formatEur(officeHours.priceCents, lang)} + VAT/hour`,
       `Virtual secretary with a dedicated telephone number and calls answered in your company’s name: ${formatEur(secretary.priceCents, lang)}/month (+ ${formatEur(secretary.annualCents, lang)} annual VoIP number fee)`,
-      `Additional mail opening (beyond the 10 included): ${formatEur(price("legal_extra_opening").priceCents, lang)} per envelope`,
+      `Additional mail opening (beyond the ${n} included): ${formatEur(price("legal_extra_opening").priceCents, lang)} per envelope`,
       `Document archive (Doxa-type binders, 8x23x33cm, up to ${archive.maxQuantity} binders): ${formatEur(archive.priceCents, lang)}/month per binder`,
       `Forwarding stored mail to your office (${formatEur(price("legal_forwarding").priceCents, lang)} service charge + courier or postal shipping cost)`,
     ],
@@ -40,7 +51,7 @@ export function offerTerms(product: ProductOffer, lang: Lang): OfferTerms {
       ...(product.additionalDiscountEnabled ? [additionalNote(product, lang)] : []),
       it ? `Prezzi IVA ${product.vatBps / 100}% esclusa. L’utilizzo dell’indirizzo è soggetto al contratto e alla verifica della documentazione.` : `Prices exclude ${product.vatBps / 100}% VAT. Address use is subject to the agreement and document checks.`,
     ],
-    paymentHeading: it ? "Pagamento anticipato" : "Payment in advance", payment: [it ? "Bonifico bancario o pagamento online tramite Stripe, PayPal o SumUp." : "Bank transfer or online payment via Stripe, PayPal or SumUp."], deposit: it ? "NOTA: non è previsto deposito cauzionale" : "NOTE: no security deposit is required",
+    paymentHeading: it ? "Pagamento anticipato" : "Payment in advance", payment: [onlinePaymentLine(product.paymentSettings, lang)], deposit: it ? "NOTA: non è previsto deposito cauzionale" : "NOTE: no security deposit is required",
   }; }
   const secretary = price("virtual_secretary"), archive = price("archive");
   return {
@@ -49,12 +60,12 @@ export function offerTerms(product: ProductOffer, lang: Lang): OfferTerms {
       "Recapito postale",
       "Logo aziendale esposto al piano (su richiesta)",
       "Scansione corrispondenza, atti giudiziari e raccomandate in modalità busta chiusa per privacy, con inoltro a Vs indirizzo email entro le 24h dal ricevimento",
-      "Apertura e scansione della corrispondenza su richiesta (10 aperture/mese incluse)",
+      `Apertura e scansione della corrispondenza su richiesta (${n} aperture/mese incluse)`,
     ] : [
       "Business mailing address",
       "Company logo displayed on the floor (on request)",
       "Scanning of the sealed envelopes of correspondence, court documents and registered mail to protect privacy, forwarded to your email address within 24 hours of receipt",
-      "Opening and scanning of correspondence on request (10 openings per month included)",
+      `Opening and scanning of correspondence on request (${n} openings per month included)`,
     ],
     extrasHeading: it ? "Servizi opzionali a pagamento :" : "Optional paid services:",
     extras: it ? [

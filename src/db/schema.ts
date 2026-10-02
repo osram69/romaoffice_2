@@ -98,6 +98,7 @@ export const serviceCatalog = pgTable("service_catalog", {
   additionalDiscountEnabled: boolean("additional_discount_enabled").notNull().default(true),
   newActivationDiscountEnabled: boolean("new_activation_discount_enabled").notNull().default(true),
   offerValidUntil: timestamp("offer_valid_until", { withTimezone: true }),
+  includedOpenings: integer("included_openings").notNull().default(10),
   termsRevision: text("terms_revision").notNull(), active: boolean("active").notNull().default(true),
   // Smart-Start (3+24 / 6+24 two-tranche legal_unit agreements) has a fixed structure that
   // bypasses the normal per-tier pricing, so it's just an on/off flag rather than a servicePrices row.

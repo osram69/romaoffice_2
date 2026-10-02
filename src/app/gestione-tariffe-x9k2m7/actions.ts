@@ -37,6 +37,7 @@ export async function updateServiceAction(formData: FormData) {
     : {};
   await db.update(serviceCatalog).set({
     ...discountFields,
+    includedOpenings: Math.max(0, Math.round(Number(formData.get("includedOpenings"))) || 0),
     offerValidUntil: offerValidUntilRaw ? new Date(`${offerValidUntilRaw}T23:59:59+02:00`) : null,
     active: formData.get("active") === "on",
   }).where(eq(serviceCatalog.code, code));
