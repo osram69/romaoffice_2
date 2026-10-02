@@ -4,7 +4,8 @@ import { asc } from "drizzle-orm";
 import { db } from "@/db";
 import { domRinnovoPrezzi, serviceAddons, serviceCatalog, servicePrices } from "@/db/schema";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
-import { addPriceAction, deletePriceAction, updateAddonAction, updatePriceAction, updateRinnovoPrezzoAction, updateServiceAction } from "./actions";
+import { addPriceAction, deletePriceAction, updateAddonsAction, updatePriceAction, updateRinnovoPrezzoAction, updateServiceAction } from "./actions";
+import { ConfigForm } from "@/components/ConfigForm";
 import { GestioneShell } from "@/components/GestioneNav";
 import { DeleteIconButton } from "@/components/DeleteIconButton";
 
@@ -143,34 +144,33 @@ export default async function AdminDashboardPage() {
 
               <div style={{ marginTop: 24 }}>
                 <h3 style={{ fontSize: 13, fontWeight: 700, color: "#232f3e" }}>Servizi aggiuntivi</h3>
-                <div style={{ overflowX: "auto" }}>
-                  <table className="gestione-table">
-                    <thead>
-                      <tr>
-                        <th>Codice</th><th>Titolo IT</th><th>Titolo EN</th><th>Prezzo (€)</th><th>Annuo (€)</th><th>Q.tà max</th><th>Selezionabile</th><th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {serviceAddonsList.map(addon => (
-                        <tr key={addon.code}>
-                          <td style={{ fontFamily: "monospace", fontSize: 11 }}>
-                            <form id={`addon-${addon.code}`} action={updateAddonAction}>
-                              <input type="hidden" name="code" value={addon.code} />
-                            </form>
-                            {addon.code}
-                          </td>
-                          <td><input form={`addon-${addon.code}`} name="titleIt" defaultValue={addon.titleIt} style={inputStyle} /></td>
-                          <td><input form={`addon-${addon.code}`} name="titleEn" defaultValue={addon.titleEn} style={inputStyle} /></td>
-                          <td><input form={`addon-${addon.code}`} name="priceCents" type="number" step="0.01" min="0" defaultValue={euro(addon.priceCents)} style={inputStyle} /></td>
-                          <td><input form={`addon-${addon.code}`} name="annualCents" type="number" step="0.01" min="0" defaultValue={euro(addon.annualCents)} style={inputStyle} /></td>
-                          <td><input form={`addon-${addon.code}`} name="maxQuantity" type="number" min="1" defaultValue={addon.maxQuantity} style={inputStyle} /></td>
-                          <td style={{ textAlign: "center" }}><input form={`addon-${addon.code}`} name="selectable" type="checkbox" defaultChecked={addon.selectable} /></td>
-                          <td><button form={`addon-${addon.code}`} type="submit" className="gestione-btn gestione-btn-blue">Salva</button></td>
+                <ConfigForm action={updateAddonsAction} style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
+                  <div style={{ overflowX: "auto", width: "100%" }}>
+                    <table className="gestione-table">
+                      <thead>
+                        <tr>
+                          <th>Codice</th><th>Titolo IT</th><th>Titolo EN</th><th>Prezzo (€)</th><th>Annuo (€)</th><th>Q.tà max</th><th>Selezionabile</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {serviceAddonsList.map(addon => (
+                          <tr key={addon.code}>
+                            <td style={{ fontFamily: "monospace", fontSize: 11 }}>
+                              <input type="hidden" name="code" value={addon.code} />
+                              {addon.code}
+                            </td>
+                            <td><input name={`titleIt:${addon.code}`} defaultValue={addon.titleIt} style={inputStyle} /></td>
+                            <td><input name={`titleEn:${addon.code}`} defaultValue={addon.titleEn} style={inputStyle} /></td>
+                            <td><input name={`priceCents:${addon.code}`} type="number" step="0.01" min="0" defaultValue={euro(addon.priceCents)} style={inputStyle} /></td>
+                            <td><input name={`annualCents:${addon.code}`} type="number" step="0.01" min="0" defaultValue={euro(addon.annualCents)} style={inputStyle} /></td>
+                            <td><input name={`maxQuantity:${addon.code}`} type="number" min="1" defaultValue={addon.maxQuantity} style={inputStyle} /></td>
+                            <td style={{ textAlign: "center" }}><input name={`selectable:${addon.code}`} type="checkbox" defaultChecked={addon.selectable} /></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </ConfigForm>
                 <p style={{ fontSize: 11, color: "#999", marginTop: 8 }}>Il tipo di fatturazione (mensile, a ora, a busta...) non è modificabile qui perché è collegato alla logica di calcolo prezzi.</p>
               </div>
             </section>

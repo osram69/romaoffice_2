@@ -101,18 +101,25 @@ export async function updateRinnovoPrezzoAction(formData: FormData) {
   revalidatePath(BASE_PATH);
 }
 
-export async function updateAddonAction(formData: FormData) {
+// One save for a whole service's extras table: fields are named `<field>:<code>`. Every row is
+// parsed before anything is written, so one invalid price rejects the lot instead of saving half.
+// sort_order is deliberately never written — it has no input in the UI.
+export async function updateAddonsAction(formData: FormData) {
   "use server";
   await requireAdmin();
-  const code = String(formData.get("code") ?? "");
-  await db.update(serviceAddons).set({
-    titleIt: String(formData.get("titleIt") ?? "").trim(),
-    titleEn: String(formData.get("titleEn") ?? "").trim(),
-    priceCents: toCents(formData, "priceCents"),
-    annualCents: toCents(formData, "annualCents"),
-    maxQuantity: Math.max(1, Number(formData.get("maxQuantity")) || 1),
-    selectable: formData.get("selectable") === "on",
-    sortOrder: Number(formData.get("sortOrder")) || 0,
-  }).where(eq(serviceAddons.code, code));
+  const rows = formData.getAll("code").map(String).map(code => ({
+    code,
+    values: {
+      titleIt: String(formData.get(`titleIt:${code}`) ?? "").trim(),
+      titleEn: String(formData.get(`titleEn:${code}`) ?? "").trim(),
+      priceCents: toCents(formData, `priceCents:${code}`),
+      annualCents: toCents(formData, `annualCents:${code}`),
+      maxQuantity: Math.max(1, Number(formData.get(`maxQuantity:${code}`)) || 1),
+      selectable: formData.get(`selectable:${code}`) === "on",
+    },
+  }));
+  await db.transaction(async tx => {
+    for (const { code, values } of rows) await tx.update(serviceAddons).set(values).where(eq(serviceAddons.code, code));
+  });
   revalidatePath(BASE_PATH);
 }
