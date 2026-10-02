@@ -163,12 +163,12 @@ export default async function AdminDashboardPage() {
                               <input type="hidden" name="code" value={addon.code} />
                               {addon.code}
                             </td>
-                            <td><input name={`titleIt:${addon.code}`} defaultValue={addon.titleIt} style={inputStyle} /></td>
-                            <td><input name={`titleEn:${addon.code}`} defaultValue={addon.titleEn} style={inputStyle} /></td>
-                            <td><input name={`priceCents:${addon.code}`} type="number" step="0.01" min="0" defaultValue={euro(addon.priceCents)} style={inputStyle} /></td>
-                            <td><input name={`annualCents:${addon.code}`} type="number" step="0.01" min="0" defaultValue={euro(addon.annualCents)} style={inputStyle} /></td>
-                            <td><input name={`maxQuantity:${addon.code}`} type="number" min="1" defaultValue={addon.maxQuantity} style={inputStyle} /></td>
-                            <td style={{ textAlign: "center" }}><input name={`selectable:${addon.code}`} type="checkbox" defaultChecked={addon.selectable} /></td>
+                            <td><input name="titleIt" defaultValue={addon.titleIt} style={inputStyle} /></td>
+                            <td><input name="titleEn" defaultValue={addon.titleEn} style={inputStyle} /></td>
+                            <td><input name="priceCents" type="number" step="0.01" min="0" defaultValue={euro(addon.priceCents)} style={inputStyle} /></td>
+                            <td><input name="annualCents" type="number" step="0.01" min="0" defaultValue={euro(addon.annualCents)} style={inputStyle} /></td>
+                            <td><input name="maxQuantity" type="number" min="1" defaultValue={addon.maxQuantity} style={inputStyle} /></td>
+                            <td style={{ textAlign: "center" }}><input name="selectable" value={addon.code} type="checkbox" defaultChecked={addon.selectable} /></td>
                           </tr>
                         ))}
                       </tbody>

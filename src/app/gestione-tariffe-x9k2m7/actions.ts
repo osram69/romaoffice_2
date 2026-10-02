@@ -102,22 +102,21 @@ export async function updateRinnovoPrezzoAction(formData: FormData) {
   revalidatePath(BASE_PATH);
 }
 
-// One save for a whole service's extras table: fields are named `<field>:<code>`. Every row is
-// parsed before anything is written, so one invalid price rejects the lot instead of saving half.
-// sort_order is deliberately never written — it has no input in the UI.
+// One save for a whole service's extras table. Fields repeat under plain names in row order
+// (`code` is the hidden anchor of each row); `selectable` is the exception — an unchecked box sends
+// nothing, so each checked box submits its own code instead. Every row is parsed before anything is
+// written, so one invalid price rejects the lot. sort_order is never written: it has no input.
 export async function updateAddonsAction(formData: FormData) {
   "use server";
   await requireAdmin();
-  const rows = formData.getAll("code").map(String).map(code => ({
+  const codes = formData.getAll("code").map(String);
+  const column = (name: string) => { const values = formData.getAll(name).map(String); if (values.length !== codes.length) throw new Error("Dati non validi"); return values; };
+  const titleIt = column("titleIt"), titleEn = column("titleEn"), price = column("priceCents"), annual = column("annualCents"), maxQty = column("maxQuantity");
+  const selectable = new Set(formData.getAll("selectable").map(String));
+  const cents = (raw: string) => { const value = Math.round(parseFloat(raw.replace(",", ".").trim()) * 100); if (!Number.isFinite(value) || value < 0) throw new Error("Valore non valido"); return value; };
+  const rows = codes.map((code, i) => ({
     code,
-    values: {
-      titleIt: String(formData.get(`titleIt:${code}`) ?? "").trim(),
-      titleEn: String(formData.get(`titleEn:${code}`) ?? "").trim(),
-      priceCents: toCents(formData, `priceCents:${code}`),
-      annualCents: toCents(formData, `annualCents:${code}`),
-      maxQuantity: Math.max(1, Number(formData.get(`maxQuantity:${code}`)) || 1),
-      selectable: formData.get(`selectable:${code}`) === "on",
-    },
+    values: { titleIt: titleIt[i].trim(), titleEn: titleEn[i].trim(), priceCents: cents(price[i]), annualCents: cents(annual[i]), maxQuantity: Math.max(1, Number(maxQty[i]) || 1), selectable: selectable.has(code) },
   }));
   await db.transaction(async tx => {
     for (const { code, values } of rows) await tx.update(serviceAddons).set(values).where(eq(serviceAddons.code, code));
