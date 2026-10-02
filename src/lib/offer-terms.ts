@@ -33,13 +33,13 @@ export function offerTerms(product: ProductOffer, lang: Lang): OfferTerms {
     extrasHeading: it ? "Servizi opzionali a pagamento:" : "Optional paid services:",
     extras: it ? [
       `Affitto ufficio temporaneo attrezzato, per lavorare in sede o ricevere clienti — utile in particolare per l’unità locale, che presuppone un’attività reale sul posto: ${amount(officeHours.priceCents)} + IVA/ora`,
-      `Segreteria Virtuale, con numero telefonico dedicato e risposta a nome della Vs società: ${amount(secretary.priceCents)}/mese (+ ${amount(secretary.annualCents)} per canone annuo numero Voip)`,
+      `Segreteria Virtuale, con numero telefonico dedicato e risposta a nome della Vs società: ${amount(secretary.priceCents)}/mese`,
       `Apertura corrispondenza (oltre le ${n} incluse): ${amount(price("legal_extra_opening").priceCents)} per busta`,
       `Servizio archivio documentazione (faldoni tipo doxa dimensioni 8x23x33cm, max ${archive.maxQuantity} faldoni): ${amount(archive.priceCents)}/mese per faldone`,
       `Inoltro corrispondenza in giacenza a Vs sede (${amount(price("legal_forwarding").priceCents)} servizio + costo spedizione tramite corriere o poste)`,
     ] : [
       `Temporary equipped office rental, to work on site or receive clients — useful in particular for a local unit, which presumes genuine on-site activity: ${formatEur(officeHours.priceCents, lang)} + VAT/hour`,
-      `Virtual secretary with a dedicated telephone number and calls answered in your company’s name: ${formatEur(secretary.priceCents, lang)}/month (+ ${formatEur(secretary.annualCents, lang)} annual VoIP number fee)`,
+      `Virtual secretary with a dedicated telephone number and calls answered in your company’s name: ${formatEur(secretary.priceCents, lang)}/month`,
       `Additional mail opening (beyond the ${n} included): ${formatEur(price("legal_extra_opening").priceCents, lang)} per envelope`,
       `Document archive (Doxa-type binders, 8x23x33cm, up to ${archive.maxQuantity} binders): ${formatEur(archive.priceCents, lang)}/month per binder`,
       `Forwarding stored mail to your office (${formatEur(price("legal_forwarding").priceCents, lang)} service charge + courier or postal shipping cost)`,
@@ -69,7 +69,7 @@ export function offerTerms(product: ProductOffer, lang: Lang): OfferTerms {
     ],
     extrasHeading: it ? "Servizi opzionali a pagamento :" : "Optional paid services:",
     extras: it ? [
-      `Segreteria Virtuale, con numero telefonico dedicato e risposta a nome della Vs società: ${amount(secretary.priceCents)}/mese (+ ${amount(secretary.annualCents)} per canone annuo numero Voip)`,
+      `Segreteria Virtuale, con numero telefonico dedicato e risposta a nome della Vs società: ${amount(secretary.priceCents)}/mese`,
       `Apertura corrispondenza extra ${amount(price("extra_opening").priceCents)} per busta`,
       `Servizio archivio documentazione (faldoni tipo doxa dimensioni 8x23x33cm, max ${archive.maxQuantity} faldoni): ${amount(archive.priceCents)}/mese per faldone`,
       `Linea fax con numero personale: ${amount(price("personal_fax").priceCents)}/mese`,
@@ -77,7 +77,7 @@ export function offerTerms(product: ProductOffer, lang: Lang): OfferTerms {
       `Invio fax a nome della società (con firma digitale): ${amount(price("fax_send").priceCents)} l’uno`,
       `Inoltro corrispondenza in giacenza a Vs sede (${amount(price("mail_forwarding").priceCents)} servizio + costo spedizione tramite corriere o poste)`,
     ] : [
-      `Virtual secretary with a dedicated telephone number and calls answered in your company’s name: ${formatEur(secretary.priceCents, lang)}/month (+ ${formatEur(secretary.annualCents, lang)} annual VoIP number fee)`,
+      `Virtual secretary with a dedicated telephone number and calls answered in your company’s name: ${formatEur(secretary.priceCents, lang)}/month`,
       `Additional mail opening: ${formatEur(price("extra_opening").priceCents, lang)} per envelope`,
       `Document archive (Doxa-type binders, 8x23x33cm, up to ${archive.maxQuantity} binders): ${formatEur(archive.priceCents, lang)}/month per binder`,
       `Fax line with a personal number: ${formatEur(price("personal_fax").priceCents, lang)}/month`,
@@ -89,13 +89,11 @@ export function offerTerms(product: ProductOffer, lang: Lang): OfferTerms {
       renewalNote(product, lang),
       "Ove non indicato, i costi si intendono tutti iva esclusa",
       "Nel caso di servizi aggiuntivi, come ad esempio un numero su Roma con risposta a Suo nome, il canone mensile (e quindi il totale da versare) andrà maggiorato del relativo costo. All'interno del contratto andrà segnata la relativa opzione nell'allegato 1.",
-      "Come anticipato provvediamo ad allegare alla presente il modulo richiesta domiciliazione postale. Questo va restituito, nel caso, correttamente compilato con i dati del referente. Ricevuto il modulo compilato provvederemo ad inviarLe il contratto unitamente ai dati per il pagamento.",
       "Le condizioni di pagamento sono le seguenti:", "- Pagamento anticipato",
     ] : [
       renewalNote(product, lang),
       "Unless stated otherwise, all prices exclude VAT.",
       "For additional services, such as a Rome telephone number answered in your name, the monthly fee (and therefore the total amount payable) will increase by the relevant charge. The corresponding option must be marked in Annex 1 of the agreement.",
-      "As discussed, we attach the business mailing address request form. If you wish to proceed, please return it correctly completed with the contact person’s details. On receipt of the completed form, we will send you the agreement together with the payment details.",
       "Payment terms:", "- Payment in advance",
     ],
     paymentHeading: it ? "Le modalità di pagamento sono le seguenti:" : "Payment methods:",
