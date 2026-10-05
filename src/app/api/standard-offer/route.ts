@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     await limit(`standard-offer-ip:${clientIp(req)}`, 20, 900);
     await limit(`standard-offer-email:${data.email}`, 5, 3600);
     let module: Buffer;
-    try { module = await readOriginalRequestModule(); } catch { return json({ error: "attachment" }, 503); }
+    try { module = await readOriginalRequestModule(data.service); } catch { return json({ error: "attachment" }, 503); }
     if (!smtpConfigured()) return json({ error: "mail" }, 503);
     const product = await getOffer(data.service);
     const inserted = await db.insert(standardOfferRequests).values({ id: data.requestId, service: data.service, title: data.title, firstName: data.firstName, lastName: data.lastName, email: data.email, lang: data.lang, payloadHash, status: "sending", catalogSnapshot: product, attachmentHash: createHash("sha256").update(module).digest("hex") }).onConflictDoNothing().returning();

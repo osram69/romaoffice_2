@@ -12,7 +12,8 @@ import { servicePrices, standardOfferRequests, orders, otpVerifications, authLim
 import { getCatalog, getOffer } from "@/lib/catalog";
 import { quote } from "@/lib/pricing";
 import { termsText } from "@/lib/offer-terms";
-import { buildStandardOfferEmail, MODULE_FILENAME } from "@/lib/standard-offer";
+import { buildStandardOfferEmail } from "@/lib/standard-offer";
+import { requestModuleFilename } from "@/lib/request-module";
 import { ORDER_COOKIE } from "@/lib/order-access";
 import { markOrderPaidAndNotify } from "@/lib/order-payment";
 import { POST as offerApi } from "@/app/api/standard-offer/route";
@@ -32,7 +33,7 @@ test("database offers, immutable attachments and postal checkout", async t => {
   Object.assign(process.env, { AUTH_SECRET: process.env.AUTH_SECRET || randomUUID() + randomUUID(), SMTP_HOST: "127.0.0.1", SMTP_PORT: String(smtp.port), SMTP_USER: "local-test-user", SMTP_PASS: nonce, MAIL_FROM: "test@example.invalid", ADMIN_EMAIL: "admin@example.invalid", TWILIO_ACCOUNT_SID: "TEST_ONLY", TWILIO_API_KEY: "TEST_ONLY", TWILIO_API_KEY_SECRET: nonce, TWILIO_FROM: "+15005550006", TRUSTED_CLIENT_IP_HEADER: "x-test-ip", SUMUP_API_KEY: "TEST_ONLY", SUMUP_MERCHANT_CODE: "MC_TEST_ONLY" });
   let code = ""; let smsPhone = ""; let paymentBody: { amount?: number; currency?: string; checkout_reference?: string; redirect_url?: string } = {};
   let orderId = "", cookie = ""; let createdFixture = false; const offerIds: string[] = []; const rateKeys = new Set([`standard-offer-ip:${nonce}`, `standard-offer-email:${email}`, `order-email:${email}`, `order-sms:${phone}`]);
-  const attachmentPath = join(process.cwd(), "public", MODULE_FILENAME);
+  const attachmentPath = join(process.cwd(), "public", requestModuleFilename("postal"));
   const makeRequest = (path: string, body: object, access = "") => new NextRequest(`http://localhost:3000${path}`, { method: "POST", headers: { "Content-Type": "application/json", Origin: "http://localhost:3000", "x-test-ip": nonce, ...(access ? { Cookie: access } : {}) }, body: JSON.stringify(body) });
   globalThis.fetch = (async (url: RequestInfo | URL, options?: RequestInit) => {
     const address = String(url);
@@ -81,7 +82,7 @@ test("database offers, immutable attachments and postal checkout", async t => {
       }
       const requestId = randomUUID(); offerIds.push(requestId);
       const data = { requestId, service: "postal" as const, lang: "it" as const, title: "Mr" as const, firstName: "Mario", lastName: "Rossi", email, notes: "", consent: true as const };
-      const mail = buildStandardOfferEmail(data, product, original); assert.strictEqual(mail.attachments![0].content, original); assert.equal(mail.attachments![0].filename, MODULE_FILENAME); assert.ok(mail.text.includes("280,00"));
+      const mail = buildStandardOfferEmail(data, product, original); assert.strictEqual(mail.attachments![0].content, original); assert.equal(mail.attachments![0].filename, requestModuleFilename("postal")); assert.ok(mail.text.includes("280,00"));
       const first = await offerApi(makeRequest("/api/standard-offer", data)); assert.equal(first.status, 200); assert.equal((await first.json()).sent, true);
       const count = smtp.messages.length; assert.equal((await offerApi(makeRequest("/api/standard-offer", data))).status, 200); assert.equal(smtp.messages.length, count);
       const mime = smtp.messages[0].split(/\r\n--/).find(section => section.includes("Content-Type: application/pdf"))!;
