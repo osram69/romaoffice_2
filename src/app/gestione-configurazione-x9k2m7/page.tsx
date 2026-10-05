@@ -150,9 +150,9 @@ export default async function ConfigurazioneWebPage() {
       <section className="gestione-card" style={{ padding: 24 }}>
         <h2 style={{ fontSize: 16, fontWeight: 700, color: "#232f3e", marginTop: 0 }}>Richiesta ritiro corrispondenza</h2>
         <p style={{ fontSize: 12, color: "#666", marginTop: -6 }}>
-          Testo di base usato dal tab &quot;Ritiro Corrispondenza&quot; nella scheda di ogni società (Gestione Domiciliazioni), quando quella società non ha già un testo proprio salvato/inviato in precedenza.
+          Oggetto e testo di base usati dal tab &quot;Ritiro Corrispondenza&quot; nella scheda di ogni società (Gestione Domiciliazioni). L&apos;oggetto si può comunque modificare prima di ogni invio; il testo viene riutilizzato solo se la società non ha già un testo proprio salvato/inviato in precedenza.
         </p>
-        <RitiroTemplateEditor initialHtml={payments?.ritiroTestoTemplate ?? null} />
+        <RitiroTemplateEditor initialHtml={payments?.ritiroTestoTemplate ?? null} initialSubject={payments?.ritiroOggettoTemplate ?? null} />
       </section>
     </GestioneShell>
   );

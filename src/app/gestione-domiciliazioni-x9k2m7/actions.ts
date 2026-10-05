@@ -392,11 +392,11 @@ export async function getRitiroDraftAction(id: number, regenerate = false): Prom
   await requireStaff();
   const [client] = await db.select().from(domClients).where(eq(domClients.id, id)).limit(1);
   if (!client) return { success: false, message: "Domiciliazione non trovata" };
-  const [config] = await db.select({ ritiroTestoTemplate: siteConfig.ritiroTestoTemplate }).from(siteConfig).where(eq(siteConfig.id, 1));
+  const [config] = await db.select({ ritiroTestoTemplate: siteConfig.ritiroTestoTemplate, ritiroOggettoTemplate: siteConfig.ritiroOggettoTemplate }).from(siteConfig).where(eq(siteConfig.id, 1));
   const stored = !regenerate ? client.testoRitiro?.trim() : "";
   return {
     success: true,
-    subject: ritiroEmailSubject(client),
+    subject: ritiroEmailSubject(client, config?.ritiroOggettoTemplate),
     html: stored || config?.ritiroTestoTemplate?.trim() || DEFAULT_RITIRO_EMAIL_HTML,
   };
 }
@@ -414,6 +414,8 @@ export async function inviaRitiroAction(formData: FormData): Promise<{ success: 
   const [client] = await db.select().from(domClients).where(eq(domClients.id, id)).limit(1);
   if (!client) return { success: false, message: "Domiciliazione non trovata" };
   if (!html.trim()) return { success: false, message: "Testo email vuoto" };
+  const subject = String(formData.get("subject") ?? "").replace(/[\r\n]+/g, " ").trim();
+  if (!subject) return { success: false, message: "Oggetto email vuoto" };
 
   const ordinarie = cleanText(client.emailPosta).split(";").map(s => s.trim()).filter(Boolean);
   const to = ordinarie[0];
@@ -421,7 +423,7 @@ export async function inviaRitiroAction(formData: FormData): Promise<{ success: 
   const ccList = [...ordinarie.slice(1), "posta@romaofficesharing.it"];
 
   const result = await sendDomMail("ordinaria", {
-    to, cc: ccList.join(","), subject: ritiroEmailSubject(client),
+    to, cc: ccList.join(","), subject,
     text: html.replace(/<[^>]+>/g, " "), html,
   });
   if (!result.sent) return { success: false, message: `Invio non riuscito (${result.reason})` };

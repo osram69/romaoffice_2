@@ -77,12 +77,14 @@ export function RitiroCorrispondenzaPanel({ id }: { id: number }) {
   async function send() {
     const html = getEditorContent();
     if (!html.trim()) { setStatus({ text: "Testo email vuoto", color: "red" }); return; }
+    if (!subject.trim()) { setStatus({ text: "Oggetto email vuoto", color: "red" }); return; }
     if (!confirm("Inviare questa richiesta di ritiro corrispondenza via email ordinaria?")) return;
     setSending(true);
     setStatus({ text: "Invio in corso...", color: "#555" });
     const formData = new FormData();
     formData.set("id", String(id));
     formData.set("html", html);
+    formData.set("subject", subject);
     const result = await inviaRitiroAction(formData);
     setSending(false);
     setStatus(result.success ? { text: "Inviata con successo", color: "green" } : { text: result.message || "Errore", color: "red" });
@@ -94,7 +96,7 @@ export function RitiroCorrispondenzaPanel({ id }: { id: number }) {
     <div>
       <div className="gestione-field" style={{ marginBottom: 8 }}>
         <label>Oggetto</label>
-        <input value={subject} readOnly />
+        <input value={subject} onChange={e => setSubject(e.target.value)} maxLength={300} />
       </div>
       <div className="gestione-field" style={{ marginBottom: 8 }}>
         <label>Testo email — verificalo prima di inviare</label>

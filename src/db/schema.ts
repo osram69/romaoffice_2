@@ -142,6 +142,8 @@ export const siteConfig = pgTable("site_config", {
   // src/lib/dom-ritiro-email.ts) — null until an admin customizes it in Configurazione Web, in
   // which case DEFAULT_RITIRO_EMAIL_HTML there is used instead.
   ritiroTestoTemplate: text("ritiro_testo_template"),
+  // Subject template for the same email; "{ragioneSociale}" is replaced per company. Null = default.
+  ritiroOggettoTemplate: text("ritiro_oggetto_template"),
   // AES-256-CTR encrypted (dom-archive.ts encryptBytes/decryptBytes) PNG of the domiciliatario's
   // signature stamp, used by the contract-processing tool to sign the "Timbro e firma
   // DOMICILIATARIO" page. Lives in the database, not a file: this repo's git history is public, so

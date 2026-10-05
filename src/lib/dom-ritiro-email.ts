@@ -3,8 +3,10 @@ import type { domClients } from "@/db/schema";
 
 type DomClient = InferSelectModel<typeof domClients>;
 
-export function ritiroEmailSubject(client: Pick<DomClient, "ragioneSociale">): string {
-  return `Richiesta ritiro urgente corrispondenza in giacenza ${client.ragioneSociale} - Roma Office Sharing`;
+export const DEFAULT_RITIRO_SUBJECT_TEMPLATE = "Richiesta ritiro urgente corrispondenza in giacenza {ragioneSociale} - Roma Office Sharing";
+
+export function ritiroEmailSubject(client: Pick<DomClient, "ragioneSociale">, template?: string | null): string {
+  return (template?.trim() || DEFAULT_RITIRO_SUBJECT_TEMPLATE).replaceAll("{ragioneSociale}", client.ragioneSociale ?? "").replace(/[\r\n]+/g, " ").trim();
 }
 
 // Used whenever an admin hasn't set a custom template in Configurazione Web

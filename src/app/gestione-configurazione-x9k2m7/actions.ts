@@ -77,7 +77,8 @@ export async function updateRitiroTemplateAction(formData: FormData): Promise<{ 
   "use server";
   await requireAdmin();
   const html = String(formData.get("html") ?? "").trim();
-  await db.update(siteConfig).set({ ritiroTestoTemplate: html || null }).where(eq(siteConfig.id, 1));
+  const subject = String(formData.get("subject") ?? "").replace(/[\r\n]+/g, " ").trim();
+  await db.update(siteConfig).set({ ritiroTestoTemplate: html || null, ritiroOggettoTemplate: subject || null }).where(eq(siteConfig.id, 1));
   revalidatePath(BASE_PATH);
   revalidatePath("/gestione-domiciliazioni-x9k2m7");
   return { success: true };

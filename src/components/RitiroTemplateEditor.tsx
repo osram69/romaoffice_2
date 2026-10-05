@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { updateRitiroTemplateAction } from "@/app/gestione-configurazione-x9k2m7/actions";
-import { DEFAULT_RITIRO_EMAIL_HTML } from "@/lib/dom-ritiro-email";
+import { DEFAULT_RITIRO_EMAIL_HTML, DEFAULT_RITIRO_SUBJECT_TEMPLATE } from "@/lib/dom-ritiro-email";
 
 // Same CDN-loaded TinyMCE integration as ScadenzaEmailPanel/RitiroCorrispondenzaPanel — duplicated
 // rather than shared, since it's the only piece in common and this is the only editor on the page.
@@ -31,9 +31,10 @@ function loadTinymce(): Promise<void> {
 // — no need for a per-row ref.
 const EDITOR_ID = "ritiro-template-editor";
 
-export function RitiroTemplateEditor({ initialHtml }: { initialHtml: string | null }) {
+export function RitiroTemplateEditor({ initialHtml, initialSubject }: { initialHtml: string | null; initialSubject: string | null }) {
   const [mode, setMode] = useState<"visual" | "html">("visual");
   const [html, setHtml] = useState(initialHtml?.trim() || DEFAULT_RITIRO_EMAIL_HTML);
+  const [subject, setSubject] = useState(initialSubject?.trim() || DEFAULT_RITIRO_SUBJECT_TEMPLATE);
   const [editorReady, setEditorReady] = useState(false);
   const [status, setStatus] = useState<{ text: string; color: string } | null>(null);
   const [saving, setSaving] = useState(false);
@@ -68,6 +69,7 @@ export function RitiroTemplateEditor({ initialHtml }: { initialHtml: string | nu
     setStatus(null);
     const formData = new FormData();
     formData.set("html", finalHtml);
+    formData.set("subject", subject);
     const result = await updateRitiroTemplateAction(formData);
     setSaving(false);
     if (result.success) { setHtml(finalHtml); setStatus({ text: "Salvato", color: "green" }); }
@@ -76,6 +78,10 @@ export function RitiroTemplateEditor({ initialHtml }: { initialHtml: string | nu
 
   return (
     <div>
+      <div className="gestione-field" style={{ marginBottom: 12 }}>
+        <label>Oggetto — {"{ragioneSociale}"} viene sostituito col nome della società</label>
+        <input value={subject} onChange={e => setSubject(e.target.value)} maxLength={300} />
+      </div>
       <div style={{ marginBottom: 8 }}>
         <button type="button" className="gestione-btn gestione-btn-outline" onClick={mode === "visual" ? switchToHtml : () => setMode("visual")}>
           {mode === "visual" ? "Codice HTML" : "Torna alla visuale"}
