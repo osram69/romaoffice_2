@@ -48,12 +48,12 @@
                 "map": [
                   {
                     "type": "TEMPLATE",
-                    "key": "name",
+                    "key": "parameter",
                     "value": "form"
                   },
                   {
                     "type": "TEMPLATE",
-                    "key": "value",
+                    "key": "parameterValue",
                     "value": "{{dlv - form}}"
                   }
                 ]
@@ -63,12 +63,12 @@
                 "map": [
                   {
                     "type": "TEMPLATE",
-                    "key": "name",
+                    "key": "parameter",
                     "value": "service"
                   },
                   {
                     "type": "TEMPLATE",
-                    "key": "value",
+                    "key": "parameterValue",
                     "value": "{{dlv - service}}"
                   }
                 ]
@@ -78,12 +78,12 @@
                 "map": [
                   {
                     "type": "TEMPLATE",
-                    "key": "name",
+                    "key": "parameter",
                     "value": "link_url"
                   },
                   {
                     "type": "TEMPLATE",
-                    "key": "value",
+                    "key": "parameterValue",
                     "value": "{{dlv - link_url}}"
                   }
                 ]
@@ -93,12 +93,12 @@
                 "map": [
                   {
                     "type": "TEMPLATE",
-                    "key": "name",
+                    "key": "parameter",
                     "value": "value"
                   },
                   {
                     "type": "TEMPLATE",
-                    "key": "value",
+                    "key": "parameterValue",
                     "value": "{{dlv - value}}"
                   }
                 ]
@@ -108,12 +108,12 @@
                 "map": [
                   {
                     "type": "TEMPLATE",
-                    "key": "name",
+                    "key": "parameter",
                     "value": "currency"
                   },
                   {
                     "type": "TEMPLATE",
-                    "key": "value",
+                    "key": "parameterValue",
                     "value": "{{dlv - currency}}"
                   }
                 ]
@@ -123,12 +123,12 @@
                 "map": [
                   {
                     "type": "TEMPLATE",
-                    "key": "name",
+                    "key": "parameter",
                     "value": "transaction_id"
                   },
                   {
                     "type": "TEMPLATE",
-                    "key": "value",
+                    "key": "parameterValue",
                     "value": "{{dlv - transaction_id}}"
                   }
                 ]
@@ -138,12 +138,12 @@
                 "map": [
                   {
                     "type": "TEMPLATE",
-                    "key": "name",
+                    "key": "parameter",
                     "value": "payment_method"
                   },
                   {
                     "type": "TEMPLATE",
-                    "key": "value",
+                    "key": "parameterValue",
                     "value": "{{dlv - payment_method}}"
                   }
                 ]
@@ -153,12 +153,12 @@
                 "map": [
                   {
                     "type": "TEMPLATE",
-                    "key": "name",
+                    "key": "parameter",
                     "value": "months"
                   },
                   {
                     "type": "TEMPLATE",
-                    "key": "value",
+                    "key": "parameterValue",
                     "value": "{{dlv - months}}"
                   }
                 ]
