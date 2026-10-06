@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { copyFor, activationHref, validity, formatEur, quote, offerActive, type Catalog, type ServiceCode, type SelectedAddon, type Lang } from "@/lib/pricing";
 import { enabledPaymentMethodsList, type PaymentSettings } from "@/lib/payment-copy";
 import { isValidTaxCode } from "@/lib/codice-fiscale";
+import { track, trackOnce } from "@/lib/analytics";
 import { OfferTermsConsent } from "./OfferTerms";
 import { ManualRequestModal } from "./ManualRequestModal";
 import { LegalLinkModal } from "./LegalLinkModal";
@@ -156,6 +157,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
       if (res.status === 409 && data.catalog) { setCatalog(data.catalog); setForm(f => ({ ...f, termsAccepted: false })); setStatus(it ? "Le tariffe sono state aggiornate. Controlla il nuovo riepilogo e accetta nuovamente le condizioni." : "Prices have changed. Review the new summary and accept the terms again."); return; }
       if (!res.ok) throw new Error(data.error || "error");
       setOrderId(data.orderId);
+      track("begin_checkout", { currency: "EUR", value: (priced?.totalCents ?? 0) / 100, service: product.code, months: priced?.months, lang });
       const otpRes = await fetch("/api/send-otp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId: data.orderId, phone: form.phone }) });
       if (!otpRes.ok) { setStatus(it ? "Impossibile inviare l’SMS al momento. I dati sono salvati: riprova o contatta la reception." : "SMS sending is unavailable right now. Your details are saved: retry or contact reception."); return; }
       setStatus(it ? "Codice inviato al tuo numero. Inseriscilo entro 10 minuti." : "Code sent to your number. Enter it within 10 minutes."); setCooldown(60);
@@ -164,6 +166,14 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
       setStatus(it ? "Invio non riuscito: controlla i dati o chiamaci al 06 2111 6268." : "Could not send: please check your details or call +39 06 21.11.6268.");
     } finally { setBusy(false); }
   }
+
+  // Purchase = card/PayPal payment confirmed; bank-transfer orders are a lead until the transfer arrives.
+  useEffect(() => {
+    if (step !== 4 || !result) return;
+    const params = { transaction_id: result.shortRef || result.orderRef, currency: "EUR", value: (result.totalCents ?? 0) / 100, service: product.code, payment_method: result.paymentMethod, lang };
+    if (result.paymentConfirmed) trackOnce(`purchase-${result.orderRef}`, "purchase", params);
+    else if (!result.paymentUnavailable) trackOnce(`order-${result.orderRef}`, "order_submitted", params);
+  }, [step, result, product.code, lang]);
 
   async function resendCode() {
     setBusy(true); setStatus("");

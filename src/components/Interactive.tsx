@@ -3,6 +3,7 @@
 import { LoaderCircle } from "lucide-react";
 import { FormEvent, useState } from "react";
 import type { Lang } from "@/lib/site";
+import { track } from "@/lib/analytics";
 import { LegalLinkModal } from "./LegalLinkModal";
 import { PrivacyNoticeContent } from "./LegalContent";
 
@@ -56,7 +57,7 @@ export function ContactForm({ lang }: { lang: Lang }) {
       const body = Object.fromEntries(fd.entries());
       const recaptchaToken = await getRecaptchaToken("contact");
       const res = await fetch("/api/contact", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, lang, recaptchaToken }) });
-      if (!res.ok) throw new Error(); setState("success"); form.reset();
+      if (!res.ok) throw new Error(); setState("success"); track("generate_lead", { form: "contact", lang }); form.reset();
     } catch { setState("error"); }
   }
   const err = (key: string) => errors[key] ? <span id={`err-${key}`} className="field-error" role="alert" tabIndex={-1}>{errors[key]}</span> : null;

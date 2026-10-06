@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { ArrowRight, CheckCircle2, ClipboardList, LoaderCircle, X } from "lucide-react";
 import { copyFor, formatEur, quote, type Lang, type ProductOffer } from "@/lib/pricing";
 import { normalizePhone } from "@/lib/request";
+import { track } from "@/lib/analytics";
 import { isValidTaxCode } from "@/lib/codice-fiscale";
 import { LegalLinkModal } from "./LegalLinkModal";
 import { PrivacyNoticeContent } from "./LegalContent";
@@ -51,7 +52,7 @@ export function ManualRequestModal({ product, lang, linkStyle }: { product: Prod
     try {
       const response = await fetch("/api/manual-request", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...Object.fromEntries(fd), service: product.code, lang, requestId: crypto.randomUUID(), consent: true, newActivation, additionalDomiciliation }) });
       const data = await response.json(); if (!response.ok) throw new Error(data.error || "delivery");
-      setEmail(String(fd.get("email"))); setState("sent"); setFieldErrors({}); reset(); form.reset();
+      setEmail(String(fd.get("email"))); setState("sent"); track("generate_lead", { form: "manual_request", service: product.code, lang }); setFieldErrors({}); reset(); form.reset();
     } catch (e) {
       const code = e instanceof Error ? e.message : "delivery";
       const localized: Record<string, string> = it ? {
