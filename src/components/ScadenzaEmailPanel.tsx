@@ -24,7 +24,7 @@ function loadTinymce(): Promise<void> {
   return tinymceLoadPromise;
 }
 
-export function ScadenzaEmailPanel({ id, initialPrezzoRinnovo }: { id: number; initialPrezzoRinnovo: number | null }) {
+export function ScadenzaEmailPanel({ id, initialPrezzoRinnovo, initialInviata }: { id: number; initialPrezzoRinnovo: number | null; initialInviata: boolean }) {
   const editorId = useRef(`scadenza-editor-${id}`);
   const pendingHtml = useRef<string | null>(null);
   // What's currently injected in place of "[PREZZO]" in the editor content — starts as the
@@ -39,6 +39,7 @@ export function ScadenzaEmailPanel({ id, initialPrezzoRinnovo }: { id: number; i
   const [selectedMonths, setSelectedMonths] = useState<number[]>([]);
   const [status, setStatus] = useState<{ text: string; color: string } | null>(null);
   const [sending, setSending] = useState(false);
+  const [alreadySent, setAlreadySent] = useState(initialInviata);
 
   function setEditorContent(html: string) {
     const editor = window.tinymce?.get(editorId.current);
@@ -142,6 +143,7 @@ export function ScadenzaEmailPanel({ id, initialPrezzoRinnovo }: { id: number; i
     formData.set("prezzoRinnovo", prezzo);
     const result = await inviaScadenzaAction(formData);
     setSending(false);
+    if (result.success) setAlreadySent(true);
     setStatus(result.success ? { text: "Inviata con successo", color: "green" } : { text: result.message || "Errore", color: "red" });
   }
 
@@ -149,6 +151,7 @@ export function ScadenzaEmailPanel({ id, initialPrezzoRinnovo }: { id: number; i
 
   return (
     <div>
+      {alreadySent && <p role="alert" style={{ margin: "0 0 8px", color: "#c00", fontSize: 13, fontWeight: 700 }}>Attenzione: la mail di scadenza è già stata inviata a questa società.</p>}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end", marginBottom: 8 }}>
         <div className="gestione-field" style={{ flex: "2 1 260px", minWidth: 0 }}>
           <label>Oggetto</label>

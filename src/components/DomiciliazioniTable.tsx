@@ -332,7 +332,7 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds }: { rows: Dom
               )}
 
               {schedaTab === "scadenza" && (
-                <ScadenzaEmailPanel key={viewing.id} id={viewing.id} initialPrezzoRinnovo={viewing.prezzoRinnovo} />
+                <ScadenzaEmailPanel key={viewing.id} id={viewing.id} initialPrezzoRinnovo={viewing.prezzoRinnovo} initialInviata={!!viewing.scadenzaInviata} />
               )}
 
               {schedaTab === "ritiro" && (
