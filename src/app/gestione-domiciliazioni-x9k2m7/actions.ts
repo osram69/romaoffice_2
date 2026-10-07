@@ -72,7 +72,12 @@ export async function updateDomiciliazioneAction(formData: FormData) {
   "use server";
   await requireStaff();
   const id = Number(formData.get("id"));
-  await db.update(domClients).set(fields(formData)).where(eq(domClients.id, id));
+  const values = fields(formData);
+  const [previous] = await db.select({ scadenzaDom: domClients.scadenzaDom }).from(domClients).where(eq(domClients.id, id)).limit(1);
+  // A new scadenza starts a new reminder cycle: the "già inviata" flag and the saved draft (which
+  // quotes the old date) both belong to the previous one.
+  const newCycle = previous !== undefined && previous.scadenzaDom !== values.scadenzaDom;
+  await db.update(domClients).set(newCycle ? { ...values, scadenzaInviata: false, testoScadenza: null } : values).where(eq(domClients.id, id));
   revalidatePath(BASE_PATH);
 }
 
