@@ -15,6 +15,23 @@ const nextConfig: NextConfig = {
     return [
       { source: "/domiciliazione-sede-legale.html", destination: "/domiciliazione-sede-legale-roma.html", permanent: true },
       { source: "/servizi-domiciliazione.html", destination: "/servizi-domiciliazione-sede-roma.html", permanent: true },
+      // Old-site URLs (pre-relaunch) still known to Google/backlinks: map each to its closest page
+      // instead of letting the catch-all send everything to the home page (soft-404 signal).
+      { source: "/tariffe-domiciliazione-sede-legale-roma", destination: "/tariffe.html", permanent: true },
+      { source: "/domiciliazione-sede-fiscale-e-legale", destination: "/domiciliazione-sede-legale-roma.html", permanent: true },
+      { source: "/it/domiciliazione-sede-legale-in-roma", destination: "/domiciliazione-sede-legale-roma.html", permanent: true },
+      { source: "/it/informazioni-domiciliazione-sede-societa-roma-oc", destination: "/domiciliazione-sede-legale-roma.html", permanent: true },
+      { source: "/servizi-di-domiciliazione-sede-legale-a-roma/:slug*", destination: "/domiciliazione-sede-legale-roma.html", permanent: true },
+      { source: "/it/servizi-di-domiciliazione-sede-legale-a-roma/:slug*", destination: "/domiciliazione-sede-legale-roma.html", permanent: true },
+      { source: "/it/domiciliazione-sede-legale-ditta-individuale", destination: "/domiciliazione-ditta-individuale.html", permanent: true },
+      { source: "/domiciliazione-sede-legale-professionale-:slug", destination: "/domiciliazione-professionale.html", permanent: true },
+      { source: "/it/domiciliazione-sede-legale-professionale-:slug", destination: "/domiciliazione-professionale.html", permanent: true },
+      { source: "/it/sede-virtuale-domiciliazione-sede-legale/:slug*", destination: "/segreteria-virtuale.html", permanent: true },
+      { source: "/affitto-ufficio-temporaneo/affitto-sala-corsi-a-roma", destination: "/sale-corsi.html", permanent: true },
+      { source: "/it/affitto-ufficio-temporaneo/affitto-sala-corsi-a-roma", destination: "/sale-corsi.html", permanent: true },
+      { source: "/affitto-ufficio-temporaneo/affitto-ufficio-giornaliero-roma", destination: "/ufficio-giornaliero.html", permanent: true },
+      { source: "/it/affitto-ufficio-temporaneo/affitto-ufficio-giornaliero-roma", destination: "/ufficio-giornaliero.html", permanent: true },
+      { source: "/home.html", destination: "/", permanent: true },
     ];
   },
   async headers() {
