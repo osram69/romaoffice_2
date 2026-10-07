@@ -121,6 +121,7 @@ tr.gestione-letter-row { scroll-margin-top: 70px; }
 .gestione-scheda-table-paired th { width: 180px; }
 .gestione-scheda-table-edit th { background: #ffc107; padding: 2px 12px 2px 8px; }
 .gestione-scheda-table-edit td { background: #fff; padding: 2px 8px 2px 12px; }
+.gestione-scheda-table-edit th, .gestione-scheda-table-edit td { vertical-align: middle; }
 .gestione-scheda-table-edit input:not([type="file"]), .gestione-scheda-table-edit select, .gestione-scheda-table-edit textarea {
   width: 100%; font-size: 12.5px; line-height: 1.2; padding: 1px 6px; border-radius: 4px; border: 1px solid #c8c8c8; background: #f8f8f8; color: #232f3e; box-sizing: border-box;
 }
