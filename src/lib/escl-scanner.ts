@@ -29,6 +29,30 @@ function baseUrl(opts: Pick<ScanOptions, "host" | "port" | "https">): string {
   return `${scheme}://${opts.host}:${port}/eSCL`;
 }
 
+/** A scan failure the operator can act on (empty feeder, jam...) — `code` lets the UI show a popup
+ * instead of the raw HTTP error the scanner replied with. */
+export class ScanError extends Error {
+  constructor(public code: "adf-empty" | "adf-error", message: string) { super(message); }
+}
+
+const ADF_EMPTY_MESSAGE = "Nessun foglio nell'alimentatore automatico (ADF), oppure lo scanner è occupato. Inserisci i fogli nel caricatore e riprova.";
+const ADF_PROBLEMS: Record<string, string> = {
+  ScannerAdfEmpty: ADF_EMPTY_MESSAGE,
+  ScannerAdfJam: "Inceppamento nell'alimentatore automatico (ADF): rimuovi i fogli inceppati e riprova.",
+  ScannerAdfDoorOpen: "Lo sportello dell'alimentatore automatico (ADF) è aperto: chiudilo e riprova.",
+  ScannerAdfHatchOpen: "Il coperchio dell'alimentatore automatico (ADF) è aperto: chiudilo e riprova.",
+  ScannerAdfMultipickDetected: "Lo scanner ha prelevato più fogli insieme (ADF): separa i fogli e riprova.",
+};
+
+/** Best-effort ADF state from /ScannerStatus (not every device reports it) — null when unknown. */
+async function getAdfState(opts: Pick<ScanOptions, "host" | "port" | "https">): Promise<string | null> {
+  try {
+    const res = await fetch(`${baseUrl(opts)}/ScannerStatus`, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return null;
+    return (await res.text()).match(/AdfState>\s*([A-Za-z]+)\s*</)?.[1] ?? null;
+  } catch { return null; }
+}
+
 export type ScannerCapabilities = { raw: string; platenSupported: boolean; feederSupported: boolean };
 
 export async function getScannerCapabilities(opts: Pick<ScanOptions, "host" | "port" | "https">): Promise<ScannerCapabilities> {
@@ -77,7 +101,10 @@ async function createScanJob(opts: Required<Omit<ScanOptions, "host" | "port" | 
     body: buildScanSettingsXml(opts),
     signal: AbortSignal.timeout(10000),
   });
-  if (res.status !== 201) throw new Error(`ScanJobs HTTP ${res.status}: ${await res.text().catch(() => "")}`);
+  const body = res.status === 201 ? "" : await res.text().catch(() => "");
+  // HP devices answer 503 "Scanner busy" when asked to scan from an empty feeder.
+  if (res.status === 503 && opts.source !== "platen") throw new ScanError("adf-empty", ADF_EMPTY_MESSAGE);
+  if (res.status !== 201) throw new Error(`ScanJobs HTTP ${res.status}: ${body}`);
   const location = res.headers.get("Location");
   if (!location) throw new Error("Scanner did not return a job Location");
   return location.startsWith("http") ? location : `${baseUrl(opts)}/../${location}`.replace(/\/eSCL\/\.\.\//, "/");
@@ -120,6 +147,10 @@ export async function scanPages(options: ScanOptions): Promise<ScannedPage[]> {
     source: options.source ?? "platen" as ScanSource,
     pageSize: options.pageSize ?? "a4" as PageSize,
   };
+  if (opts.source !== "platen") {
+    const adfProblem = ADF_PROBLEMS[(await getAdfState(opts)) ?? ""];
+    if (adfProblem) throw new ScanError(adfProblem === ADF_EMPTY_MESSAGE ? "adf-empty" : "adf-error", adfProblem);
+  }
   const jobUrl = await createScanJob(opts);
   try {
     const pages: ScannedPage[] = [];

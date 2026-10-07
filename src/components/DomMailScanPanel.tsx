@@ -140,7 +140,13 @@ export function DomMailScanPanel({ clientId, ragioneSociale, onClose, onPendingC
         signal: AbortSignal.timeout(120000),
       });
       const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.message || "Scansione non riuscita");
+      if (!res.ok || !data.success) {
+        // Empty/jammed feeder: a popup, not just a line of red text the operator may not notice.
+        if (data.code === "adf-empty" || data.code === "adf-error") { alert(data.message); throw new Error(data.message); }
+        // Bridge not restarted since the ADF check was added: it still relays the scanner's raw 503 "busy".
+        if (source !== "platen" && String(data.message).includes("ScanJobs HTTP 503")) { const msg = "Nessun foglio nell'alimentatore automatico (ADF), oppure lo scanner è occupato. Inserisci i fogli nel caricatore e riprova."; alert(msg); throw new Error(msg); }
+        throw new Error(data.message || "Scansione non riuscita");
+      }
 
       const rawPages = (data.pages ?? []) as { base64: string; isImage: boolean; mimeType: string }[];
       const newPages: PageItem[] = [];

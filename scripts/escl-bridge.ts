@@ -16,7 +16,7 @@
  *                for/re-parsing the merged PDF.
  */
 import { createServer } from "node:http";
-import { getScannerCapabilities, pagesToPdf, scanPages, type ScanOptions } from "../src/lib/escl-scanner";
+import { getScannerCapabilities, pagesToPdf, scanPages, ScanError, type ScanOptions } from "../src/lib/escl-scanner";
 
 const PORT = Number(process.argv[2]) || 17866;
 // Loopback-only: this bridge has no auth, so anyone who could reach it could trigger a scan or
@@ -81,7 +81,7 @@ const server = createServer(async (req, res) => {
         })),
       });
     } catch (error) {
-      return sendJson(res, 502, { success: false, message: error instanceof Error ? error.message : "Errore durante la scansione" });
+      return sendJson(res, 502, { success: false, code: error instanceof ScanError ? error.code : undefined, message: error instanceof Error ? error.message : "Errore durante la scansione" });
     }
   }
 
