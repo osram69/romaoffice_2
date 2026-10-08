@@ -31,7 +31,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     address: { "@type": "PostalAddress", streetAddress: "Via Venti Settembre, 118 int.1", postalCode: "00187", addressLocality: "Roma", addressRegion: "RM", addressCountry: "IT" },
     geo: { "@type": "GeoCoordinates", latitude: 41.9037423, longitude: 12.4934357 },
     areaServed: { "@type": "City", name: "Roma" }, hasMap: `https://www.google.com/maps?q=41.9037423,12.4934357`, foundingDate: "2014",
-    openingHoursSpecification: [{ "@type": "OpeningHoursSpecification", dayOfWeek: ["Monday","Tuesday","Wednesday","Thursday","Friday"], opens: "08:30", closes: "18:30" }, { "@type": "OpeningHoursSpecification", dayOfWeek: "Saturday", opens: "08:30", closes: "13:00", description: lang === "it" ? "Su richiesta" : "On request" }],
+    openingHoursSpecification: [{ "@type": "OpeningHoursSpecification", dayOfWeek: ["Monday","Tuesday","Wednesday","Thursday","Friday"], opens: "08:30", closes: "19:00" }, { "@type": "OpeningHoursSpecification", dayOfWeek: "Saturday", opens: "08:30", closes: "13:00", description: lang === "it" ? "Su richiesta" : "On request" }],
   };
   return <html lang={lang}><body><Analytics /><Header lang={lang} alternate={alternateFor(key)} />{children}<Footer lang={lang}/><CookieConsent lang={lang}/><WhatsAppButton lang={lang} /><script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(jsonLd).replace(/</g,"\\u003c")}} /></body></html>;
 }
