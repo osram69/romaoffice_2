@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { orders } from "@/db/schema";
+import { orders, otpVerifications } from "@/db/schema";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
 import { sendRequestConfirmation } from "@/lib/order-confirmation";
 import type { OrderSnapshot } from "@/lib/order-access";
@@ -37,5 +37,20 @@ export async function resendConfirmationAction(formData: FormData) {
   // so this only actually delivers whichever side (customer/admin) never went out — exactly the
   // case where a payment webhook flipped the order to "paid" without ever notifying anyone.
   await sendRequestConfirmation(order, data, snapshot, order.paymentMethod || order.provider || "on_site");
+  revalidatePath(BASE_PATH);
+}
+
+// Irreversible, so admin-only (operators can read orders but not erase them). Used mostly to clear
+// test orders. The OTP row is keyed by public id with no foreign key, so it is removed by hand.
+export async function deleteOrderAction(formData: FormData) {
+  "use server";
+  const user = await requireStaff();
+  if (user.role !== "admin") { revalidatePath(BASE_PATH); return; }
+  const publicId = String(formData.get("orderId") ?? "");
+  if (!publicId) return;
+  await db.transaction(async tx => {
+    await tx.delete(otpVerifications).where(eq(otpVerifications.orderPublicId, publicId));
+    await tx.delete(orders).where(eq(orders.publicId, publicId));
+  });
   revalidatePath(BASE_PATH);
 }
