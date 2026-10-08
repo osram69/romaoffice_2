@@ -38,6 +38,13 @@ export async function updateDiscountTogglesAction(formData: FormData) {
   revalidatePath("/attiva.html"); revalidatePath("/en/activate.html"); revalidatePath("/tariffe.html"); revalidatePath("/en/pricing.html");
 }
 
+export async function updateSmsBypassAction(formData: FormData) {
+  "use server";
+  await requireAdmin();
+  await db.update(siteConfig).set({ smsBypassEnabled: formData.get("smsBypassEnabled") === "on" }).where(eq(siteConfig.id, 1));
+  revalidatePath(BASE_PATH);
+}
+
 export async function updateOnlineDiscountAction(formData: FormData) {
   "use server";
   await requireAdmin();

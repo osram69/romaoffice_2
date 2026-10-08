@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { domClients, domCustomerChallenges, domCustomerSessions } from "@/db/schema";
 import { CHALLENGE_COOKIE, SESSION_COOKIE, OTP_SECONDS, SESSION_SECONDS, CustomerError, clientIp, constantEqual, digest, failed, getDomCustomer, hashPassword, json, limit, maskPhone, otpDigest, protectMutation, sendLoginSms, setCookie, token, verifyPassword } from "@/lib/customer-auth";
 import { readDecrypted } from "@/lib/dom-archive";
+import { smsBypassEnabled } from "@/lib/sms-bypass";
 import { PRESENZA_FILE_BITS } from "@/lib/dom-status";
 import { normalizePhone } from "@/lib/request";
 import { PASSWORD_MAX_LENGTH, passwordMeetsPolicy } from "@/lib/password-policy";
@@ -49,9 +50,9 @@ export async function POST(req: NextRequest, { params }: Props) {
       if (!valid || !client) throw new CustomerError("credentials", 401);
       // Debug-only shortcut (set via env, never in source): skips the real SMS send and phone
       // validation below for this one address, using a fixed code instead — for testing without
-      // burning SMS credits. Unset DEBUG_BYPASS_EMAIL to disable it entirely.
+      // burning SMS credits. Unset DEBUG_BYPASS_EMAIL, or switch it off in Configurazione Web, to disable it.
       const bypassEmail = process.env.DEBUG_BYPASS_EMAIL?.trim().toLowerCase();
-      const isBypass = Boolean(bypassEmail && email === bypassEmail);
+      const isBypass = Boolean(bypassEmail && email === bypassEmail) && await smsBypassEnabled();
       const phone = isBypass ? "" : normalizePhone(client.telefono || "");
       if (!isBypass && !/^\+[1-9]\d{7,14}$/.test(phone)) throw new CustomerError("phoneInvalid", 503);
       const raw = token(); const code = isBypass ? (process.env.DEBUG_BYPASS_CODE || "888888") : String(randomInt(0, 1_000_000)).padStart(6, "0");

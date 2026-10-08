@@ -128,6 +128,7 @@ export const siteConfig = pgTable("site_config", {
   // one can ever be active) plus one for PayPal.
   cardProcessorTestMode: boolean("card_processor_test_mode").notNull().default(false),
   paypalTestMode: boolean("paypal_test_mode").notNull().default(false),
+  smsBypassEnabled: boolean("sms_bypass_enabled").notNull().default(true),
   // Network scanner (eSCL) reached by the "Allega" mail-scan panel on the domiciliazioni
   // dashboard — one shared physical scanner for the whole office, so its address/defaults are
   // configured once here rather than per-operator/browser. Per-scan choices (color/source/dpi)

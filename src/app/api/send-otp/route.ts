@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { orders, otpVerifications } from "@/db/schema";
 import { ownedOrder } from "@/lib/order-access";
+import { smsBypassEnabled } from "@/lib/sms-bypass";
 import { CustomerError, json, limit, otpDigest, protectMutation, sendLoginSms } from "@/lib/customer-auth";
 import type { RequestData } from "@/lib/request";
 const input = z.object({ orderId: z.string().uuid() });
@@ -20,9 +21,9 @@ export async function POST(req: NextRequest) {
       if (old && Date.now() - old.sentAt.getTime() < 60000) return "wait";
       // Debug-only shortcut (set via env, never in source): skips the real SMS send for this one
       // phone number, using a fixed code instead — for testing without burning SMS credits.
-      // Unset DEBUG_BYPASS_PHONE to disable it entirely.
+      // Unset DEBUG_BYPASS_PHONE, or switch it off in Configurazione Web, to disable it.
       const bypassPhone = process.env.DEBUG_BYPASS_PHONE?.trim();
-      const isBypass = Boolean(bypassPhone && order.phone === bypassPhone);
+      const isBypass = Boolean(bypassPhone && order.phone === bypassPhone) && await smsBypassEnabled();
       const code = isBypass ? (process.env.DEBUG_BYPASS_CODE || "888888") : String(randomInt(0, 1000000)).padStart(6, "0");
       const lang = (order.formData as RequestData).lang;
       const hash = otpDigest(`order:${order.publicId}`, code);

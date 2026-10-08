@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { serviceCatalog, siteConfig } from "@/db/schema";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
-import { updateDiscountTogglesAction, updateOnlineDiscountAction, updatePaymentSettingsAction, updateProviderTestModesAction, updateScannerConfigAction, updateSmartFlagsAction } from "./actions";
+import { updateDiscountTogglesAction, updateOnlineDiscountAction, updatePaymentSettingsAction, updateProviderTestModesAction, updateScannerConfigAction, updateSmartFlagsAction, updateSmsBypassAction } from "./actions";
 import { GestioneShell } from "@/components/GestioneNav";
 import { RitiroTemplateEditor } from "@/components/RitiroTemplateEditor";
 import { FirmaDomiciliatarioUpload } from "@/components/FirmaDomiciliatarioUpload";
@@ -23,6 +23,7 @@ export default async function ConfigurazioneWebPage() {
     db.select().from(serviceCatalog).where(eq(serviceCatalog.code, "legal_unit")),
     db.select().from(siteConfig).where(eq(siteConfig.id, 1)),
   ]);
+  const bypassConfigured = Boolean(process.env.DEBUG_BYPASS_EMAIL?.trim() || process.env.DEBUG_BYPASS_PHONE?.trim());
   const firmaPreview = payments?.firmaDomiciliatarioPng ? `data:image/png;base64,${decryptBytes(payments.firmaDomiciliatarioPng).toString("base64")}` : null;
 
   return (
@@ -57,6 +58,17 @@ export default async function ConfigurazioneWebPage() {
         <ConfigForm action={updateProviderTestModesAction} style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "center" }}>
           <label style={checkboxRow}><input type="checkbox" name="cardProcessorTestMode" defaultChecked={payments?.cardProcessorTestMode ?? false} /> Carta di credito sandbox</label>
           <label style={checkboxRow}><input type="checkbox" name="paypalTestMode" defaultChecked={payments?.paypalTestMode ?? false} /> PayPal sandbox</label>
+        </ConfigForm>
+      </section>
+
+      <section className="gestione-card" style={{ padding: 24, marginBottom: 24 }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: "#232f3e", marginTop: 0 }}>Verifica SMS: bypass di test</h2>
+        <p style={{ fontSize: 12, color: "#666", marginTop: -6 }}>
+          Quando attivo, l&apos;indirizzo email (accesso Area Clienti) o il numero di telefono (attivazione online) indicati dalle variabili d&apos;ambiente <code>DEBUG_BYPASS_EMAIL</code> / <code>DEBUG_BYPASS_PHONE</code> non ricevono l&apos;SMS di verifica e accettano il codice fisso (<code>DEBUG_BYPASS_CODE</code>, di default 888888). <strong>Disattivalo per provare l&apos;SMS vero dal tuo cellulare</strong>, e riattivalo solo se ti serve: finché è acceso, chi conosce quell&apos;email o quel numero può usare il codice fisso.
+          {" "}{bypassConfigured ? "Variabili d'ambiente rilevate: l'opzione ha effetto." : "Nessuna delle due variabili è impostata sul server: al momento l'opzione non ha effetto."}
+        </p>
+        <ConfigForm action={updateSmsBypassAction} style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "center" }}>
+          <label style={checkboxRow}><input type="checkbox" name="smsBypassEnabled" defaultChecked={payments?.smsBypassEnabled ?? true} /> Bypass SMS attivo (codice fisso)</label>
         </ConfigForm>
       </section>
 
