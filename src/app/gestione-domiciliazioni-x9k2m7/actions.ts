@@ -433,7 +433,7 @@ export async function inviaRitiroAction(formData: FormData): Promise<{ success: 
   });
   if (!result.sent) return { success: false, message: `Invio non riuscito (${result.reason})` };
 
-  await db.update(domClients).set({ testoRitiro: html }).where(eq(domClients.id, id));
+  await db.update(domClients).set({ testoRitiro: html, ritiroInviatoAt: new Date() }).where(eq(domClients.id, id));
   revalidatePath(BASE_PATH);
   return { success: true };
 }

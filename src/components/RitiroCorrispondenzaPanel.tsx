@@ -26,7 +26,16 @@ function loadTinymce(): Promise<void> {
   return tinymceLoadPromise;
 }
 
-export function RitiroCorrispondenzaPanel({ id }: { id: number }) {
+function fmtDateTime(iso: string) {
+  return new Date(iso).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function daysAgo(iso: string) {
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  return days <= 0 ? "oggi" : days === 1 ? "ieri" : `${days} giorni fa`;
+}
+
+export function RitiroCorrispondenzaPanel({ id, lastSentAt, previouslySent }: { id: number; lastSentAt: string | null; previouslySent: boolean }) {
   const editorId = useRef(`ritiro-editor-${id}`);
   const pendingHtml = useRef<string | null>(null);
   const [editorReady, setEditorReady] = useState(false);
@@ -34,6 +43,7 @@ export function RitiroCorrispondenzaPanel({ id }: { id: number }) {
   const [subject, setSubject] = useState("");
   const [status, setStatus] = useState<{ text: string; color: string } | null>(null);
   const [sending, setSending] = useState(false);
+  const [sentAt, setSentAt] = useState<string | null>(lastSentAt);
 
   function setEditorContent(html: string) {
     const editor = window.tinymce?.get(editorId.current);
@@ -87,6 +97,7 @@ export function RitiroCorrispondenzaPanel({ id }: { id: number }) {
     formData.set("subject", subject);
     const result = await inviaRitiroAction(formData);
     setSending(false);
+    if (result.success) setSentAt(new Date().toISOString());
     setStatus(result.success ? { text: "Inviata con successo", color: "green" } : { text: result.message || "Errore", color: "red" });
   }
 
@@ -94,6 +105,15 @@ export function RitiroCorrispondenzaPanel({ id }: { id: number }) {
 
   return (
     <div>
+      {sentAt ? (
+        <p role="alert" style={{ margin: "0 0 8px", color: "#c00", fontSize: 13, fontWeight: 700 }}>
+          Attenzione: l&apos;avviso di ritiro è già stato inviato a questa società il {fmtDateTime(sentAt)} ({daysAgo(sentAt)}).
+        </p>
+      ) : previouslySent ? (
+        <p role="alert" style={{ margin: "0 0 8px", color: "#c00", fontSize: 13, fontWeight: 700 }}>
+          Attenzione: l&apos;avviso di ritiro è già stato inviato a questa società in passato (data non registrata).
+        </p>
+      ) : null}
       <div className="gestione-field" style={{ marginBottom: 8 }}>
         <label>Oggetto</label>
         <input value={subject} onChange={e => setSubject(e.target.value)} maxLength={300} />

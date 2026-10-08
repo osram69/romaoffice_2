@@ -211,6 +211,7 @@ export const domClients = pgTable("dom_clients", {
   testoProforma: text("testo_proforma"),
   testoSospensione: text("testo_sospensione"),
   testoRitiro: text("testo_ritiro"),
+  ritiroInviatoAt: timestamp("ritiro_inviato_at", { withTimezone: true }),
   amministratore: text("amministratore"),
   telefonoAmm: text("telefono_amm"),
   personaRif: text("persona_rif"),
