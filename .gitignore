@@ -9,3 +9,5 @@ playwright-report/
 test-results/
 *.tsbuildinfo
 bridge-dist/
+# Claude Code session history (see CLAUDE.md) - may contain sensitive data, repo is public
+claude-sessions/
