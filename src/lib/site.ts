@@ -51,7 +51,7 @@ export const ui = {
     rights: "Tutti i diritti riservati", trademark: "ROMA OFFICE SHARING è un marchio registrato di Cube Engineering s.r.l.",
     regInfo: "N. ISCR. REG. IMPR. ROMA / C.F. / P. IVA: 12870461006 - REA: RM-1406493",
     revoke: "Puoi revocare il consenso scrivendo a cubeng@pec.it o chiamando +39 06 21116268.",
-    cookieTitle: "La tua privacy, la tua scelta", cookieText: "Usiamo cookie necessari per il funzionamento del sito e, solo con il tuo consenso, cookie analitici e di marketing.",
+    cookieTitle: "La tua privacy, la tua scelta", cookieText: "Usiamo cookie necessari per far funzionare il sito. Con il tuo consenso usiamo anche cookie analitici, per capire quali pagine ti sono utili e migliorarle, e di marketing, per misurare le nostre campagne. Puoi cambiare scelta in ogni momento da «Impostazioni» nel piè di pagina.",
     accept: "Accetta tutti", reject: "Solo necessari", settings: "Impostazioni", save: "Salva preferenze", necessary: "Cookie necessari", analytics: "Cookie analitici", marketing: "Cookie marketing", always: "Sempre attivi",
   },
   en: {
@@ -62,7 +62,7 @@ export const ui = {
     rights: "All rights reserved", trademark: "ROMA OFFICE SHARING is a registered trademark of Cube Engineering s.r.l.",
     regInfo: "Rome Company Register No. / Tax Code / VAT No.: 12870461006 - REA: RM-1406493",
     revoke: "You can withdraw consent by emailing cubeng@pec.it or calling +39 06 21116268.",
-    cookieTitle: "Your privacy, your choice", cookieText: "We use necessary cookies to operate this site and, only with your consent, analytics and marketing cookies.",
+    cookieTitle: "Your privacy, your choice", cookieText: "We use necessary cookies to make the site work. With your consent we also use analytics cookies, to understand which pages are useful and improve them, and marketing cookies, to measure our campaigns. You can change your choice at any time from “Settings” in the footer.",
     accept: "Accept all", reject: "Necessary only", settings: "Settings", save: "Save preferences", necessary: "Necessary cookies", analytics: "Analytics cookies", marketing: "Marketing cookies", always: "Always active",
   },
 };
