@@ -92,15 +92,17 @@ export function buildScadenzaEmailHtml(client: DomClient, prezzi: RinnovoPrezzo[
   const months = contractMonths(client);
   const prezzoRinnovo = client.prezzoRinnovo !== null ? String(client.prezzoRinnovo) : "[PREZZO]";
   const offerMonths = includeMonths ?? scadenzaDefaultMonths(prezzi, months);
+  // No offer row selected -> no "Abbiamo altresì attive le seguenti offerte:" intro either.
+  const offerte = offerteRows(prezzi, offerMonths);
 
   return `<p>Buongiorno Sig. ${cognomeDi(client)},</p>
 <p>con la presente volevamo informarLa che in data <strong>${fmtDateIT(client.scadenzaDom)}</strong>, scadrà il contratto di domiciliazione legale della società <strong>${client.ragioneSociale}</strong></p>
 <p>Qualora desideri interrompere la domiciliazione, La preghiamo di inviarci richiesta scritta (raccomandata o PEC al nostro indirizzo <a href="mailto:cubeng@pec.it">cubeng@pec.it</a>) oppure di comunicarci l'intento al rinnovo rispondendo a questa email.</p>
 <p>Per il rinnovo possiamo mantenere le stesse condizioni precedenti con canone pari a <span data-prezzo="1">${prezzoRinnovo}</span>&nbsp;€ + IVA${scontoClause(client, includeSconto)}</p>
 <p><u>Nel caso di pagamento tardivo, non sarà possibile rinnovare alle stesse condizioni.</u></p>
-<p>Abbiamo altresì attive le seguenti offerte:</p>
-${offerteRows(prezzi, offerMonths)}
-<p>Nel caso di conferma intento al rinnovo, provvederemo ad inviarle relativa fattura proforma per il pagamento, altrimenti La preghiamo di inviarci raccomandata/PEC con comunicazione di recesso.</p>
+${offerte ? `<p>Abbiamo altresì attive le seguenti offerte:</p>
+${offerte}
+` : ""}<p>Nel caso di conferma intento al rinnovo, provvederemo ad inviarle relativa fattura proforma per il pagamento, altrimenti La preghiamo di inviarci raccomandata/PEC con comunicazione di recesso.</p>
 <p>Restiamo in attesa di un cortese riscontro</p>
 <p>Cordiali saluti<br>Amministrazione Roma Office Sharing</p>`;
 }
