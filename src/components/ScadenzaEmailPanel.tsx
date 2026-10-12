@@ -24,12 +24,12 @@ function loadTinymce(): Promise<void> {
   return tinymceLoadPromise;
 }
 
+const PREZZO_SPAN = /(<span\b[^>]*\bdata-prezzo\b[^>]*>)[\s\S]*?(<\/span>)/g;
+const PREZZO_SPAN_UNWRAP = /<span\b[^>]*\bdata-prezzo\b[^>]*>([\s\S]*?)<\/span>/g;
+
 export function ScadenzaEmailPanel({ id, initialPrezzoRinnovo, initialInviata }: { id: number; initialPrezzoRinnovo: number | null; initialInviata: boolean }) {
   const editorId = useRef(`scadenza-editor-${id}`);
   const pendingHtml = useRef<string | null>(null);
-  // What's currently injected in place of "[PREZZO]" in the editor content — starts as the
-  // placeholder itself, so the very first keystroke in the prezzo field has something to replace.
-  const lastPrezzoText = useRef("[PREZZO]");
   const [editorReady, setEditorReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [subject, setSubject] = useState("");
@@ -50,15 +50,14 @@ export function ScadenzaEmailPanel({ id, initialPrezzoRinnovo, initialInviata }:
     return window.tinymce?.get(editorId.current)?.getContent() ?? pendingHtml.current ?? "";
   }
 
-  // Swaps whatever price text is currently shown for a new one — "[PREZZO]" the first time, then
-  // whatever was last injected — so the editor always mirrors the prezzo field without a full
-  // server round-trip (and without resetting the rest of the text staff may have already edited).
+  // The price lives in a <span data-prezzo> that the server template puts in the email (see
+  // buildScadenzaEmailHtml), so only that span's text is rewritten — never a text search, which
+  // would also hit the same digits elsewhere (e.g. "1" inside the scadenza date).
   function syncPrezzoIntoEditor(newValue: string) {
-    const newText = newValue.trim() || "[PREZZO]";
+    const text = (newValue.trim() || "[PREZZO]").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const html = getEditorContent();
-    if (!html || newText === lastPrezzoText.current) return;
-    const updated = html.split(lastPrezzoText.current).join(newText);
-    lastPrezzoText.current = newText;
+    if (!html) return;
+    const updated = html.replace(PREZZO_SPAN, (_match, open: string, close: string) => open + text + close);
     if (updated !== html) setEditorContent(updated);
   }
 
@@ -78,7 +77,6 @@ export function ScadenzaEmailPanel({ id, initialPrezzoRinnovo, initialInviata }:
     setSubject(draft.subject || "");
     const prezzoText = draft.prezzoRinnovo !== null && draft.prezzoRinnovo !== undefined ? String(draft.prezzoRinnovo) : "";
     setPrezzo(prezzoText);
-    lastPrezzoText.current = prezzoText || "[PREZZO]";
     if (draft.scontoDefault !== undefined) setIncludeSconto(draft.scontoDefault);
     setAvailableMonths(draft.availableMonths ?? []);
     setSelectedMonths(draft.defaultMonths ?? []);
@@ -95,7 +93,6 @@ export function ScadenzaEmailPanel({ id, initialPrezzoRinnovo, initialInviata }:
     const draft = await getScadenzaDraftAction(id, true, sconto, months);
     setLoading(false);
     if (!draft.success) { setStatus({ text: draft.message || "Errore", color: "red" }); return; }
-    lastPrezzoText.current = draft.prezzoRinnovo !== null && draft.prezzoRinnovo !== undefined ? String(draft.prezzoRinnovo) : "[PREZZO]";
     setEditorContent(draft.html || "");
     syncPrezzoIntoEditor(prezzo);
   }
@@ -132,8 +129,9 @@ export function ScadenzaEmailPanel({ id, initialPrezzoRinnovo, initialInviata }:
   }
 
   async function send() {
-    const html = getEditorContent();
+    const html = getEditorContent().replace(PREZZO_SPAN_UNWRAP, "$1");
     if (!html.trim()) { setStatus({ text: "Testo email vuoto", color: "red" }); return; }
+    if (html.includes("[PREZZO]")) { setStatus({ text: "Inserisci il prezzo di rinnovo prima di inviare", color: "red" }); return; }
     if (!confirm("Inviare questa email di scadenza? Verrà inviata via PEC se presente, altrimenti via email ordinaria.")) return;
     setSending(true);
     setStatus({ text: "Invio in corso...", color: "#555" });

@@ -96,7 +96,7 @@ export function buildScadenzaEmailHtml(client: DomClient, prezzi: RinnovoPrezzo[
   return `<p>Buongiorno Sig. ${cognomeDi(client)},</p>
 <p>con la presente volevamo informarLa che in data <strong>${fmtDateIT(client.scadenzaDom)}</strong>, scadrà il contratto di domiciliazione legale della società <strong>${client.ragioneSociale}</strong></p>
 <p>Qualora desideri interrompere la domiciliazione, La preghiamo di inviarci richiesta scritta (raccomandata o PEC al nostro indirizzo <a href="mailto:cubeng@pec.it">cubeng@pec.it</a>) oppure di comunicarci l'intento al rinnovo rispondendo a questa email.</p>
-<p>Per il rinnovo possiamo mantenere le stesse condizioni precedenti con canone pari a ${prezzoRinnovo}&nbsp;€ + IVA${scontoClause(client, includeSconto)}</p>
+<p>Per il rinnovo possiamo mantenere le stesse condizioni precedenti con canone pari a <span data-prezzo="1">${prezzoRinnovo}</span>&nbsp;€ + IVA${scontoClause(client, includeSconto)}</p>
 <p><u>Nel caso di pagamento tardivo, non sarà possibile rinnovare alle stesse condizioni.</u></p>
 <p>Abbiamo altresì attive le seguenti offerte:</p>
 ${offerteRows(prezzi, offerMonths)}
