@@ -53,18 +53,61 @@ function fmtDate(value: string | null) {
   return `${d}/${m}/${y}`;
 }
 
+const MM = 72 / 25.4;
+
+/** The cut-out label for a binder, as the legacy generaetichette.php drew it: a 77 mm wide frame
+ * (side borders plus a line at top and bottom, no title), a 10 mm blank band above and below, and
+ * one 18 mm band per company with its name centred. If a binder holds more companies than fit on
+ * one page the frame simply continues on the next page, like the FPDF auto page break did. */
+function drawBinderLabel(w: Writer, names: string[]) {
+  const left = 15 * MM;
+  const width = 77 * MM;
+  const pageTop = A4.height - 15 * MM;
+  const bottomLimit = 20 * MM;
+  const black = rgb(0, 0, 0);
+  const stroke = (x1: number, y1: number, x2: number, y2: number) =>
+    w.page.drawLine({ start: { x: x1, y: y1 }, end: { x: x2, y: y2 }, thickness: 0.2 * MM, color: black });
+
+  let y = pageTop - 1 * MM;
+  let segmentTop = y;
+  stroke(left, y, left + width, y);
+  const closeSegment = (bottom: number) => { stroke(left, segmentTop, left, bottom); stroke(left + width, segmentTop, left + width, bottom); };
+  const reserve = (height: number) => {
+    if (y - height >= bottomLimit) return;
+    closeSegment(y);
+    w.addPage();
+    y = pageTop;
+    segmentTop = y;
+  };
+
+  reserve(10 * MM);
+  y -= 10 * MM;
+  for (const name of names) {
+    const band = 18 * MM;
+    reserve(band);
+    // Exactly the legacy rule: a name over 25 characters is cut to its first 30 and set at 15 pt,
+    // a 24-character one at 16 pt, anything else at 18 pt.
+    const text = name.length > 25 ? name.slice(0, 30) : name;
+    const size = name.length > 25 ? 15 : name.length === 24 ? 16 : 18;
+    const textWidth = w.bold.widthOfTextAtSize(text, size);
+    w.page.drawText(text, { x: left + (width - textWidth) / 2, y: y - band / 2 - size * 0.35, size, font: w.bold, color: black });
+    y -= band;
+  }
+  reserve(10 * MM);
+  y -= 10 * MM;
+  stroke(left, y, left + width, y);
+  closeSegment(y);
+}
+
 /** Mirrors generaetichette.php. raccoglitore=0 prints the full "ragione sociale / n. raccoglitore"
  * list for every active company at Sede XX Settembre; raccoglitore>0 prints one label per company
  * in that specific binder. */
 export async function printRaccoglitori(raccoglitore: number) {
   const w = await Writer.create();
   if (raccoglitore > 0) {
-    w.line(`Raccoglitore n. ${raccoglitore}`, { size: 16, bold: true, gap: 14 });
     const rows = await db.select({ ragioneSociale: domClients.ragioneSociale, stato: domClients.stato, sede: domClients.sede })
       .from(domClients).where(eq(domClients.raccoglitore, raccoglitore)).orderBy(asc(domClients.ragioneSociale));
-    for (const row of rows) {
-      if (row.stato === 1 && row.sede === 1) w.line(row.ragioneSociale, { size: 15, bold: true, gap: 10 });
-    }
+    drawBinderLabel(w, rows.filter(row => row.stato === 1 && row.sede === 1).map(row => row.ragioneSociale));
   } else {
     w.columns("RAGIONE SOCIALE", "N. RACCOGLITORE", 380, { size: 14, bold: true, gap: 14 });
     const rows = await db.select({ ragioneSociale: domClients.ragioneSociale, raccoglitore: domClients.raccoglitore })
