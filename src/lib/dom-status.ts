@@ -53,7 +53,10 @@ export function scadenzaRowClass(client: Pick<DomClient, "scadenzaDom" | "scaden
 
   if (scadDom.getTime() < oggi.getTime()) return "scad-red";
   if (scadPag && scadPag.getTime() < oggi.getTime()) return "scad-blu";
-  if ((scadDom.getTime() - oggi.getTime()) / dayMs <= 20) return client.scadenzaInviata ? "scad-yellow-dark" : "scad-yellow";
-  if (scadPag && (scadPag.getTime() - oggi.getTime()) / dayMs <= 15) return "scad-azzurro";
+  // Whole calendar days, rounded: when the span crosses the end of daylight saving time (late
+  // October) it is 1 hour longer than N*24h, which made "20 days away" read as 20.04 and miss the cut.
+  const daysTo = (d: Date) => Math.round((d.getTime() - oggi.getTime()) / dayMs);
+  if (daysTo(scadDom) <= 20) return client.scadenzaInviata ? "scad-yellow-dark" : "scad-yellow";
+  if (scadPag && daysTo(scadPag) <= 15) return "scad-azzurro";
   return "";
 }
