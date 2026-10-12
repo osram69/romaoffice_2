@@ -315,6 +315,8 @@ export async function sendMailScanAction(domClientId: number, channel: MailScanC
 
   const result = await sendDomMail(account, {
     to, cc: cc.join(","), bcc, subject, html, text: html.replace(/<[^>]+>/g, " "),
+    // A reply to a PEC-sent scan must reach the office mailbox, not bounce back to the PEC sender address.
+    replyTo: channel === "pec" ? MAIL_SCAN_INTERNAL_ADDRESS : undefined,
     // Fixed name (legacy: PHPMailer's addAttachment() on the local tmp/scansione.pdf file) rather
     // than one derived per company — matches ajax_send_mail.php exactly.
     attachments: [{ filename: "scansione.pdf", content: pdf, contentType: "application/pdf" }],
