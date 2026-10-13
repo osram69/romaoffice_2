@@ -25,7 +25,7 @@ export function buildStandardOfferEmail(input: StandardOfferInput, product: Prod
   const { lang } = input; const it = lang === "it"; const copy = copyFor(product.code, lang); const active = offerActive(product);
   const newActivationShown = product.code === "legal_unit" && product.newActivationDiscountEnabled;
   const rows = product.tiers.map(tier => `${copy.months(tier.months)}: ${it ? "tariffa" : "standard rate"} ${formatEur(tier.listCents, lang)} ${it ? "+ IVA" : "+ VAT"}${tier.offerCents !== null && active ? ` — ${it ? "offerta" : "offer"} ${formatEur(tier.offerCents, lang)} ${it ? "+ IVA" : "+ VAT"}${tier.newActivation && newActivationShown ? " (*)" : ""}` : ""}`).join("\n");
-  const greeting = it ? `Gentile ${input.title} ${input.firstName} ${input.lastName},` : `Dear ${input.title} ${input.firstName} ${input.lastName},`;
+  const greeting = it ? `Gentile ${input.title === "Ms" ? "Sig.ra" : "Sig."} ${input.firstName} ${input.lastName},` : `Dear ${input.title} ${input.firstName} ${input.lastName},`;
   const text = [greeting, "", it ? "Come richiesto, Le inviamo la nostra offerta standard, senza impegno di acquisto." : "As requested, please find our standard offer below, with no obligation to purchase.", "",
     ...(input.notes ? [it ? "RICHIESTE DEL CLIENTE:" : "CUSTOMER REQUEST NOTES:", input.notes, ""] : []),
     copy.name, copy.description, "", rows, validity(product, lang),
