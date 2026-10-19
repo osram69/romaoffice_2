@@ -7,6 +7,7 @@ import { getCatalog } from "@/lib/catalog";
 import { quote } from "@/lib/pricing";
 import { termsText } from "@/lib/offer-terms";
 import { requestSchema } from "@/lib/request";
+import { companyNameTaken } from "@/lib/company-name";
 import { ORDER_COOKIE, ownedOrder } from "@/lib/order-access";
 import { CustomerError, digest, token, json, limit, protectMutation } from "@/lib/customer-auth";
 
@@ -14,7 +15,10 @@ export async function POST(req: NextRequest) {
   try {
     protectMutation(req); const parsed = requestSchema.safeParse(await req.json());
     if (!parsed.success) return json({ error: "invalid-data", fields: parsed.error.issues.map(i => String(i.path[0])) }, 400);
-    const data = parsed.data; const catalog = await getCatalog(); const product = catalog[data.service];
+    const data = parsed.data;
+    // Two companies with the same name at one address: acts arriving here could not be told apart.
+    if (await companyNameTaken(data.companyName)) return json({ error: "company-name-taken" }, 409);
+    const catalog = await getCatalog(); const product = catalog[data.service];
     if (data.catalogVersion !== product.version || data.termsVersion !== product.version) return json({ error: "prices-changed", catalog }, 409);
     // /api/domiciliation-request is only ever called from ActivationFlow's self-service online
     // flow, so the online-activation discount (if enabled) always applies here.

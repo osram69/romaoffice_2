@@ -154,6 +154,12 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
     try {
       const res = await fetch("/api/domiciliation-request", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, lang, service, catalogVersion: product.version, termsVersion: product.version, orderId: orderId || undefined }) });
       const data = await res.json();
+      if (data.error === "company-name-taken") {
+        setStatus("");
+        setFieldError("companyName", it ? "Esiste già una società con questo nome domiciliata presso di noi. Se sei già nostro cliente contatta la reception, altrimenti scegli una denominazione diversa." : "A company with this name is already domiciled with us. If you are an existing client please contact reception, otherwise choose a different name.");
+        requestAnimationFrame(() => document.getElementById("err-companyName")?.focus());
+        return;
+      }
       if (res.status === 409 && data.catalog) { setCatalog(data.catalog); setForm(f => ({ ...f, termsAccepted: false })); setStatus(it ? "Le tariffe sono state aggiornate. Controlla il nuovo riepilogo e accetta nuovamente le condizioni." : "Prices have changed. Review the new summary and accept the terms again."); return; }
       if (!res.ok) throw new Error(data.error || "error");
       setOrderId(data.orderId);
