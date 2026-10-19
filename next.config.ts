@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
   // new URL instead of starting from zero (and so the old URL doesn't start 404ing).
   async redirects() {
     return [
+      // One canonical host: the bare domain answered 200 with a duplicate of every page, splitting
+      // clicks and links between romaofficesharing.it and www.romaofficesharing.it.
+      // /api is excluded: payment webhooks and other server-to-server callers do not follow redirects.
+      { source: "/:path((?!api/).*)", has: [{ type: "host", value: "romaofficesharing.it" }], destination: "https://www.romaofficesharing.it/:path", permanent: true },
       { source: "/domiciliazione-sede-legale.html", destination: "/domiciliazione-sede-legale-roma.html", permanent: true },
       { source: "/servizi-domiciliazione.html", destination: "/servizi-domiciliazione-sede-roma.html", permanent: true },
       // Old-site URLs (pre-relaunch) still known to Google/backlinks: map each to its closest page
@@ -21,6 +25,13 @@ const nextConfig: NextConfig = {
       { source: "/domiciliazione-sede-fiscale-e-legale", destination: "/domiciliazione-sede-legale-roma.html", permanent: true },
       { source: "/it/domiciliazione-sede-legale-in-roma", destination: "/domiciliazione-sede-legale-roma.html", permanent: true },
       { source: "/it/informazioni-domiciliazione-sede-societa-roma-oc", destination: "/domiciliazione-sede-legale-roma.html", permanent: true },
+      { source: "/it/domiciliazione-sede-legale-societa-a-roma", destination: "/domiciliazione-sede-legale-roma.html", permanent: true },
+      { source: "/it/roma-office-sharing-domiciliazione-sede-legale", destination: "/domiciliazione-sede-legale-roma.html", permanent: true },
+      { source: "/it/domiciliazione-unita-locale-societa", destination: "/domiciliazione-unita-locale.html", permanent: true },
+      { source: "/affitto-ufficio-temporaneo/affitto-ufficio-temporaneo-roma", destination: "/ufficio-temporaneo.html", permanent: true },
+      { source: "/it/affitto-ufficio-temporaneo/affitto-ufficio-temporaneo-roma", destination: "/ufficio-temporaneo.html", permanent: true },
+      { source: "/servizi-di-domiciliazione-sede-legale-a-roma/domiciliazione-professionale-a-roma", destination: "/domiciliazione-professionale.html", permanent: true },
+      { source: "/it/servizi-di-domiciliazione-sede-legale-a-roma/domiciliazione-professionale-a-roma", destination: "/domiciliazione-professionale.html", permanent: true },
       { source: "/servizi-di-domiciliazione-sede-legale-a-roma/:slug*", destination: "/domiciliazione-sede-legale-roma.html", permanent: true },
       { source: "/it/servizi-di-domiciliazione-sede-legale-a-roma/:slug*", destination: "/domiciliazione-sede-legale-roma.html", permanent: true },
       { source: "/it/domiciliazione-sede-legale-ditta-individuale", destination: "/domiciliazione-ditta-individuale.html", permanent: true },
