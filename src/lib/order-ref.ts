@@ -11,6 +11,9 @@ const SERVICE_SUFFIX: Record<ServiceCode, string> = { legal_unit: "DSL", postal:
  * transfer causale — display only, never used to look up an order (the real identifier for that
  * is orders.publicId, a UUID kept internal to URLs/webhooks/OTP matching).
  */
+/** "DSL" / "DP": the short code of what was bought, as used at the end of the practice number. */
+export function serviceCode(service: ServiceCode): string { return SERVICE_SUFFIX[service]; }
+
 export function shortOrderRef(taxCode: string, createdAt: Date, service: ServiceCode): string {
   const normalized = normalizeTaxCode(taxCode).replace(/[^A-Z0-9]/g, "");
   const prefix = (normalized.slice(0, 6) || "XXXXXX").padEnd(6, "X");

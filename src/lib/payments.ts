@@ -2,7 +2,7 @@ import Stripe from "stripe";
 import type { Lang } from "./site";
 
 export type ProviderKey = "stripe" | "paypal" | "sumup";
-export type SessionInput = { provider: ProviderKey; service?: "legal_unit" | "postal"; orderId: string; description: string; totalCents: number; lang: Lang; origin: string; email?: string; testMode: boolean };
+export type SessionInput = { transactionLabel?: string; provider: ProviderKey; service?: "legal_unit" | "postal"; orderId: string; description: string; totalCents: number; lang: Lang; origin: string; email?: string; testMode: boolean };
 export type SessionResult = { url: string; providerRef: string } | { demo: true; message: string };
 
 export function returnPath(lang: Lang): string {
@@ -55,6 +55,9 @@ async function createStripeSession(input: SessionInput): Promise<SessionResult> 
     mode: "payment",
     customer_email: input.email && !input.email.endsWith(".invalid") ? input.email : undefined,
     line_items: [{ quantity: 1, price_data: { currency: "eur", unit_amount: input.totalCents, product_data: { name: input.description } } }],
+    // Without this the Stripe dashboard lists the payment by its bare pi_... id: the line-item name above
+    // only appears on the Checkout page, not on the PaymentIntent.
+    payment_intent_data: { description: input.transactionLabel ?? input.description, metadata: { orderId: input.orderId, service: input.service || "legal_unit" } },
     metadata: { orderId: input.orderId, service: input.service || "legal_unit" },
     success_url: `${base}?service=${input.service || "legal_unit"}&payment=return&provider=stripe&order=${input.orderId}&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${base}?service=${input.service || "legal_unit"}&payment=cancelled&provider=stripe&order=${input.orderId}`,

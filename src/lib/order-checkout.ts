@@ -5,7 +5,7 @@ import { orders } from "@/db/schema";
 import { readyOrder } from "./order-access";
 import { CustomerError } from "./customer-auth";
 import { copyFor, shortServiceLabel } from "./pricing";
-import { shortOrderRef } from "./order-ref";
+import { serviceCode, shortOrderRef } from "./order-ref";
 import { createPaymentSession, providerConfigured, type ProviderKey } from "./payments";
 import { getProviderTestModes, paymentMethodEnabled } from "./payment-settings";
 export async function checkoutOrder(req: NextRequest, orderId: string, provider: ProviderKey) {
@@ -31,7 +31,9 @@ export async function checkoutOrder(req: NextRequest, orderId: string, provider:
     // payment be matched to the order from the SumUp/Stripe/PayPal transaction list.
     const practiceRef = shortOrderRef(data.representativeTaxCode, order.createdAt, snapshot.product.code);
     const description = `${practiceRef} — ${shortServiceLabel(snapshot.product.code, data.lang)} — ${copy.months(order.durationMonths)} — ${data.representativeName} (CF ${data.representativeTaxCode})`;
-    const session = await createPaymentSession({ provider, service: snapshot.product.code, orderId, lang: data.lang, origin, email: order.email, totalCents: order.amountCents, description, testMode });
+    // What the provider's transaction list shows: what was bought (DSL / DP), buyer's codice fiscale, practice number.
+    const transactionLabel = `${serviceCode(snapshot.product.code)} — CF ${data.representativeTaxCode} — ${practiceRef}`;
+    const session = await createPaymentSession({ provider, service: snapshot.product.code, orderId, lang: data.lang, origin, email: order.email, totalCents: order.amountCents, description, transactionLabel, testMode });
     if (!("url" in session)) return { paymentUnavailable: true, message: session.message };
     await tx.update(orders).set({ provider, providerReference: session.providerRef, paymentMethod: provider, checkoutUrl: session.url, testMode, updatedAt: new Date() }).where(eq(orders.id, order.id));
     return { url: session.url, orderRef: orderId };
