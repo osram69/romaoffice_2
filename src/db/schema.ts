@@ -1,4 +1,4 @@
-import { boolean, date, integer, jsonb, pgEnum, pgTable, serial, text, timestamp, varchar, uuid, uniqueIndex } from "drizzle-orm/pg-core";
+import { type AnyPgColumn, boolean, date, integer, jsonb, pgEnum, pgTable, serial, text, timestamp, varchar, uuid, uniqueIndex } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 export const orderStatus = pgEnum("order_status", ["pending", "paid", "filled", "signed", "cancelled"]);
@@ -217,6 +217,11 @@ export const domClients = pgTable("dom_clients", {
   contrattoClienteAt: timestamp("contratto_cliente_at", { withTimezone: true }),
   // Same for the administrator's identity document the customer uploads from the Area Clienti.
   docAmmClienteAt: timestamp("doc_amm_cliente_at", { withTimezone: true }),
+  // "Domiciliazione aggiuntiva": an additional company of the same owner, covered by the contract variant with the
+  // additional-domiciliation discount. capofilaId points to the (active) company it depends on; if that one stops
+  // being active the dependants are flagged in the "Attive" list.
+  aggiuntiva: boolean("aggiuntiva").notNull().default(false),
+  capofilaId: integer("capofila_id").references((): AnyPgColumn => domClients.id, { onDelete: "set null" }),
   amministratore: text("amministratore"),
   telefonoAmm: text("telefono_amm"),
   personaRif: text("persona_rif"),

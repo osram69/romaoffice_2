@@ -62,7 +62,9 @@ class Pen {
   /** Justified single line of the original Times-Roman 10 pt body text, redrawn with new values. */
   justified(text: string, x0: number, x1: number, baseline: number, times: PDFFont, size = 9.957) {
     const words = this.cleanWith(times, text.trim()).split(" ");
-    const widths = words.map(w => times.widthOfTextAtSize(w, size));
+    let widths = words.map(w => times.widthOfTextAtSize(w, size));
+    // Never overflow the line: shrink the type a little instead of squeezing the words together.
+    while (size > 8.5 && widths.reduce((a, b) => a + b, 0) + (words.length - 1) * 2.2 > x1 - x0) { size -= 0.1; widths = words.map(w => times.widthOfTextAtSize(w, size)); }
     const gap = words.length > 1 ? Math.max(0, (x1 - x0 - widths.reduce((a, b) => a + b, 0)) / (words.length - 1)) : 0;
     let x = x0;
     words.forEach((w, i) => {
@@ -95,7 +97,7 @@ const L_RAPP: PersonLayout = {
   cf: [116, 396, 196], nascLuogo: [145, 449, 217], nascProv: [482, 509, 217], nascData: [136, 221, 237], cittadinanza: [312, 494, 237],
   docTipo: [195, 510, 258], docNumero: [120, 394, 284], docRil: [117, 202, 314], docScad: [330, 415, 314], autorita: [129, 509, 334],
   docComune: [96, 333, 355], docProv: [376, 510, 355], docStato: [81, 509, 376], pepMotivo: [123, 510, 426],
-  pepNo: [57, 405], pepSi: [57, 415], pairs: [475, 495, 527, 591, 610], xYes: 57, xNo: 113,
+  pepNo: [57, 406], pepSi: [57, 416], pairs: [476, 496, 528, 592, 611], xYes: 57, xNo: 113,
 };
 // Executor (page 12)
 const L_ESEC: PersonLayout = {
@@ -103,7 +105,7 @@ const L_ESEC: PersonLayout = {
   cf: [116, 396, 190], nascLuogo: [145, 454, 211], nascProv: [459, 486, 211], nascData: [136, 221, 231], cittadinanza: [312, 485, 231],
   docTipo: [195, 510, 252], docNumero: [120, 394, 278], docRil: [117, 202, 308], docScad: [330, 415, 308], autorita: [129, 516, 328],
   docComune: [96, 315, 349], docProv: [358, 480, 349], docStato: [81, 496, 370], pepMotivo: [123, 492, 420],
-  pepNo: [57, 399], pepSi: [57, 409], pairs: [460, 481, 512], xYes: 57, xNo: 92,
+  pepNo: [57, 400], pepSi: [57, 410], pairs: [461, 482, 513], xYes: 57, xNo: 92,
 };
 // Beneficial owner (page 13, repeated once per owner)
 const L_TIT: PersonLayout = {
@@ -111,7 +113,7 @@ const L_TIT: PersonLayout = {
   cf: [116, 396, 185], nascLuogo: [145, 438, 205], nascProv: [478, 505, 205], nascData: [136, 221, 226], cittadinanza: [312, 503, 226],
   docTipo: [195, 510, 247], docNumero: [120, 394, 268], docRil: [117, 202, 297], docScad: [330, 415, 297], autorita: [129, 516, 318],
   docComune: [96, 351, 339], docProv: [394, 510, 339], docStato: [81, 509, 360], pepMotivo: [123, 510, 431], motivoTit: [212, 509, 389],
-  pepNo: [57, 410], pepSi: [57, 420], pairs: [479, 500, 531, 584, 603], xYes: 57, xNo: 92,
+  pepNo: [57, 410], pepSi: [57, 421], pairs: [480, 501, 532, 585, 604], xYes: 57, xNo: 92,
 };
 
 function drawPerson(pen: Pen, p: Person, L: PersonLayout, declarations: number) {
@@ -158,19 +160,20 @@ export async function buildContractPdf(template: ArrayBuffer | Uint8Array, d: Co
 
   // Page 1 — le parti
   let p = pen(byIndex[0]);
-  p.line(d.societa, 150, 431, 264); p.line(d.sedeVia, 43, 257, 283); p.line(d.sedeCitta, 293, 475, 283); p.line(d.sedeCap, 503, 553, 283);
-  p.line(d.sedeProv, 89, 114, 302); p.line(d.capitale, 268, 360, 302); p.line(d.cfRegImp.toUpperCase(), 43, 257, 321); p.line(d.piva, 296, 466, 321);
-  p.line(d.pec, 93, 302, 340, 8.5); p.line(d.sdi.toUpperCase(), 359, 469, 340); p.line(d.repQualifica, 320, 523, 359);
-  p.line(d.repNome, 43, 243, 378); p.line(d.repNatoA, 399, 553, 378); p.line(dmy(d.repNatoIl), 57, 216, 397);
-  p.line(d.repResVia, 326, 524, 397); p.line(d.repResCitta, 43, 285, 416); p.line(d.repResCap, 339, 378, 416); p.line(d.repResProv, 437, 474, 416);
-  p.line(d.repCf.toUpperCase(), 43, 235, 435); p.line(d.repEmail, 267, 473, 435, 8.5);
+  p.line(d.societa, 177, 458, 264); p.line(d.sedeVia, 43, 257, 283); p.line(d.sedeCitta, 288, 470, 283); p.line(d.sedeCap, 497, 546, 283);
+  p.line(d.sedeProv, 88, 113, 302); p.line(d.capitale, 265, 356, 302); p.line(d.cfRegImp.toUpperCase(), 43, 257, 321); p.line(d.piva, 296, 466, 321);
+  p.line(d.pec, 93, 302, 340, 8.5); p.line(d.sdi.toUpperCase(), 359, 469, 340); p.line(d.repQualifica, 314, 517, 359);
+  p.line(d.repNome, 43, 244, 378); p.line(d.repNatoA, 43, 197, 397); p.line(dmy(d.repNatoIl), 241, 401, 397);
+  p.line(d.repResVia, 43, 241, 416); p.line(d.repResCitta, 276, 518, 416); p.line(d.repResCap, 43, 81, 435); p.line(d.repResProv, 151, 190, 435);
+  p.line(d.repCf.toUpperCase(), 305, 498, 435); p.line(d.repEmail, 43, 249, 454, 8.5);
 
   // Page 4 — canone, durata e decorrenza (printed values replaced, same Times 10 pt look)
   p = pen(byIndex[3]);
-  p.whiteout(42, 105.2, 567, 115.6);
-  p.justified(`Il canone del servizio di domiciliazione con durata di ${d.durataMesi} mesi è fissato complessivamente in € ${eur(d.canoneEuro)} + IVA (attuale`, 42.6, 565.65, 112.44, times);
-  p.whiteout(42, 182.8, 557, 193.4);
-  p.justified(`Il servizio di domiciliazione avrà durata di ${d.durataMesi} mesi a partire dalla data del ${dmy(d.dataInizio)}. Il servizio si intenderà tacitamente`, 42.6, 555.45, 190.2, times);
+  p.whiteout(42, 285.6, 567, 296.7);
+  // The "aggiuntiva" contract continues the same sentence on the next line ("… sconto 10% su domiciliazione aggiuntiva¹ …").
+  p.justified(`Il canone del servizio di domiciliazione con durata di ${d.durataMesi} mesi è fissato complessivamente in € ${eur(d.canoneEuro)} + IVA ${d.aggiuntiva ? "(attuale promozione +" : "(attuale"}`, 42.6, 558.5, 294.2, times);
+  p.whiteout(42, 363.3, 557, 374.3);
+  p.justified(`Il servizio di domiciliazione avrà durata di ${d.durataMesi} mesi a partire dalla data del ${dmy(d.dataInizio)}. Il servizio si intenderà tacitamente`, 42.6, 548.3, 372.0, times);
 
   // Page 8 — Allegato 1
   p = pen(byIndex[7]);
@@ -181,14 +184,14 @@ export async function buildContractPdf(template: ArrayBuffer | Uint8Array, d: Co
     [x.nome, x.cognome, x.documento, x.note].forEach((v, c) => p.line(v, cols[c] + 2, cols[c + 1] - 2, y1 + 3, 8));
   });
   p.line(d.telUrgenze, 395, 527, 226); p.line(d.intestazione, 220, 462, 264);
-  p.line(d.inoltroNome, 218, 498, 314); p.line(d.inoltroVia, 105, 495, 333); p.line(d.inoltroComune, 99, 328, 352); p.line(d.inoltroProv, 359, 395, 352); p.line(d.inoltroCap, 430, 483, 352);
+  p.line(d.inoltroNome, 218, 498, 313); p.line(d.inoltroVia, 105, 495, 333); p.line(d.inoltroComune, 99, 328, 351); p.line(d.inoltroProv, 359, 395, 351); p.line(d.inoltroCap, 430, 483, 351);
   if (d.svcLineaTel) p.cross(57, 389, 9, 10);
   if (d.svcDenomPostale) { p.cross(57, 408, 9, 10); p.line(d.denomPostaleTesto, 241, 408, 420, 8.5); }
-  if (d.svcApertura) p.cross(57, 451, 9, 10);
-  if (d.svcArchivio) p.cross(57, 470, 9, 10);
-  if (d.svcInoltro) p.cross(57, 489, 9, 10);
+  if (d.svcApertura) p.cross(57, 452, 9, 10);
+  if (d.svcArchivio) p.cross(57, 471, 9, 10);
+  if (d.svcInoltro) p.cross(57, 490, 9, 10);
   const [local, domain = ""] = d.emailScansioni.split("@");
-  p.line(local, 117, 283, 678, 8.5); p.line(domain, 291, 491, 678, 8.5);
+  p.line(local, 117, 283, 677, 8.5); p.line(domain, 291, 491, 677, 8.5);
 
   // Page 9 — Allegato 2
   p = pen(byIndex[8]);

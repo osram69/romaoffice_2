@@ -26,10 +26,13 @@ const STATI = [
   { value: -1, label: "Vuota" },
 ];
 
-export function DomForm({ client, action, deleteAction, onClose }: { client?: DomClient; action: (formData: FormData) => void | Promise<void>; deleteAction?: (formData: FormData) => void; onClose?: () => void }) {
+export type CapofilaOption = { id: number; ragioneSociale: string };
+
+export function DomForm({ client, action, deleteAction, onClose, capofile = [] }: { client?: DomClient; capofile?: CapofilaOption[]; action: (formData: FormData) => void | Promise<void>; deleteAction?: (formData: FormData) => void; onClose?: () => void }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [aggiuntiva, setAggiuntiva] = useState(!!client?.aggiuntiva);
 
   // A plain `action={...}` form submission gives no feedback at all when it succeeds — the modal
   // just sits there with the values the operator typed, looking exactly like a no-op even though
@@ -107,6 +110,23 @@ export function DomForm({ client, action, deleteAction, onClose }: { client?: Do
             {row(
               field("Raccoglitore", <input name="raccoglitore" type="number" defaultValue={client?.raccoglitore ?? 0} />),
               field("Indirizzo spedizione posta", text("indSpedPosta", client?.indSpedPosta))
+            )}
+            {row(
+              field("Domiciliazione aggiuntiva", (
+                <label style={{ display: "inline-flex", gap: 6, alignItems: "center", fontWeight: 400 }}>
+                  <input type="checkbox" name="aggiuntiva" checked={aggiuntiva} onChange={e => setAggiuntiva(e.target.checked)} />
+                  contratto “aggiuntiva” (sconto su domiciliazione aggiuntiva)
+                </label>
+              )),
+              aggiuntiva
+                ? field("Società capofila", (
+                  <select name="capofilaId" defaultValue={client?.capofilaId ?? ""}>
+                    <option value="">— seleziona la capofila (attiva) —</option>
+                    {capofile.filter(c => c.id !== client?.id).map(c => <option key={c.id} value={c.id}>{c.ragioneSociale}</option>)}
+                    {client?.capofilaId && !capofile.some(c => c.id === client.capofilaId) && <option value={client.capofilaId}>(capofila non più attiva)</option>}
+                  </select>
+                ))
+                : undefined
             )}
             {row(
               field("Email area clienti", <input name="areaClientiEmail" type="email" defaultValue={client?.areaClientiEmail ?? ""} placeholder="email usata dal cliente per accedere" />)

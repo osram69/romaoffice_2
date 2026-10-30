@@ -58,13 +58,24 @@ function fields(formData: FormData) {
     raccoglitore: Number(formData.get("raccoglitore")) || 0,
     prezzoRinnovo: formData.get("prezzoRinnovo") ? Math.round(Number(formData.get("prezzoRinnovo"))) : null,
     areaClientiEmail: str(formData, "areaClientiEmail")?.toLowerCase() ?? null,
+    aggiuntiva: formData.get("aggiuntiva") === "on",
+    capofilaId: formData.get("aggiuntiva") === "on" && Number(formData.get("capofilaId")) > 0 ? Number(formData.get("capofilaId")) : null,
   };
+}
+
+// A capofila must be an existing, active company other than the one being saved.
+async function validCapofila(values: { aggiuntiva: boolean; capofilaId: number | null }, selfId?: number) {
+  if (!values.aggiuntiva || values.capofilaId === null) return null;
+  if (values.capofilaId === selfId) return null;
+  const [row] = await db.select({ id: domClients.id, stato: domClients.stato }).from(domClients).where(eq(domClients.id, values.capofilaId)).limit(1);
+  return row && row.stato === 1 ? row.id : null;
 }
 
 export async function createDomiciliazioneAction(formData: FormData) {
   "use server";
   await requireStaff();
-  await db.insert(domClients).values(fields(formData));
+  const values = fields(formData);
+  await db.insert(domClients).values({ ...values, capofilaId: await validCapofila(values) });
   revalidatePath(BASE_PATH);
 }
 
@@ -72,7 +83,8 @@ export async function updateDomiciliazioneAction(formData: FormData) {
   "use server";
   await requireStaff();
   const id = Number(formData.get("id"));
-  const values = fields(formData);
+  const values = { ...fields(formData) };
+  values.capofilaId = await validCapofila(values, id);
   const [previous] = await db.select({ scadenzaDom: domClients.scadenzaDom }).from(domClients).where(eq(domClients.id, id)).limit(1);
   // A new scadenza starts a new reminder cycle: the "già inviata" flag and the saved draft (which
   // quotes the old date) both belong to the previous one.

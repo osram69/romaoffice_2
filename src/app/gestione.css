@@ -257,3 +257,7 @@ tr.gestione-letter-row { scroll-margin-top: 70px; }
 @media (max-width: 900px) {
   .contract-proc-zones { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* "Aggiuntiva" company whose capofila is no longer active */
+.gestione-ragione-name.orfana { background: #ffe27a; color: #5b4300 !important; padding: 1px 6px; border-radius: 3px; }
+.gestione-orfane-banner { background: #fff6cc; border: 1px solid #e6c84a; border-left: 4px solid #e0a800; border-radius: 4px; padding: 10px 14px; margin: 0 0 14px; font-size: 13px; color: #5b4300; }

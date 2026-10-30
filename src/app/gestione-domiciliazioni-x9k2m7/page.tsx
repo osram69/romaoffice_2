@@ -20,12 +20,13 @@ export default async function DomiciliazioniPage({ searchParams }: { searchParam
   const rows = await db.select().from(domClients).where(eq(domClients.stato, stato)).orderBy(asc(domClients.ragioneSociale));
   // Drives which rows show Invia/PEC/Aperta as enabled ("dimmed" otherwise, matching the legacy
   // tool): a client has a pending mail scan once Allega has been used and until it's sent/discarded.
+  const attive = await db.select({ id: domClients.id, ragioneSociale: domClients.ragioneSociale }).from(domClients).where(eq(domClients.stato, 1)).orderBy(asc(domClients.ragioneSociale));
   const pendingScans = await db.selectDistinct({ domClientId: domMailScans.domClientId }).from(domMailScans);
 
   return (
     <GestioneShell role={user.role} active="domiciliazioni" username={user.username}>
       <h1 className="gestione-h1" style={{ textAlign: "center", marginBottom: 24 }}>Elenco Domiciliazioni {LABELS[stato] ?? ""}</h1>
-      <DomiciliazioniTable rows={rows} stato={stato} pendingScanIds={pendingScans.map(p => p.domClientId)} />
+      <DomiciliazioniTable rows={rows} stato={stato} pendingScanIds={pendingScans.map(p => p.domClientId)} capofile={attive} />
     </GestioneShell>
   );
 }

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { sql } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { domClients } from "@/db/schema";
 import type { StaffRole } from "@/lib/staff-auth";
@@ -20,9 +20,11 @@ async function statoCounts() {
 
 export async function GestioneShell({ role, active, username, children }: { role: StaffRole; active: "tariffe" | "domiciliazioni" | "configurazione" | "ordini"; username: string; children: ReactNode }) {
   const tabs = await statoCounts();
+  // Active companies, for the "società capofila" dropdown of the new/edit domiciliazione form.
+  const capofile = active === "domiciliazioni" ? await db.select({ id: domClients.id, ragioneSociale: domClients.ragioneSociale }).from(domClients).where(eq(domClients.stato, 1)).orderBy(asc(domClients.ragioneSociale)) : [];
   return (
     <div className="gestione-shell">
-      <GestioneSidebar role={role} active={active} username={username} tabs={tabs} newDomiciliazioneAction={active === "domiciliazioni" ? createDomiciliazioneAction : undefined} />
+      <GestioneSidebar role={role} active={active} username={username} tabs={tabs} newDomiciliazioneAction={active === "domiciliazioni" ? createDomiciliazioneAction : undefined} capofile={capofile} />
       <main className="gestione-main">{children}</main>
     </div>
   );

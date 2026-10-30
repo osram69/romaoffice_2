@@ -27,8 +27,8 @@ export async function GET(req: NextRequest, { params }: Props) {
     }
     if (action === "template") {
       await limit(`contract-template:${client.id}`, 60, 300);
-      // The blank Rev. F contract; read from the repo, served only to a signed-in customer.
-      const pdf = await readFile(path.join(process.cwd(), "src", "assets", "contract", "contratto-domiciliazione-rev-f.pdf"));
+      // The blank contract (standard or "aggiuntiva" variant, per the domiciliazione record); read from the repo, served only to a signed-in customer.
+      const pdf = await readFile(path.join(process.cwd(), "src", "assets", "contract", client.aggiuntiva ? "contratto-domiciliazione-aggiuntiva.pdf" : "contratto-domiciliazione.pdf"));
       return new Response(new Uint8Array(pdf), { headers: { "Content-Type": "application/pdf", "Content-Length": String(pdf.length), ...NO_STORE } });
     }
     throw new CustomerError("notFound", 404);

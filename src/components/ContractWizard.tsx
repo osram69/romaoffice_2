@@ -63,7 +63,7 @@ function UploadRow({ title, hint, accept, pickLabel, file, done, busy, canUpload
 }
 
 /** Reminder shown right before the contract PDF is downloaded. */
-function ReadConfirmDialog({ open, onCancel, onConfirm }: { open: boolean; onCancel: () => void; onConfirm: () => void }) {
+function ReadConfirmDialog({ open, aggiuntiva, onCancel, onConfirm }: { open: boolean; aggiuntiva: boolean; onCancel: () => void; onConfirm: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const d = ref.current;
@@ -75,7 +75,7 @@ function ReadConfirmDialog({ open, onCancel, onConfirm }: { open: boolean; onCan
     <dialog ref={ref} className="standard-offer-dialog cw-confirm" aria-labelledby="cw-confirm-title" onCancel={e => { e.preventDefault(); onCancel(); }}>
       <h3 id="cw-confirm-title"><AlertTriangle aria-hidden="true" /> Leggi attentamente il contratto</h3>
       <p>Stai per scaricare il <b>contratto completo</b>. Prima di stamparlo e firmarlo ti chiediamo di <b>leggere con attenzione tutte le clausole</b>, compresi gli allegati e l’informativa sulla privacy.</p>
-      <p>In particolare le clausole <b>4, 5, 7, 8, 9, 10, 11, 12, 13 e 16</b> vanno approvate specificamente con una seconda firma (art. 1341 c.c., pagina 6). Con la tua firma dichiari di averne compreso e accettato l’intero contenuto.</p>
+      <p>In particolare le clausole <b>{aggiuntiva ? "3, 4.1, 4.9, 4.11, 4.13, 4.14, 7, 8, 10, 11, 14, 16, 18, 19 e 20" : "3, 4.1, 4.9, 4.11, 4.13, 4.14, 7, 8, 10, 11, 16, 18, 19 e 20"}</b> vanno approvate specificamente con una seconda firma (art. 1341 c.c., pagina 6). Con la tua firma dichiari di averne compreso e accettato l’intero contenuto.</p>
       <div className="cw-confirm-actions">
         <button type="button" className="button" onClick={onCancel}>Annulla</button>
         <button type="button" className="button primary" onClick={onConfirm}><Download aria-hidden="true" />Ho capito, scarica il PDF</button>
@@ -349,7 +349,7 @@ export function ContractWizard({ onSessionExpired: onExpired }: { onSessionExpir
   switch (STEPS[step].id) {
     case "intro":
       body = <>
-        <p className="cw-lead">Compila online il <b>Contratto di domiciliazione sede legale</b> completo di allegati e adeguata verifica antiriciclaggio. Il sistema controlla i campi obbligatori e prepara il PDF già compilato.</p>
+        <p className="cw-lead">Compila online il <b>Contratto di domiciliazione sede legale{data.aggiuntiva ? " (domiciliazione aggiuntiva)" : ""}</b> completo di allegati e adeguata verifica antiriciclaggio. Il sistema controlla i campi obbligatori e prepara il PDF già compilato.</p>
         <ol className="cw-phases">
           <li><b>Compila</b> i dati in 8 brevi passaggi. Le risposte si salvano da sole: puoi interrompere e riprendere quando vuoi.</li>
           <li><b>Scarica</b> il PDF compilato, <b>stampalo</b> e <b>firmalo</b> nei punti indicati (allega la fotocopia dei documenti d’identità).</li>
@@ -523,7 +523,7 @@ export function ContractWizard({ onSessionExpired: onExpired }: { onSessionExpir
         <div className="cw-upload">
           <UploadRow
             title="Hai firmato il contratto?"
-            hint="Stampa il PDF, firmalo nei punti indicati (pagine 5, 6, 7, 8, 9 e 14: luogo e data, timbro e firma) e caricalo qui in PDF (anche una scansione con il telefono)."
+            hint="Stampa il PDF, firmalo nei punti indicati (pagine 6, 7, 8, 9 e 14: luogo e data, timbro e firma) e caricalo qui in PDF (anche una scansione con il telefono)."
             accept="application/pdf" pickLabel="Seleziona il contratto firmato" file={signedFile} done={signedDone} busy={uploading === "signed"}
             canUpload={!!signedFile && readFlag && uploading === null} onPick={f => pickFile("signed", f)} onUpload={() => void upload("signed")}
             flag={signedFile ? <label className="cw-check cw-up-flag"><input type="checkbox" checked={readFlag} onChange={e => setReadFlag(e.target.checked)} /><span>Dichiaro di aver letto integralmente il contratto.</span></label> : null}
@@ -558,7 +558,7 @@ export function ContractWizard({ onSessionExpired: onExpired }: { onSessionExpir
         {step < STEPS.length - 1 && <button type="button" className="button primary" onClick={next}>{step === 0 ? "Inizia" : "Avanti"}<ArrowRight aria-hidden="true" /></button>}
         {step === STEPS.length - 1 && <span className="cw-ok"><FileCheck2 aria-hidden="true" /></span>}
       </div>
-      <ReadConfirmDialog open={readOpen} onCancel={() => setReadOpen(false)} onConfirm={() => { setReadOpen(false); void generate(); }} />
+      <ReadConfirmDialog open={readOpen} aggiuntiva={data.aggiuntiva} onCancel={() => setReadOpen(false)} onConfirm={() => { setReadOpen(false); void generate(); }} />
       <ContractInstructions open={instr.open} tab={instr.tab} onClose={() => setInstr(i => ({ ...i, open: false }))} onTab={tab => setInstr({ open: true, tab })} />
     </div>
   );

@@ -5,7 +5,7 @@ import type { InferSelectModel } from "drizzle-orm";
 import type { domClients } from "@/db/schema";
 import { cleanText, docStatus, DOC_LABELS, PRESENZA_FILE_BITS, scadenzaRowClass } from "@/lib/dom-status";
 import type { DocType } from "@/lib/dom-archive";
-import { DomForm } from "./DomForm";
+import { DomForm, type CapofilaOption } from "./DomForm";
 import { DeleteIconButton } from "./DeleteIconButton";
 import { ActionFormButton } from "./ActionFormButton";
 import { ScadenzaEmailPanel } from "./ScadenzaEmailPanel";
@@ -79,7 +79,13 @@ function pairedRows(fields: Field[]) {
   return out;
 }
 
-export function DomiciliazioniTable({ rows, stato, pendingScanIds }: { rows: DomClient[]; stato: number; pendingScanIds: number[] }) {
+export function DomiciliazioniTable({ rows, stato, pendingScanIds, capofile = [] }: { rows: DomClient[]; stato: number; pendingScanIds: number[]; capofile?: CapofilaOption[] }) {
+  // An "aggiuntiva" company whose capofila is no longer active (or was never chosen) loses the reason for its contract
+  // variant: checked every time the list is opened, and highlighted in yellow until reception sorts it out.
+  const activeIds = useMemo(() => new Set(capofile.map(c => c.id)), [capofile]);
+  const capofilaName = (id: number | null) => (id ? capofile.find(c => c.id === id)?.ragioneSociale : undefined);
+  const isOrfana = (row: DomClient) => stato === 1 && row.aggiuntiva && (!row.capofilaId || !activeIds.has(row.capofilaId));
+  const orfane = useMemo(() => rows.filter(isOrfana), [rows, activeIds]); // eslint-disable-line react-hooks/exhaustive-deps
   const [viewing, setViewing] = useState<DomClient | null>(null);
   const [editing, setEditing] = useState<DomClient | null>(null);
   const [scanning, setScanning] = useState<DomClient | null>(null);
@@ -158,6 +164,12 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds }: { rows: Dom
 
   return (
     <>
+      {orfane.length > 0 && (
+        <div className="gestione-orfane-banner" role="alert">
+          <b>Attenzione:</b> {orfane.length === 1 ? "1 domiciliazione aggiuntiva ha" : `${orfane.length} domiciliazioni aggiuntive hanno`} la società capofila non più attiva (o non indicata) e {orfane.length === 1 ? "è evidenziata" : "sono evidenziate"} in giallo: {orfane.map(r => r.ragioneSociale).join(", ")}.
+          Modifica {orfane.length === 1 ? "la domiciliazione" : "le domiciliazioni"} per indicare una nuova capofila o togliere la spunta “aggiuntiva”.
+        </div>
+      )}
       <div className="gestione-card" style={{ overflowX: "auto" }}>
         <table className="gestione-table dom-list-table">
           <thead>
@@ -215,7 +227,7 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds }: { rows: Dom
                       <td><span className={`gestione-doc-dot ${docStatus(row)}`} title="Stato documenti" /></td>
                       <td>{row.raccoglitore}</td>
                       <td style={{ maxWidth: 220 }}>
-                        <button type="button" className={`gestione-ragione-link gestione-ragione-name${(row.presenzaFile & PRESENZA_FILE_BITS.rev) === PRESENZA_FILE_BITS.rev ? " revoca" : ""}`} title={row.ragioneSociale} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit", textAlign: "left" }} onClick={() => openScheda(row)}>
+                        <button type="button" className={`gestione-ragione-link gestione-ragione-name${(row.presenzaFile & PRESENZA_FILE_BITS.rev) === PRESENZA_FILE_BITS.rev ? " revoca" : ""}${isOrfana(row) ? " orfana" : ""}`} title={isOrfana(row) ? `${row.ragioneSociale} — domiciliazione aggiuntiva: la società capofila non è più attiva${row.capofilaId ? "" : " (non indicata)"}` : row.ragioneSociale} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit", textAlign: "left" }} onClick={() => openScheda(row)}>
                           {row.ragioneSociale}
                         </button>
                       </td>
@@ -302,6 +314,7 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds }: { rows: Dom
                       ["Telefono", cleanText(viewing.telefono)],
                       ["Telefono urgenze", cleanText(viewing.telefonoUrg)],
                       ["Raccoglitore", viewing.raccoglitore],
+                      ["Domiciliazione aggiuntiva", viewing.aggiuntiva ? `Sì — capofila: ${capofilaName(viewing.capofilaId) ?? (viewing.capofilaId ? "non più attiva" : "non indicata")}` : "No"],
                       ["Inizio domiciliazione", fmtDate(viewing.inizioDom)],
                       ["Scadenza domiciliazione", fmtDate(viewing.scadenzaDom)],
                       ["Scadenza pagamento", fmtDate(viewing.scadenzaPagamento)],
@@ -367,7 +380,7 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds }: { rows: Dom
               <button type="button" className="gestione-modal-close" aria-label="Chiudi" onClick={() => setEditing(null)}>×</button>
             </div>
             <div className="gestione-modal-body">
-              <DomForm client={editing} action={updateDomiciliazioneAction} deleteAction={editing.stato === 0 ? deleteDomiciliazioneAction : undefined} onClose={() => setEditing(null)} />
+              <DomForm client={editing} capofile={capofile} action={updateDomiciliazioneAction} deleteAction={editing.stato === 0 ? deleteDomiciliazioneAction : undefined} onClose={() => setEditing(null)} />
             </div>
           </div>
         </div>

@@ -34,6 +34,8 @@ export type ContractData = {
   repResVia: string; repResCitta: string; repResCap: string; repResProv: string; repCf: string; repEmail: string;
   // Condizioni (di sola lettura per il cliente: le imposta la reception)
   durataMesi: number; canoneEuro: number; dataInizio: string;
+  // "Domiciliazione aggiuntiva": uses the contract variant with the additional-domiciliation discount (set by reception)
+  aggiuntiva: boolean;
   // Allegato 1
   delegati: Delegato[]; telUrgenze: string; intestazione: string;
   inoltroNome: string; inoltroVia: string; inoltroComune: string; inoltroProv: string; inoltroCap: string;
@@ -70,7 +72,7 @@ export function emptyContract(): ContractData {
   return {
     societa: "", sedeVia: "", sedeCitta: "", sedeCap: "", sedeProv: "", capitale: "", cfRegImp: "", piva: "", pec: "", sdi: "",
     repQualifica: "", repNome: "", repNatoA: "", repNatoIl: "", repResVia: "", repResCitta: "", repResCap: "", repResProv: "", repCf: "", repEmail: "",
-    durataMesi: 12, canoneEuro: 0, dataInizio: "",
+    durataMesi: 12, canoneEuro: 0, dataInizio: "", aggiuntiva: false,
     delegati: [{ nome: "", cognome: "", documento: "", note: "" }], telUrgenze: "", intestazione: "",
     inoltroNome: "", inoltroVia: "", inoltroComune: "", inoltroProv: "", inoltroCap: "",
     svcLineaTel: false, svcDenomPostale: false, denomPostaleTesto: "", svcApertura: false, svcArchivio: false, svcInoltro: false,
@@ -232,7 +234,7 @@ const personSchema = z.object({
 export const contractDataSchema = z.object({
   societa: str, sedeVia: str, sedeCitta: str, sedeCap: str, sedeProv: str, capitale: str, cfRegImp: str, piva: str, pec: str, sdi: str,
   repQualifica: str, repNome: str, repNatoA: str, repNatoIl: str, repResVia: str, repResCitta: str, repResCap: str, repResProv: str, repCf: str, repEmail: str,
-  durataMesi: z.number().int().min(1).max(120), canoneEuro: z.number().min(0).max(1_000_000), dataInizio: str,
+  durataMesi: z.number().int().min(1).max(120), canoneEuro: z.number().min(0).max(1_000_000), dataInizio: str, aggiuntiva: z.boolean().default(false),
   delegati: z.array(z.object({ nome: str, cognome: str, documento: str, note: str })).max(MAX_DELEGATI),
   telUrgenze: str, intestazione: str, inoltroNome: str, inoltroVia: str, inoltroComune: str, inoltroProv: str, inoltroCap: str,
   svcLineaTel: z.boolean(), svcDenomPostale: z.boolean(), denomPostaleTesto: str, svcApertura: z.boolean(), svcArchivio: z.boolean(), svcInoltro: z.boolean(),

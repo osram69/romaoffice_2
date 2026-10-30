@@ -36,7 +36,7 @@ function prefillFrom(client: DomClient): Partial<ContractData> {
 
 function applyConditions(data: ContractData, client: DomClient): ContractData {
   const c = conditionsFrom(client);
-  return { ...data, durataMesi: c.durataMesi || data.durataMesi, canoneEuro: c.canoneEuro, dataInizio: c.dataInizio };
+  return { ...data, durataMesi: c.durataMesi || data.durataMesi, canoneEuro: c.canoneEuro, dataInizio: c.dataInizio, aggiuntiva: Boolean(client.aggiuntiva) };
 }
 
 export async function loadContractDraft(client: DomClient) {

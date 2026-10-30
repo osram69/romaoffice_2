@@ -5,9 +5,10 @@ import { Menu, X } from "lucide-react";
 import { staffLogoutAction } from "@/lib/staff-actions";
 import type { StaffRole } from "@/lib/staff-auth";
 import { BrandWords } from "./BrandWords";
-import { DomForm } from "./DomForm";
+import { DomForm, type CapofilaOption } from "./DomForm";
 
-export function GestioneSidebar({ role, active, username, tabs, newDomiciliazioneAction }: {
+export function GestioneSidebar({ role, active, username, tabs, newDomiciliazioneAction, capofile }: {
+  capofile?: CapofilaOption[];
   role: StaffRole; active: "tariffe" | "domiciliazioni" | "configurazione" | "ordini"; username: string;
   tabs: { stato: number; label: string; count: number }[];
   newDomiciliazioneAction?: (formData: FormData) => void;
@@ -98,7 +99,7 @@ export function GestioneSidebar({ role, active, username, tabs, newDomiciliazion
               <button type="button" className="gestione-modal-close" aria-label="Chiudi" onClick={() => setCreating(false)}>×</button>
             </div>
             <div className="gestione-modal-body">
-              <DomForm action={newDomiciliazioneAction} onClose={() => setCreating(false)} />
+              <DomForm action={newDomiciliazioneAction} capofile={capofile} onClose={() => setCreating(false)} />
             </div>
           </div>
         </div>
