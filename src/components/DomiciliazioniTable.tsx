@@ -79,12 +79,21 @@ function pairedRows(fields: Field[]) {
   return out;
 }
 
-export function DomiciliazioniTable({ rows, stato, pendingScanIds, capofile = [] }: { rows: DomClient[]; stato: number; pendingScanIds: number[]; capofile?: CapofilaOption[] }) {
+export function DomiciliazioniTable({ rows, stato, pendingScanIds, capofile = [], aggiuntiveCount = {} }: { rows: DomClient[]; stato: number; pendingScanIds: number[]; capofile?: CapofilaOption[]; aggiuntiveCount?: Record<number, number> }) {
   // An "aggiuntiva" company whose capofila is no longer active (or was never chosen) loses the reason for its contract
   // variant: checked every time the list is opened, and highlighted in yellow until reception sorts it out.
   const activeIds = useMemo(() => new Set(capofile.map(c => c.id)), [capofile]);
   const capofilaName = (id: number | null) => (id ? capofile.find(c => c.id === id)?.ragioneSociale : undefined);
   const isOrfana = (row: DomClient) => stato === 1 && row.aggiuntiva && (!row.capofilaId || !activeIds.has(row.capofilaId));
+  // Hover text on the company name: which capofila an "aggiuntiva" depends on, or whether the company is a capofila / has no aggiuntive.
+  function nameTitle(row: DomClient) {
+    if (row.aggiuntiva) {
+      const name = capofilaName(row.capofilaId);
+      return name ? `Domiciliazione aggiuntiva — società capofila: ${name}` : row.capofilaId ? "Domiciliazione aggiuntiva — la società capofila non è più attiva" : "Domiciliazione aggiuntiva — società capofila non indicata";
+    }
+    const n = aggiuntiveCount[row.id] ?? 0;
+    return n > 0 ? `Società capofila (${n} ${n === 1 ? "aggiuntiva" : "aggiuntive"})` : "Nessuna aggiuntiva";
+  }
   const orfane = useMemo(() => rows.filter(isOrfana), [rows, activeIds]); // eslint-disable-line react-hooks/exhaustive-deps
   const [viewing, setViewing] = useState<DomClient | null>(null);
   const [editing, setEditing] = useState<DomClient | null>(null);
@@ -199,7 +208,7 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds, capofile = []
                     <tr className={index % 2 === 0 ? "row-even" : "row-odd"}>
                       <td style={{ color: "#999" }}>{index + 1}</td>
                       <td style={{ maxWidth: 220 }}>
-                        <button type="button" className="gestione-ragione-link gestione-ragione-name" title={row.ragioneSociale} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit", textAlign: "left" }} onClick={() => openScheda(row)}>
+                        <button type="button" className="gestione-ragione-link gestione-ragione-name" title={nameTitle(row)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit", textAlign: "left" }} onClick={() => openScheda(row)}>
                           {row.ragioneSociale}
                         </button>
                       </td>
@@ -227,7 +236,7 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds, capofile = []
                       <td><span className={`gestione-doc-dot ${docStatus(row)}`} title="Stato documenti" /></td>
                       <td>{row.raccoglitore}</td>
                       <td style={{ maxWidth: 220 }}>
-                        <button type="button" className={`gestione-ragione-link gestione-ragione-name${(row.presenzaFile & PRESENZA_FILE_BITS.rev) === PRESENZA_FILE_BITS.rev ? " revoca" : ""}${isOrfana(row) ? " orfana" : ""}`} title={isOrfana(row) ? `${row.ragioneSociale} — domiciliazione aggiuntiva: la società capofila non è più attiva${row.capofilaId ? "" : " (non indicata)"}` : row.ragioneSociale} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit", textAlign: "left" }} onClick={() => openScheda(row)}>
+                        <button type="button" className={`gestione-ragione-link gestione-ragione-name${(row.presenzaFile & PRESENZA_FILE_BITS.rev) === PRESENZA_FILE_BITS.rev ? " revoca" : ""}${isOrfana(row) ? " orfana" : ""}`} title={isOrfana(row) ? `${nameTitle(row)} — da sistemare: evidenziata in giallo` : nameTitle(row)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit", textAlign: "left" }} onClick={() => openScheda(row)}>
                           {row.ragioneSociale}
                         </button>
                       </td>
