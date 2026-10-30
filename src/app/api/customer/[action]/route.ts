@@ -5,7 +5,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { domClients, domCustomerChallenges, domCustomerSessions } from "@/db/schema";
 import { CHALLENGE_COOKIE, SESSION_COOKIE, OTP_SECONDS, SESSION_SECONDS, CustomerError, clientIp, constantEqual, digest, failed, getDomCustomer, hashPassword, json, limit, maskPhone, otpDigest, protectMutation, sendLoginSms, setCookie, token, verifyPassword } from "@/lib/customer-auth";
-import { readDecrypted } from "@/lib/dom-archive";
+import { readClientDocDecrypted, readDecrypted } from "@/lib/dom-archive";
 import { smsBypassEnabled } from "@/lib/sms-bypass";
 import { PRESENZA_FILE_BITS } from "@/lib/dom-status";
 import { normalizePhone } from "@/lib/request";
@@ -21,14 +21,26 @@ export async function GET(req: NextRequest, { params }: Props) {
     const { action } = await params;
     const client = await getDomCustomer(req);
     if (action === "me") {
-      const hasContract = (client.presenzaFile & PRESENZA_FILE_BITS.con) === PRESENZA_FILE_BITS.con;
-      return json({ client: { ragioneSociale: client.ragioneSociale, email: client.areaClientiEmail, phone: maskPhone(client.telefono || ""), mustChangePassword: client.mustChangePassword }, hasContract });
+      const has = (bit: number) => (client.presenzaFile & bit) === bit;
+      const hasContract = has(PRESENZA_FILE_BITS.con);
+      // Which documents the customer can download, switched on one by one as reception loads them. The administrator's
+      // document is also available as soon as the customer has uploaded it, before reception has processed it.
+      const docs = { con: hasContract, all: has(PRESENZA_FILE_BITS.all), mod: has(PRESENZA_FILE_BITS.mod), doc: has(PRESENZA_FILE_BITS.doc) || Boolean(client.docAmmClienteAt) };
+      return json({ client: { ragioneSociale: client.ragioneSociale, email: client.areaClientiEmail, phone: maskPhone(client.telefono || ""), mustChangePassword: client.mustChangePassword }, hasContract, docs });
     }
     if (action === "dom-contract") {
       await limit(`download:${client.id}`, 40, 300);
-      if ((client.presenzaFile & PRESENZA_FILE_BITS.con) !== PRESENZA_FILE_BITS.con) throw new CustomerError("notFound", 404);
-      const data = await readDecrypted(client.legacyId ?? client.id, "con");
-      return new Response(new Uint8Array(data), { headers: { "Content-Type": "application/pdf", "Content-Length": String(data.length), "Content-Disposition": `attachment; filename="contratto-domiciliazione.pdf"`, "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff", "X-Robots-Tag": "noindex, nofollow" } });
+      // Only these four documents are ever offered to the customer (not the adeguata verifica, revocation, etc.).
+      const type = req.nextUrl.searchParams.get("type") || "con";
+      const names = { con: "contratto-domiciliazione", all: "allegato-1", mod: "modulo-tenuta-libri-contabili", doc: "documento-amministratore" } as const;
+      if (!(type in names)) throw new CustomerError("notFound", 404);
+      const kind = type as keyof typeof names;
+      const fileId = client.legacyId ?? client.id;
+      let data: Buffer;
+      if ((client.presenzaFile & PRESENZA_FILE_BITS[kind]) === PRESENZA_FILE_BITS[kind]) data = await readDecrypted(fileId, kind);
+      else if (kind === "doc" && client.docAmmClienteAt) data = await readClientDocDecrypted(fileId);
+      else throw new CustomerError("notFound", 404);
+      return new Response(new Uint8Array(data), { headers: { "Content-Type": "application/pdf", "Content-Length": String(data.length), "Content-Disposition": `attachment; filename="${names[kind]}.pdf"`, "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff", "X-Robots-Tag": "noindex, nofollow" } });
     }
     throw new CustomerError("notFound", 404);
   } catch (error) { return failed(error); }

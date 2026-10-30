@@ -162,3 +162,6 @@
 .cw-modes-ok{display:inline-grid;place-items:center;width:1.2rem;height:1.2rem;border-radius:50%;background:#2e7d4f;color:#fff;margin-left:.3rem}
 .cw-modes-ok svg{width:.75rem;height:.75rem;color:#fff}
 .cw-goupload{margin:1.2rem 0}.cw-goupload .button{display:inline-flex;gap:.5rem;align-items:center}
+
+.contract-row.is-pending{opacity:.62}
+.contract-row.is-pending .button{filter:grayscale(1)}

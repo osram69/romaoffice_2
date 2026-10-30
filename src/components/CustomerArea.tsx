@@ -30,7 +30,8 @@ const messages = {
   },
 };
 type Client = { ragioneSociale: string; email: string; phone: string; mustChangePassword: boolean };
-type Profile = { client: Client; hasContract: boolean };
+type DocKey = "con" | "all" | "mod" | "doc";
+type Profile = { client: Client; hasContract: boolean; docs: Record<DocKey, boolean> };
 type View = "loading" | "login" | "sms" | "dashboard";
 
 export function CustomerArea({ lang }: { lang: Lang }) {
@@ -41,7 +42,7 @@ export function CustomerArea({ lang }: { lang: Lang }) {
   const [otp, setOtp] = useState(""); const [phone, setPhone] = useState("");
   const [newPassword, setNewPassword] = useState(""); const [changingPassword, setChangingPassword] = useState(false);
   const [busy, setBusy] = useState(false); const [error, setError] = useState(""); const [notice, setNotice] = useState(""); const [cooldown, setCooldown] = useState(0);
-  const [downloading, setDownloading] = useState(false);
+  const [downloading, setDownloading] = useState<DocKey | null>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const textError = (code: string) => messages[lang][code as keyof typeof messages.it] || messages[lang].unavailable;
   async function loadProfile() {
@@ -93,16 +94,17 @@ export function CustomerArea({ lang }: { lang: Lang }) {
     try { await api("logout", {}); setProfile(null); setPassword(""); setOtp(""); setView("login"); setNotice(""); }
     catch (e) { setError(textError(e instanceof Error ? e.message : "unavailable")); } finally { setBusy(false); }
   }
-  async function downloadContract() {
-    setDownloading(true); setError("");
+  async function downloadDoc(type: DocKey) {
+    setDownloading(type); setError("");
     try {
-      const r = await fetch("/api/customer/dom-contract", { cache: "no-store" });
+      const r = await fetch(`/api/customer/dom-contract?type=${type}`, { cache: "no-store" });
       if (r.status === 401) { setProfile(null); setView("login"); throw new Error("session"); }
       if (!r.ok) throw new Error("notFound");
       const blob = await r.blob(); const url = URL.createObjectURL(blob); const a = document.createElement("a");
-      a.href = url; a.download = "contratto-domiciliazione.pdf"; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
-      setNotice(it ? "Download del contratto avviato." : "Your contract download has started.");
-    } catch (e) { setError(textError(e instanceof Error ? e.message : "unavailable")); } finally { setDownloading(false); }
+      const names: Record<DocKey, string> = { con: "contratto-domiciliazione", all: "allegato-1", mod: "modulo-tenuta-libri-contabili", doc: "documento-amministratore" };
+      a.href = url; a.download = `${names[type]}.pdf`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setNotice(it ? "Download avviato." : "Your download has started.");
+    } catch (e) { setError(textError(e instanceof Error ? e.message : "unavailable")); } finally { setDownloading(null); }
   }
   async function changePassword(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); setError(""); setNotice("");
@@ -132,9 +134,17 @@ export function CustomerArea({ lang }: { lang: Lang }) {
       {status}
       {profile.client.mustChangePassword && <div className="customer-notice" role="alert" style={{ borderColor: "#e0a800" }}>{it ? "La tua password è stata impostata dalla reception: ti consigliamo di cambiarla al più presto." : "Your password was set by reception: we recommend changing it as soon as possible."}</div>}
       <section className="dashboard-contracts" id="customer-contracts"><div className="dashboard-section-heading"><div><span className="eyebrow">{it ? "DOCUMENTI" : "DOCUMENTS"}</span><h3>{it ? "Il mio contratto" : "My contract"}</h3></div><span className="file-type-badge">PDF</span></div>
-        {profile.hasContract ? <div className="contract-list">
-          <article className="contract-row"><span className="contract-icon"><FileText /></span><div><h4>{it ? "Contratto di domiciliazione" : "Registered office agreement"}</h4><p>{it ? "Documento archiviato dalla reception" : "Document archived by reception"}</p></div><button className="button primary" disabled={downloading} onClick={downloadContract}>{downloading ? <LoaderCircle className="spin" /> : <Download />}{it ? "Scarica contratto" : "Download contract"}</button></article>
-        </div> : <div className="document-empty"><FileCheck2 /><h4>{it ? "Il tuo contratto sarà qui" : "Your contract will appear here"}</h4><p>{it ? "Non è ancora disponibile. La reception lo pubblicherà in quest’area dopo la verifica e il completamento della pratica." : "It isn't available yet. Reception will publish it here after your application has been reviewed and completed."}</p></div>}
+        <div className="contract-list">
+          {([
+            ["con", it ? "Contratto di domiciliazione" : "Registered office agreement", it ? "Il contratto firmato (clausole e firme)" : "The signed agreement (clauses and signatures)"],
+            ["all", it ? "Allegato 1" : "Annex 1", it ? "Persone delegate al ritiro e servizi accessori" : "Authorised persons and additional services"],
+            ["mod", it ? "Modulo tenuta libri contabili" : "Accounting records declaration", it ? "Dichiarazione sulla tenuta delle scritture contabili (Allegato 2)" : "Declaration on where the accounting records are kept (Annex 2)"],
+            ["doc", it ? "Documento dell’amministratore" : "Administrator’s ID document", it ? "Il documento che ci hai inviato, per verificarlo" : "The document you sent us, so you can check it"],
+          ] as [DocKey, string, string][]).map(([key, title, hint]) => {
+            const ready = profile.docs[key];
+            return <article className={`contract-row${ready ? "" : " is-pending"}`} key={key}><span className="contract-icon"><FileText /></span><div><h4>{title}</h4><p>{ready ? hint : (it ? "Non ancora disponibile: si attiva appena la reception lo carica." : "Not available yet: it becomes available as soon as reception loads it.")}</p></div><button className="button primary" disabled={!ready || downloading !== null} onClick={() => downloadDoc(key)}>{downloading === key ? <LoaderCircle className="spin" /> : <Download />}{it ? "Scarica" : "Download"}</button></article>;
+          })}
+        </div>
       </section>
       {!profile.hasContract && <section className="dashboard-contracts" id="customer-fill">
         <div className="dashboard-section-heading"><div><span className="eyebrow">{it ? "CONTRATTO ONLINE" : "ONLINE CONTRACT"}</span><h3>{it ? "Compila il contratto" : "Fill in your contract"}</h3></div><span className="file-type-badge">PDF</span></div>
