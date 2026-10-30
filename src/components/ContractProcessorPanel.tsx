@@ -37,7 +37,9 @@ const ZONES: { key: Zone; label: string }[] = [
   { key: "doc", label: "Documento" },
 ];
 type Lane = "unassigned" | Zone;
-type ContractPage = { id: string; sourceIndex: number; thumbnailUrl: string };
+// widthPt/heightPt: the page's real size in PDF points, so the rebuilt page matches the original even when
+// pages come from several uploaded PDFs. sourceIndex: 0-based running number across all loaded PDFs.
+type ContractPage = { id: string; sourceIndex: number; thumbnailUrl: string; widthPt: number; heightPt: number };
 type Lanes = Record<Lane, ContractPage[]>;
 const EMPTY_LANES: Lanes = { unassigned: [], con: [], all: [], mod: [], avc: [], doc: [] };
 
@@ -78,10 +80,10 @@ function findPage(lanes: Lanes, id: string): { page: ContractPage; lane: Lane } 
 }
 
 export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: { clientId: number; file: File; onClose: () => void; onUploaded: (presenzaFile: number) => void }) {
-  const [pdfBytes, setPdfBytes] = useState<ArrayBuffer | null>(null);
   const [lanes, setLanes] = useState<Lanes>(EMPTY_LANES);
   const [dragId, setDragId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [status, setStatus] = useState<{ text: string; color: string } | null>(null);
   const [firmaDataUrl, setFirmaDataUrl] = useState<string | null>(null);
@@ -96,10 +98,43 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
   // The full-resolution render of each page, kept around so the quality slider can re-encode a
   // JPEG on the fly without re-rendering the PDF (slow) every time it moves.
   const canvasesRef = useRef<Map<string, HTMLCanvasElement>>(new Map());
+  // Running page number and canvas pixels used so far, shared by the main PDF and any PDF added after it.
+  const nextNumRef = useRef(0);
+  const pixelsRef = useRef(0);
+  const addInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     getFirmaDomiciliatarioAction().then(r => setFirmaDataUrl(r.success ? r.dataUrl ?? null : null));
   }, []);
+
+  // Rasterizes every page of a PDF (pdf.js) into canvases + JPEG thumbnails, numbering them after the pages
+  // already loaded. Used for the uploaded contract and for any PDF the operator appends afterwards.
+  async function renderPdfFile(f: File, jpegQuality: number, isCancelled: () => boolean): Promise<ContractPage[]> {
+    const buffer = await f.arrayBuffer();
+    const pdfjs = await loadPdfjs();
+    const doc = await pdfjs.getDocument({ data: buffer }).promise;
+    const firstSize = (await doc.getPage(1)).getViewport({ scale: 1 });
+    const budget = Math.max(PIXEL_BUDGET - pixelsRef.current, PIXEL_BUDGET / 4);
+    const renderScale = clamp(Math.sqrt(budget / (doc.numPages * firstSize.width * firstSize.height)), MIN_RENDER_SCALE, MAX_RENDER_SCALE);
+    const pages: ContractPage[] = [];
+    for (let i = 1; i <= doc.numPages; i++) {
+      if (isCancelled()) return pages;
+      const page = await doc.getPage(i);
+      const size = page.getViewport({ scale: 1 });
+      const viewport = page.getViewport({ scale: renderScale });
+      const canvas = document.createElement("canvas");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas non disponibile");
+      await page.render({ canvas, canvasContext: ctx, viewport }).promise;
+      pixelsRef.current += canvas.width * canvas.height;
+      const id = `pg-${nextNumRef.current}-${Math.random().toString(36).slice(2)}`;
+      canvasesRef.current.set(id, canvas);
+      pages.push({ id, sourceIndex: nextNumRef.current++, thumbnailUrl: canvas.toDataURL("image/jpeg", jpegQuality), widthPt: size.width, heightPt: size.height });
+    }
+    return pages;
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -107,31 +142,10 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
       setLoading(true);
       setStatus(null);
       try {
-        const buffer = await file.arrayBuffer();
-        if (cancelled) return;
-        setPdfBytes(buffer);
-        const pdfjs = await loadPdfjs();
-        // pdf.js's `data` option takes ownership of the buffer it's given, so it gets a copy —
-        // the original stays untouched for pdf-lib to assemble the final pieces from later.
-        const doc = await pdfjs.getDocument({ data: buffer.slice(0) }).promise;
         canvasesRef.current.clear();
-        const pages: ContractPage[] = [];
-        const firstSize = (await doc.getPage(1)).getViewport({ scale: 1 });
-        const renderScale = clamp(Math.sqrt(PIXEL_BUDGET / (doc.numPages * firstSize.width * firstSize.height)), MIN_RENDER_SCALE, MAX_RENDER_SCALE);
-        for (let i = 1; i <= doc.numPages; i++) {
-          if (cancelled) return;
-          const page = await doc.getPage(i);
-          const viewport = page.getViewport({ scale: renderScale });
-          const canvas = document.createElement("canvas");
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          const ctx = canvas.getContext("2d");
-          if (!ctx) throw new Error("Canvas non disponibile");
-          await page.render({ canvas, canvasContext: ctx, viewport }).promise;
-          const id = `pg-${i}-${Math.random().toString(36).slice(2)}`;
-          canvasesRef.current.set(id, canvas);
-          pages.push({ id, sourceIndex: i - 1, thumbnailUrl: canvas.toDataURL("image/jpeg", DEFAULT_QUALITY) });
-        }
+        nextNumRef.current = 0;
+        pixelsRef.current = 0;
+        const pages = await renderPdfFile(file, DEFAULT_QUALITY, () => cancelled);
         if (!cancelled) setLanes({ ...EMPTY_LANES, unassigned: pages });
       } catch (error) {
         if (!cancelled) setStatus({ text: `Impossibile leggere il PDF: ${error instanceof Error ? error.message : String(error)}`, color: "red" });
@@ -141,6 +155,28 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
     })();
     return () => { cancelled = true; };
   }, [file]);
+
+  // Appends further PDFs (e.g. the administrator's ID sent as a second file) after the pages already loaded,
+  // so everything can be sorted, signed and uploaded in one go.
+  async function addPdfs(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setAdding(true);
+    try {
+      let added = 0;
+      for (const f of Array.from(files)) {
+        setStatus({ text: `Lettura di ${f.name}...`, color: "#555" });
+        const pages = await renderPdfFile(f, quality, () => false);
+        setLanes(prev => ({ ...prev, unassigned: [...prev.unassigned, ...pages] }));
+        added += pages.length;
+      }
+      setStatus({ text: `Aggiunte ${added} pagine in coda alle pagine da assegnare.`, color: "green" });
+    } catch (error) {
+      setStatus({ text: `Impossibile leggere il PDF: ${error instanceof Error ? error.message : String(error)}`, color: "red" });
+    } finally {
+      setAdding(false);
+      if (addInputRef.current) addInputRef.current.value = "";
+    }
+  }
 
   // The placement preview sits below all the lanes: bring it into view when a page is picked for the signature.
   useEffect(() => {
@@ -184,6 +220,7 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
   function deletePage(id: string) {
     const found = findPage(lanes, id);
     if (!found) return;
+    if (!confirm(`Eliminare la pagina ${found.page.sourceIndex + 1}? Potrai annullare con “Ripristina pagina eliminata”.`)) return;
     const index = lanes[found.lane].findIndex(p => p.id === id);
     setLanes(prev => ({ ...prev, [found.lane]: prev[found.lane].filter(p => p.id !== id) }));
     setDeleted(d => [...d, { page: found.page, lane: found.lane, index }]);
@@ -256,6 +293,31 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
     window.addEventListener("mouseup", onUp);
   }
 
+  // Fine positioning of the signature with the arrow keys (1 px per press, 10 px with Shift), in addition to
+  // dragging. Ignored while typing in a field or moving a slider, which use the arrows themselves.
+  const signatureOpen = !!(signature && placementPageId && signature.pageId === placementPageId);
+  useEffect(() => {
+    if (!signatureOpen) return;
+    function onKey(e: KeyboardEvent) {
+      const dx = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+      const dy = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
+      if (!dx && !dy) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "SELECT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+      const rect = previewRef.current?.getBoundingClientRect();
+      if (!rect || !rect.width || !rect.height) return;
+      e.preventDefault();
+      const step = e.shiftKey ? 10 : 1;
+      setSignature(s => s && ({
+        ...s,
+        xFrac: clamp(s.xFrac + (dx * step) / rect.width, 0, 1 - s.wFrac),
+        yFrac: clamp(s.yFrac + (dy * step) / rect.height, 0, 1 - s.hFrac),
+      }));
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [signatureOpen]);
+
   function requestClose() {
     const hasWork = ZONES.some(z => lanes[z.key].length > 0);
     if (hasWork && !confirm("Chiudere senza caricare? Il lavoro di riordino/firma andrà perso.")) return;
@@ -263,21 +325,19 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
   }
 
   async function processAndUpload() {
-    if (!pdfBytes) return;
     const nonEmptyZones = ZONES.filter(z => lanes[z.key].length > 0);
     if (!nonEmptyZones.length) { setStatus({ text: "Assegna almeno una pagina a un tipo di documento.", color: "red" }); return; }
     setProcessing(true);
     setStatus({ text: "Elaborazione...", color: "#555" });
     try {
-      // Real (point-space) size of every source page, so the recompressed JPEG lands on a page
-      // the same physical size as the original — the render scale above is pixels, not points.
-      const srcDoc = await PDFDocument.load(pdfBytes);
       const firmaBytes = signature && firmaDataUrl ? base64ToBytes(firmaDataUrl.split(",")[1]) : null;
       for (const zone of nonEmptyZones) {
         const zonePages = lanes[zone.key];
         const outDoc = await PDFDocument.create();
         for (const p of zonePages) {
-          const { width, height } = srcDoc.getPage(p.sourceIndex).getSize();
+          // Real (point-space) size of the source page, so the recompressed JPEG lands on a page the same
+          // physical size as the original — the render scale is pixels, not points.
+          const { widthPt: width, heightPt: height } = p;
           const canvas = canvasesRef.current.get(p.id);
           if (!canvas) throw new Error("Pagina non renderizzata correttamente, riprova a caricare il PDF");
           const jpegBytes = base64ToBytes(canvas.toDataURL("image/jpeg", quality).split(",")[1]);
@@ -358,7 +418,7 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
           {!loading && (
             <>
               <p style={{ fontSize: 12, color: "#666", marginTop: 0 }}>
-                Trascina le pagine (in qualunque ordine siano state scansionate) nelle caselle giuste. Il numero sulla miniatura è la pagina originale nel PDF caricato. Clicca su una pagina per ingrandirla, sull&apos;icona ✎ per posizionarci la firma del domiciliatario, o sul cestino per eliminare la pagina.
+                Trascina le pagine (in qualunque ordine siano state scansionate) nelle caselle giuste. Il numero sulla miniatura è la pagina originale nel PDF caricato. Clicca su una pagina per ingrandirla, sull&apos;icona ✎ per posizionarci la firma del domiciliatario, o sul cestino per eliminare la pagina (con conferma). Se hai altri PDF da unire (ad esempio il documento dell&apos;amministratore) usa “Aggiungi PDF in coda”.
               </p>
 
               <div style={{ display: "flex", flexWrap: "wrap", gap: 24, alignItems: "flex-end", marginBottom: 12 }}>
@@ -372,6 +432,12 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
                     <button type="button" className="gestione-btn gestione-btn-outline" style={{ padding: "2px 12px" }} disabled={thumbWidth <= 60} onClick={() => setThumbWidth(w => Math.max(60, w - 20))}>−</button>
                     <button type="button" className="gestione-btn gestione-btn-outline" style={{ padding: "2px 12px" }} disabled={thumbWidth >= 180} onClick={() => setThumbWidth(w => Math.min(180, w + 20))}>+</button>
                   </div>
+                </div>
+                <div>
+                  <input ref={addInputRef} type="file" accept="application/pdf" multiple hidden onChange={e => addPdfs(e.target.files)} />
+                  <button type="button" className="gestione-btn gestione-btn-outline" disabled={adding || processing} onClick={() => addInputRef.current?.click()}>
+                    {adding ? "Lettura in corso..." : "Aggiungi PDF in coda"}
+                  </button>
                 </div>
                 {deleted.length > 0 && (
                   <button type="button" className="gestione-btn gestione-btn-outline" style={{ display: "inline-flex", alignItems: "center", gap: 6 }} onClick={restoreDeleted}>
@@ -403,7 +469,7 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
               {placement && (
                 <div className="contract-proc-placement">
                   <div className="contract-proc-lane-title">
-                    Posiziona la firma — trascina per spostarla, usa la maniglia in basso a destra per ridimensionarla
+                    Posiziona la firma — trascina per spostarla (oppure usa le frecce ↑ ↓ ← →, con Maiusc a passi più grandi), usa la maniglia in basso a destra per ridimensionarla
                     <button type="button" className="gestione-btn gestione-btn-outline" style={{ marginLeft: 10, fontSize: 11, padding: "2px 8px" }} onClick={() => { setSignature(null); setPlacementPageId(null); }}>Rimuovi firma da questa pagina</button>
                     <button type="button" className="gestione-btn gestione-btn-outline" style={{ marginLeft: 6, fontSize: 11, padding: "2px 8px" }} onClick={() => setPlacementPageId(null)}>Chiudi anteprima</button>
                   </div>
@@ -426,7 +492,7 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
               )}
 
               <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 14 }}>
-                <button type="button" className="gestione-btn gestione-btn-blue" disabled={processing} onClick={processAndUpload}>{processing ? "Elaborazione..." : "Elabora e carica"}</button>
+                <button type="button" className="gestione-btn gestione-btn-blue" disabled={processing || adding} onClick={processAndUpload}>{processing ? "Elaborazione..." : "Elabora e carica"}</button>
                 {status && <span style={{ fontSize: 12, color: status.color }}>{status.text}</span>}
               </div>
             </>
