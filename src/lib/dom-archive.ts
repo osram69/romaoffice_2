@@ -112,3 +112,16 @@ export async function readMailScanDecrypted(scanId: number): Promise<Buffer> {
 export async function removeMailScanEncrypted(scanId: number) {
   try { await unlink(mailScanFilePath(scanId)); } catch { /* already gone */ }
 }
+
+// The printed-and-signed contract a customer uploads from the Area Clienti: one file per client, kept
+// with the permanent archive but outside the DocType slots (staff then run it through "Carica e processa"
+// to add the domiciliatario's signature, which produces the real `con` document).
+function clientSignedPath(fileId: number) {
+  return path.join(archiveDir(), `${fileId}_clisigned.pdf.enc`);
+}
+export async function saveClientSignedEncrypted(fileId: number, data: Buffer) {
+  await encryptToFile(clientSignedPath(fileId), data);
+}
+export async function readClientSignedDecrypted(fileId: number): Promise<Buffer> {
+  return decryptFromFile(clientSignedPath(fileId));
+}

@@ -212,6 +212,9 @@ export const domClients = pgTable("dom_clients", {
   testoSospensione: text("testo_sospensione"),
   testoRitiro: text("testo_ritiro"),
   ritiroInviatoAt: timestamp("ritiro_inviato_at", { withTimezone: true }),
+  // When the customer uploaded the printed-and-signed contract from the Area Clienti (the file itself is
+  // kept encrypted next to the other archive documents, see saveClientSignedEncrypted).
+  contrattoClienteAt: timestamp("contratto_cliente_at", { withTimezone: true }),
   amministratore: text("amministratore"),
   telefonoAmm: text("telefono_amm"),
   personaRif: text("persona_rif"),
@@ -275,6 +278,15 @@ export const domCustomerChallenges = pgTable("dom_customer_challenges", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   sentAt: timestamp("sent_at", { withTimezone: true }).defaultNow().notNull(),
   consumedAt: timestamp("consumed_at", { withTimezone: true }),
+});
+
+// Draft of the contract the customer fills in online from the Area Clienti (one per domiciliazione).
+// The answers contain identity-document data, so the whole JSON is kept encrypted (dom-archive's AES).
+export const domContractDrafts = pgTable("dom_contract_drafts", {
+  domClientId: integer("dom_client_id").primaryKey().references(() => domClients.id, { onDelete: "cascade" }),
+  dataEnc: text("data_enc").notNull(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // Incoming-mail scans attached via the "Allega" button (eSCL network-scanner bridge) on each

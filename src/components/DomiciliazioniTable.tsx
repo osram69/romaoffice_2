@@ -320,10 +320,13 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds }: { rows: Dom
                       <td colSpan={3}>
                         {(() => {
                           const present = DOC_LABELS.filter(d => (viewing.presenzaFile & PRESENZA_FILE_BITS[d.key]) === PRESENZA_FILE_BITS[d.key]);
-                          if (present.length === 0) return <span style={{ color: "#aaa" }}>Nessun allegato presente</span>;
-                          return present.map(d => (
+                          const clientSigned = viewing.contrattoClienteAt
+                            ? <a className="gestione-file-link" style={{ marginRight: 8, fontWeight: 700 }} href={`/api/dom-documents?id=${viewing.id}&type=cli`} target="_blank" rel="noopener noreferrer" title="Stampato e firmato dal cliente: aggiungi la firma del domiciliatario con Carica e processa">Contratto firmato dal cliente ({fmtDate(new Date(viewing.contrattoClienteAt).toISOString().slice(0, 10))})</a>
+                            : null;
+                          if (present.length === 0 && !clientSigned) return <span style={{ color: "#aaa" }}>Nessun allegato presente</span>;
+                          return <>{clientSigned}{present.map(d => (
                             <a key={d.key} className="gestione-file-link" style={{ marginRight: 8 }} href={`/api/dom-documents?id=${viewing.id}&type=${d.key}`} target="_blank" rel="noopener noreferrer">{d.label}</a>
-                          ));
+                          ))}</>;
                         })()}
                       </td>
                     </tr>

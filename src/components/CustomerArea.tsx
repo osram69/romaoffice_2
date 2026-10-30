@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { Lang } from "@/lib/site";
 import { passwordMeetsPolicy } from "@/lib/password-policy";
 import { PasswordRequirementsList } from "./PasswordRequirementsList";
+import { ContractWizard } from "./ContractWizard";
 
 const messages = {
   it: {
@@ -119,7 +120,7 @@ export function CustomerArea({ lang }: { lang: Lang }) {
     <aside className="dashboard-side">
       <div className="member-avatar">{profile.client.ragioneSociale.split(" ").filter(Boolean).slice(0, 2).map(n => n[0]).join("")}</div>
       <b>{profile.client.ragioneSociale}</b><span>{it ? "Cliente Roma Office Sharing" : "Roma Office Sharing customer"}</span>
-      <div className="dashboard-nav"><a href="#customer-overview"><LayoutDashboard />{it ? "Panoramica" : "Overview"}</a><a href="#customer-contracts"><FileCheck2 />{it ? "Il mio contratto" : "My contract"}</a><a href="#customer-password"><KeyRound />{it ? "Cambia password" : "Change password"}</a><a href="#customer-future"><FolderLock />{it ? "Altri documenti" : "Other documents"}<small>{it ? "Presto" : "Soon"}</small></a></div>
+      <div className="dashboard-nav"><a href="#customer-overview"><LayoutDashboard />{it ? "Panoramica" : "Overview"}</a>{!profile.hasContract && <a href="#customer-fill"><FileText />{it ? "Compila il contratto" : "Fill in your contract"}</a>}<a href="#customer-contracts"><FileCheck2 />{it ? "Il mio contratto" : "My contract"}</a><a href="#customer-password"><KeyRound />{it ? "Cambia password" : "Change password"}</a><a href="#customer-future"><FolderLock />{it ? "Altri documenti" : "Other documents"}<small>{it ? "Presto" : "Soon"}</small></a></div>
       <div className="session-badge"><ShieldCheck />{it ? "Accesso verificato via SMS" : "SMS-verified sign-in"}</div>
       <button className="dashboard-logout" disabled={busy} onClick={logout}><LogOut />{it ? "Esci dall’area clienti" : "Sign out"}</button>
     </aside>
@@ -135,6 +136,10 @@ export function CustomerArea({ lang }: { lang: Lang }) {
           <article className="contract-row"><span className="contract-icon"><FileText /></span><div><h4>{it ? "Contratto di domiciliazione" : "Registered office agreement"}</h4><p>{it ? "Documento archiviato dalla reception" : "Document archived by reception"}</p></div><button className="button primary" disabled={downloading} onClick={downloadContract}>{downloading ? <LoaderCircle className="spin" /> : <Download />}{it ? "Scarica contratto" : "Download contract"}</button></article>
         </div> : <div className="document-empty"><FileCheck2 /><h4>{it ? "Il tuo contratto sarà qui" : "Your contract will appear here"}</h4><p>{it ? "Non è ancora disponibile. La reception lo pubblicherà in quest’area dopo la verifica e il completamento della pratica." : "It isn't available yet. Reception will publish it here after your application has been reviewed and completed."}</p></div>}
       </section>
+      {!profile.hasContract && <section className="dashboard-contracts" id="customer-fill">
+        <div className="dashboard-section-heading"><div><span className="eyebrow">{it ? "CONTRATTO ONLINE" : "ONLINE CONTRACT"}</span><h3>{it ? "Compila il contratto" : "Fill in your contract"}</h3></div><span className="file-type-badge">PDF</span></div>
+        <ContractWizard onSessionExpired={() => { setProfile(null); setView("login"); }} />
+      </section>}
       <section className="dashboard-contracts" id="customer-password">
         <div className="dashboard-section-heading"><div><span className="eyebrow">{it ? "SICUREZZA" : "SECURITY"}</span><h3>{it ? "Cambia password" : "Change password"}</h3></div></div>
         <form onSubmit={changePassword} className="password-change-form">
