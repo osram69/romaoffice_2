@@ -47,8 +47,17 @@ type SignaturePlacement = { pageId: string; xFrac: number; yFrac: number; wFrac:
 // once at this scale and re-encoding it as JPEG (rather than copying the original embedded image
 // byte-for-byte) is what makes the quality slider below possible, the same idea as the mail-scan
 // panel's JPEG recompression, just working from a rasterized page instead of the scanner's own JPEG.
-const RENDER_SCALE = 1.4;
-const DEFAULT_QUALITY = 0.75;
+//
+// Text stays sharp only if the page is rasterized at roughly scan resolution: the old 1.4 scale was
+// ~100 dpi, which softened every contract before compression even started. Target ~200 dpi (PDF
+// points are 1/72 in), and trade a lower JPEG quality for it — at this size artifacts are tiny,
+// so quality 0.6 reads better than 0.75 did at 100 dpi. Every rendered page is kept as a canvas so
+// the slider can re-encode without re-rendering, so very long contracts scale down to stay within
+// a pixel budget (~240 MB of canvas memory) instead of exhausting the browser.
+const MAX_RENDER_SCALE = 2.78;
+const MIN_RENDER_SCALE = 1.6;
+const PIXEL_BUDGET = 60_000_000;
+const DEFAULT_QUALITY = 0.6;
 
 function clamp(v: number, min: number, max: number) { return Math.max(min, Math.min(max, v)); }
 function base64ToBytes(base64: string): Uint8Array {
@@ -105,10 +114,12 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
         const doc = await pdfjs.getDocument({ data: buffer.slice(0) }).promise;
         canvasesRef.current.clear();
         const pages: ContractPage[] = [];
+        const firstSize = (await doc.getPage(1)).getViewport({ scale: 1 });
+        const renderScale = clamp(Math.sqrt(PIXEL_BUDGET / (doc.numPages * firstSize.width * firstSize.height)), MIN_RENDER_SCALE, MAX_RENDER_SCALE);
         for (let i = 1; i <= doc.numPages; i++) {
           if (cancelled) return;
           const page = await doc.getPage(i);
-          const viewport = page.getViewport({ scale: RENDER_SCALE });
+          const viewport = page.getViewport({ scale: renderScale });
           const canvas = document.createElement("canvas");
           canvas.width = viewport.width;
           canvas.height = viewport.height;
