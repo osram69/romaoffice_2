@@ -2,7 +2,7 @@
 
 import { LegalLinkModal } from "./LegalLinkModal";
 import { PrivacyNoticeContent } from "./LegalContent";
-import { ArrowRight, ArrowLeft, Check, Download, Eye, EyeOff, FileCheck2, FileText, FolderLock, IdCard, KeyRound, LayoutDashboard, LoaderCircle, LockKeyhole, LogOut, Mail, Phone, ShieldCheck, Smartphone, UserRound } from "lucide-react";
+import { ArrowRight, ArrowLeft, Check, Download, Eye, EyeOff, FileCheck2, FileText, KeyRound, LayoutDashboard, LoaderCircle, LockKeyhole, LogOut, Mail, Phone, ShieldCheck, Smartphone, UserRound } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { Lang } from "@/lib/site";
 import { passwordMeetsPolicy } from "@/lib/password-policy";
@@ -122,13 +122,13 @@ export function CustomerArea({ lang }: { lang: Lang }) {
     <aside className="dashboard-side">
       <div className="member-avatar">{profile.client.ragioneSociale.split(" ").filter(Boolean).slice(0, 2).map(n => n[0]).join("")}</div>
       <b>{profile.client.ragioneSociale}</b><span>{it ? "Cliente Roma Office Sharing" : "Roma Office Sharing customer"}</span>
-      <div className="dashboard-nav"><a href="#customer-overview"><LayoutDashboard />{it ? "Panoramica" : "Overview"}</a>{!profile.hasContract && <a href="#customer-fill"><FileText />{it ? "Compila il contratto" : "Fill in your contract"}</a>}<a href="#customer-contracts"><FileCheck2 />{it ? "Il mio contratto" : "My contract"}</a><a href="#customer-password"><KeyRound />{it ? "Cambia password" : "Change password"}</a><a href="#customer-future"><FolderLock />{it ? "Altri documenti" : "Other documents"}<small>{it ? "Presto" : "Soon"}</small></a></div>
+      <div className="dashboard-nav"><a href="#customer-overview"><LayoutDashboard />{it ? "Panoramica" : "Overview"}</a>{!profile.hasContract && <a href="#customer-fill"><FileText />{it ? "Compila il contratto" : "Fill in your contract"}</a>}<a href="#customer-contracts"><FileCheck2 />{it ? "Il mio contratto" : "My contract"}</a><a href="#customer-password"><KeyRound />{it ? "Cambia password" : "Change password"}</a></div>
       <div className="session-badge"><ShieldCheck />{it ? "Accesso verificato via SMS" : "SMS-verified sign-in"}</div>
       <button className="dashboard-logout" disabled={busy} onClick={logout}><LogOut />{it ? "Esci dall’area clienti" : "Sign out"}</button>
     </aside>
     <div className="dashboard-content" id="customer-overview">
       <span className="eyebrow">{it ? "IL TUO SPAZIO PERSONALE" : "YOUR PERSONAL SPACE"}</span>
-      <h2 ref={titleRef} tabIndex={-1}>{it ? "Bentornato," : "Welcome back,"} {profile.client.ragioneSociale}.</h2>
+      <h2 ref={titleRef} tabIndex={-1}>{it ? "Bentornato," : "Welcome back,"} {profile.client.ragioneSociale}</h2>
       <p className="dashboard-lead">{it ? "Il tuo contratto, al sicuro e sempre a portata di mano." : "Your contract, secure and always within reach."}</p>
       <div className="dashboard-stats"><div><FileCheck2 /><span>{it ? "Contratto disponibile" : "Contract available"}<b>{profile.hasContract ? (it ? "Sì" : "Yes") : (it ? "No" : "No")}</b></span></div><div><Smartphone /><span>{it ? "Cellulare verificato" : "Verified mobile"}<b>{profile.client.phone}</b></span></div><div><ShieldCheck /><span>{it ? "Protezione account" : "Account protection"}<b>{it ? "Password + SMS" : "Password + SMS"}</b></span></div></div>
       {status}
@@ -158,7 +158,6 @@ export function CustomerArea({ lang }: { lang: Lang }) {
           <button className="button primary" type="submit" disabled={changingPassword || !passwordMeetsPolicy(newPassword)}>{changingPassword ? <LoaderCircle className="spin" /> : <KeyRound />}{it ? "Salva nuova password" : "Save new password"}</button>
         </form>
       </section>
-      <div className="future-documents" id="customer-future"><section><FolderLock /><span className="coming-soon">{it ? "PROSSIMAMENTE" : "COMING SOON"}</span><h3>{it ? "Altri download" : "Other downloads"}</h3><p>{it ? "Uno spazio dedicato a modulistica e documenti relativi ai tuoi servizi." : "A dedicated space for forms and documents relating to your services."}</p><span className="future-state"><LockKeyhole />{it ? "Non ancora disponibile" : "Not available yet"}</span></section><section><IdCard /><span className="coming-soon">{it ? "PROSSIMAMENTE" : "COMING SOON"}</span><h3>{it ? "Documenti d’identità" : "Identity documents"}</h3><p>{it ? "Qui potrai caricare i documenti richiesti in modo sicuro. Il caricamento non è ancora attivo." : "You will be able to securely upload the documents we need here. Uploads are not enabled yet."}</p><span className="future-state"><LockKeyhole />{it ? "Caricamento non attivo" : "Uploads not enabled"}</span></section></div>
       <div className="dashboard-help"><Mail /><div><b>{it ? "Hai bisogno di assistenza?" : "Need assistance?"}</b><p>{it ? "Per il contratto o per aggiornare il cellulare registrato, contatta la reception." : "For help with your contract or to update your registered mobile, contact reception."}</p></div><a href="mailto:info@romaofficesharing.it">{it ? "Contattaci" : "Contact us"}<ArrowRight /></a></div>
     </div>
   </div>;
