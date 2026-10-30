@@ -53,7 +53,7 @@ export async function provisionCustomerAccount(order: OrderRow, data: RequestDat
   const inizio = data.startDate;
   const [client] = await db.insert(domClients).values({
     ragioneSociale: data.companyName.trim(), emailPosta: email, amministratore: data.representativeName, personaRif: data.representativeName,
-    telefono: data.phone, inizioDom: inizio, scadenzaDom: addMonths(inizio, data.months), prezzoRinnovo: Math.round(snapshot.quote.serviceNetCents / 100),
+    telefono: data.phone, emailPec: data.companyPec || null, inizioDom: inizio, scadenzaDom: addMonths(inizio, data.months), prezzoRinnovo: Math.round(snapshot.quote.serviceNetCents / 100),
     stato: 0, tipologia: 0, areaClientiEmail: email, areaClientiPasswordHash: passwordHash, mustChangePassword: true,
     note: `Creata automaticamente dall'ordine online ${order.publicId}`,
   }).returning();
@@ -64,7 +64,7 @@ export async function provisionCustomerAccount(order: OrderRow, data: RequestDat
     societa: client.ragioneSociale, denominazioneForma: client.ragioneSociale, sedeVia: data.companyAddress, cfRegImp: (data.companyTaxCode || "").toUpperCase(),
     piva: digits(data.companyVat), cfSocieta: (data.companyTaxCode || data.companyVat || "").toUpperCase(), pivaSocieta: digits(data.companyVat),
     repQualifica: data.representativeRole, repNome: data.representativeName, repCf: data.representativeTaxCode.toUpperCase(), repEmail: email,
-    telUrgenze: data.phone, emailScansioni: email,
+    telUrgenze: data.phone, emailScansioni: email, pec: data.companyPec, sdi: (data.companySdi || "").toUpperCase(),
   });
   return { email, password, phone: data.phone, alreadyHadAccess: false };
 }

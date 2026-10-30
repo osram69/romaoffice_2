@@ -7,6 +7,7 @@ export const requestSchema = z.object({
   companyExists: z.boolean().default(false), companyName: z.string().trim().min(2).max(200),
   companyVat: z.string().trim().max(30).default(""), companyTaxCode: z.string().trim().max(30).default(""),
   companyAddress: z.string().trim().max(240).default(""), companyRegister: z.string().trim().max(120).default(""),
+  companyPec: z.string().trim().max(254).default(""), companySdi: z.string().trim().max(7).default(""),
   representativeName: z.string().trim().min(2).max(200), representativeRole: z.string().trim().max(80).default(""),
   representativeTaxCode: z.string().trim().min(1).max(40).refine(isValidTaxCode, "invalid-tax-code"),
   email: z.string().trim().email().max(254).transform(s => s.toLowerCase()),
@@ -23,6 +24,13 @@ export const requestSchema = z.object({
   if (v.service === "postal" && (![6, 12].includes(v.months) || v.newActivation)) ctx.addIssue({ code: "custom", path: ["months"], message: "postal-duration-invalid" });
   if (!v.termsAccepted) ctx.addIssue({ code: "custom", path: ["termsAccepted"], message: "terms-required" });
   if (v.service === "postal" && !isValidTaxCode(v.companyTaxCode)) ctx.addIssue({ code: "custom", path: ["companyTaxCode"], message: "invalid-tax-code" });
+  // An already-existing company must give a way to be invoiced/notified: a PEC or an SDI code (either one is enough; with an SDI code the PEC is optional).
+  const pecOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.companyPec); const sdiOk = /^[A-Za-z0-9]{7}$/.test(v.companySdi);
+  if (v.service === "postal" || v.companyExists) {
+    if (!pecOk && !sdiOk) ctx.addIssue({ code: "custom", path: ["companyPec"], message: "pec-or-sdi-required" });
+  }
+  if (v.companyPec && !pecOk) ctx.addIssue({ code: "custom", path: ["companyPec"], message: "invalid-pec" });
+  if (v.companySdi && !sdiOk) ctx.addIssue({ code: "custom", path: ["companySdi"], message: "invalid-sdi" });
   if (v.service === "legal_unit" && v.addons.length) ctx.addIssue({ code: "custom", path: ["addons"], message: "invalid-addons" });
 });
 export type RequestData = z.infer<typeof requestSchema>;

@@ -34,6 +34,7 @@ export async function sendRequestConfirmation(order: OrderRow, data: RequestData
     `${it ? "Pratica" : "Reference"}: ${shortRef}`,
     `${copy.months(data.months)} — ${it ? "decorrenza" : "start date"}: ${data.startDate}`,
     `${data.representativeName} (CF ${data.representativeTaxCode}) — ${data.email} — ${data.phone}`,
+    ...(data.companyPec || data.companySdi ? [`${data.companyPec ? `PEC ${data.companyPec}` : ""}${data.companyPec && data.companySdi ? " — " : ""}${data.companySdi ? `SDI ${data.companySdi}` : ""}`] : []),
     ...priced.addonLines.map(line => `${it ? line.titleIt : line.titleEn} × ${line.quantity}: ${formatEur(line.totalCents, lang)} ${it ? "+ IVA" : "+ VAT"}`),
     `${it ? "Imponibile" : "Net amount"}: ${formatEur(priced.netCents, lang)}`,
     `${it ? "IVA" : "VAT"} ${product.vatBps / 100}%: ${formatEur(priced.vatCents, lang)}`,
@@ -102,7 +103,7 @@ export async function sendRequestConfirmation(order: OrderRow, data: RequestData
     const [current] = await tx.select().from(orders).where(eq(orders.id, order.id)).for("update");
     let customerSent = !!current.requestEmailSentAt; let adminSent = !!current.adminEmailSentAt;
     if (!customerSent) customerSent = (await sendMail({ to: data.email, subject: `${it ? "Richiesta e dati pagamento" : "Application and payment details"} — ${copy.name}`, text: customerLetter, html: customerHtml, attachments })).sent;
-    if (!adminSent) adminSent = (await sendMail({ to: adminEmail(), subject: `[${shortRef}] ${copy.name}`, text: letter, html, attachments })).sent;
+    if (!adminSent) adminSent = (await sendMail({ to: adminEmail(), subject: `[${shortRef}] ${copy.name} ${data.companyName.replace(/\s+/g, " ").trim()}`, text: letter, html, attachments })).sent;
     await tx.update(orders).set({ requestEmailSentAt: customerSent ? current.requestEmailSentAt || new Date() : null, adminEmailSentAt: adminSent ? current.adminEmailSentAt || new Date() : null }).where(eq(orders.id, order.id));
     return { customerSent, adminSent };
   });

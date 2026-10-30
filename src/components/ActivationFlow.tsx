@@ -11,7 +11,7 @@ import { ManualRequestModal } from "./ManualRequestModal";
 import { LegalLinkModal } from "./LegalLinkModal";
 import { PrivacyNoticeContent } from "./LegalContent";
 type FormState = {
-  companyExists: boolean; companyName: string; companyVat: string; companyTaxCode: string; companyAddress: string; companyRegister: string;
+  companyExists: boolean; companyName: string; companyVat: string; companyTaxCode: string; companyAddress: string; companyRegister: string; companyPec: string; companySdi: string;
   representativeName: string; representativeRole: string; representativeTaxCode: string; email: string; phone: string;
   months: number; startDate: string; newActivation: boolean; additionalDomiciliation: boolean; consent: boolean; website: string; termsAccepted: boolean; addons: SelectedAddon[];
 };
@@ -41,7 +41,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
   const [payment, setPayment] = useState<"stripe" | "paypal" | "sumup" | "bank_transfer" | "on_site">(firstAvailablePayment);
   const [result, setResult] = useState<FinalizeResult | null>(null);
   const [form, setForm] = useState<FormState>({
-    companyExists: postal, companyName: "", companyVat: "", companyTaxCode: "", companyAddress: "", companyRegister: "",
+    companyExists: postal, companyName: "", companyVat: "", companyTaxCode: "", companyAddress: "", companyRegister: "", companyPec: "", companySdi: "",
     representativeName: "", representativeRole: it ? "Legale rappresentante" : "Legal representative", representativeTaxCode: "", email: "", phone: "",
     months: postal ? 6 : 12, startDate: "", newActivation: !postal, additionalDomiciliation: false, consent: false, website: "", termsAccepted: false, addons: [],
   });
@@ -75,6 +75,10 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
     invalidPhone: it ? "Inserisci un cellulare valido con prefisso internazionale, ad esempio +39." : "Enter a valid mobile number with an international prefix, for example +39.",
     invalidDate: it ? "Inserisci una data valida (non nel passato, entro 24 mesi)" : "Enter a valid date (not in the past, within 24 months)",
     invalidTaxCode: it ? "Codice fiscale non valido." : "Invalid tax code.",
+    companyPec: it ? "PEC della società" : "Company certified email (PEC)", companySdi: it ? "Codice SDI (fatturazione elettronica)" : "SDI code (e-invoicing)",
+    pecOrSdiHint: it ? "Indica almeno uno tra PEC e codice SDI. Se inserisci il codice SDI la PEC è facoltativa." : "Enter at least one of PEC and SDI code. If you enter the SDI code, the PEC is optional.",
+    pecOrSdiRequired: it ? "Inserisci la PEC oppure il codice SDI." : "Enter the PEC or the SDI code.",
+    invalidPec: it ? "Indirizzo PEC non valido." : "Invalid PEC address.", invalidSdi: it ? "Il codice SDI è di 7 caratteri (lettere e numeri)." : "The SDI code has 7 characters (letters and digits).",
   };
 
   const priced = useMemo(() => quote(product, { months: form.months, newActivation: form.newActivation, additionalDomiciliation: form.additionalDomiciliation, onlineActivation: true, addons: form.addons }), [product, form.months, form.newActivation, form.additionalDomiciliation, form.addons]);
@@ -130,6 +134,16 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
     if (!value.trim()) return postal ? t.required : "";
     return isValidTaxCode(value) ? "" : t.invalidTaxCode;
   }
+  // PEC or SDI: one of the two is mandatory for an existing company (postal is always an existing company); the SDI code makes the PEC optional.
+  const isPec = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
+  const isSdi = (v: string) => /^[A-Za-z0-9]{7}$/.test(v.trim());
+  function pecSdiErrors(pec: string, sdi: string) {
+    const out: Record<string, string> = {};
+    if (pec.trim() && !isPec(pec)) out.companyPec = t.invalidPec;
+    if (sdi.trim() && !isSdi(sdi)) out.companySdi = t.invalidSdi;
+    if (!out.companyPec && !out.companySdi && !isPec(pec) && !isSdi(sdi)) out.companyPec = t.pecOrSdiRequired;
+    return out;
+  }
   function setFieldError(key: string, message: string) { setErrors(prev => { if (!message) { if (!(key in prev)) return prev; const { [key]: _drop, ...rest } = prev; return rest; } return { ...prev, [key]: message }; }); }
 
   function validate() {
@@ -142,6 +156,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
     const dateErr = validateStartDateField(form.startDate); if (dateErr) next.startDate = dateErr;
     const companyErr = validateCompanyNameField(form.companyName); if (companyErr) next.companyName = companyErr;
     const companyTaxCodeErr = validateCompanyTaxCodeField(form.companyTaxCode); if (companyTaxCodeErr) next.companyTaxCode = companyTaxCodeErr;
+    if (postal || form.companyExists) Object.assign(next, pecSdiErrors(form.companyPec, form.companySdi));
     if (!form.consent) next.consent = t.required;
     if (!form.termsAccepted) next.terms = it ? "Leggi e accetta integralmente le condizioni dell’offerta prima di proseguire." : "Read and accept the full offer terms before continuing.";
     return next;
@@ -244,6 +259,11 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
               </div>
               <label>{t.companyAddress}<input value={form.companyAddress} onChange={e => setForm({ ...form, companyAddress: e.target.value })} /></label>
               <label>{t.companyRegister}<input value={form.companyRegister} onChange={e => setForm({ ...form, companyRegister: e.target.value })} /></label>
+              <p className="form-note">{t.pecOrSdiHint}</p>
+              <div className="form-grid">
+                <label>{t.companyPec}<input id="field-companyPec" type="email" value={form.companyPec} onChange={e => setForm({ ...form, companyPec: e.target.value })} onBlur={() => { const e2 = pecSdiErrors(form.companyPec, form.companySdi); setFieldError("companyPec", e2.companyPec ?? ""); setFieldError("companySdi", e2.companySdi ?? ""); }} {...aria("companyPec")} />{err("companyPec")}</label>
+                <label>{t.companySdi}<input id="field-companySdi" value={form.companySdi} maxLength={7} onChange={e => setForm({ ...form, companySdi: e.target.value.toUpperCase() })} onBlur={() => { const e2 = pecSdiErrors(form.companyPec, form.companySdi); setFieldError("companyPec", e2.companyPec ?? ""); setFieldError("companySdi", e2.companySdi ?? ""); }} {...aria("companySdi")} />{err("companySdi")}</label>
+              </div>
             </>}
           </fieldset>
 
