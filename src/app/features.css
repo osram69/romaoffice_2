@@ -146,7 +146,7 @@
 .cw-up-ok{display:inline-grid;place-items:center;width:1.5rem;height:1.5rem;border-radius:50%;background:#2e7d4f;color:#fff}
 .cw-up-ok svg{width:.95rem;height:.95rem;color:#fff}
 .cw-up-flag{padding:.5rem .6rem}
-.cw-up-go{min-width:130px;justify-content:center;align-self:flex-start;margin-left:auto;font-weight:800;letter-spacing:.06em}
+.cw-up-go{min-width:170px;justify-content:center;align-self:flex-start;margin-left:auto;font-weight:800;letter-spacing:.06em}
 .cw-up-go:disabled{opacity:.45;cursor:not-allowed}
 .cw-confirm{max-width:520px;width:92vw;padding:1.6rem}
 .cw-confirm h3{display:flex;gap:.5rem;align-items:center;margin:0 0 .8rem;font-size:1.2rem}

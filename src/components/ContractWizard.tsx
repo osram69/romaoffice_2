@@ -56,7 +56,7 @@ function UploadRow({ title, hint, accept, pickLabel, file, done, busy, canUpload
           </div>
           {flag}
         </div>
-        <button type="button" className="button primary cw-up-go" disabled={!canUpload || busy} onClick={onUpload}>{busy ? <LoaderCircle className="spin" aria-hidden="true" /> : null}CARICA</button>
+        <button type="button" className="button primary cw-up-go" disabled={!canUpload || busy} onClick={onUpload}>{busy ? <LoaderCircle className="spin" aria-hidden="true" /> : null}CARICA E INVIA</button>
       </div>
     </div>
   );
