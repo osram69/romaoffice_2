@@ -3,22 +3,22 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { domClients } from "@/db/schema";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
-import { DOC_TYPES, readClientSignedDecrypted, readDecrypted, type DocType } from "@/lib/dom-archive";
+import { DOC_TYPES, readClientDocDecrypted, readClientSignedDecrypted, readDecrypted, type DocType } from "@/lib/dom-archive";
 
 export async function GET(req: NextRequest) {
   const user = await getStaffUser(req.cookies.get(STAFF_SESSION_COOKIE)?.value);
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const id = Number(req.nextUrl.searchParams.get("id"));
-  const docType = req.nextUrl.searchParams.get("type") as DocType | "cli" | null;
-  if (!id || !docType || (docType !== "cli" && !DOC_TYPES.includes(docType))) return NextResponse.json({ error: "invalid" }, { status: 400 });
+  const docType = req.nextUrl.searchParams.get("type") as DocType | "cli" | "clidoc" | null;
+  if (!id || !docType || (docType !== "cli" && docType !== "clidoc" && !DOC_TYPES.includes(docType))) return NextResponse.json({ error: "invalid" }, { status: 400 });
 
   const [row] = await db.select({ legacyId: domClients.legacyId }).from(domClients).where(eq(domClients.id, id)).limit(1);
   if (!row) return NextResponse.json({ error: "not-found" }, { status: 404 });
 
   try {
-    // "cli" = the printed-and-signed contract the customer uploaded from the Area Clienti
-    const pdf = docType === "cli" ? await readClientSignedDecrypted(row.legacyId ?? id) : await readDecrypted(row.legacyId ?? id, docType);
+    // "cli" = the printed-and-signed contract, "clidoc" = the administrator's document, both uploaded by the customer from the Area Clienti
+    const pdf = docType === "cli" ? await readClientSignedDecrypted(row.legacyId ?? id) : docType === "clidoc" ? await readClientDocDecrypted(row.legacyId ?? id) : await readDecrypted(row.legacyId ?? id, docType);
     return new NextResponse(new Uint8Array(pdf), { headers: { "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="${row.legacyId ?? id}_${docType}.pdf"`, "Cache-Control": "private, no-store" } });
   } catch (error) {
     // Route is staff-authenticated above, so the real reason (missing/misconfigured

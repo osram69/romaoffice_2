@@ -106,6 +106,23 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 export const isEmail = (v: string) => EMAIL.test(v.trim());
 export const isCap = (v: string) => /^\d{5}$/.test(v.trim());
 export const isProv = (v: string) => /^[A-Za-z]{2}$/.test(v.trim());
+/** Today's date (local, YYYY-MM-DD) shifted by `days`: the bounds used for every date field. */
+export function dayIso(days = 0): string {
+  const d = new Date(); d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+/** Date of birth must be in the past; adults only for the people who sign or act for the company. */
+function birthError(iso: string, adult: boolean): string {
+  if (!isDate(iso)) return "Data non valida";
+  if (iso >= dayIso()) return "La data di nascita deve essere antecedente a oggi";
+  if (iso < "1900-01-01") return "Data non valida";
+  if (adult) {
+    const d = new Date(); d.setFullYear(d.getFullYear() - 18);
+    const limit = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    if (iso > limit) return "Serve una persona maggiorenne";
+  }
+  return "";
+}
 export const isDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(`${v}T12:00:00Z`));
 export function isPartitaIva(raw: string): boolean {
   const v = raw.replace(/\s/g, "");
@@ -131,11 +148,16 @@ function validatePerson(p: Person, prefix: string, errors: FieldErrors, opts: { 
   if (!isCf(p.cf)) errors[`${prefix}.cf`] = "Codice fiscale non valido";
   if (p.nascProv.trim() && !isProv(p.nascProv)) errors[`${prefix}.nascProv`] = "Sigla di 2 lettere (EE se estero)";
   if (!p.nascProv.trim()) errors[`${prefix}.nascProv`] = "Sigla di 2 lettere (EE se estero)";
-  if (!isDate(p.nascData)) errors[`${prefix}.nascData`] = "Data non valida";
+  const nascErr = birthError(p.nascData, !opts.titolare);
+  if (nascErr) errors[`${prefix}.nascData`] = nascErr;
   if (!/^[A-Za-z0-9 ./-]{4,22}$/.test(p.docNumero.trim())) errors[`${prefix}.docNumero`] = "Numero documento (max 22 caratteri)";
+  // Data di rilascio: antecedente a oggi. Data di scadenza: successiva a oggi (documento in corso di validità).
   if (!isDate(p.docRilascio)) errors[`${prefix}.docRilascio`] = "Data non valida";
+  else if (p.docRilascio >= dayIso()) errors[`${prefix}.docRilascio`] = "La data di rilascio deve essere antecedente a oggi";
+  else if (!errors[`${prefix}.nascData`] && p.docRilascio <= p.nascData) errors[`${prefix}.docRilascio`] = "Il documento non può essere stato rilasciato prima della nascita";
   if (!isDate(p.docScadenza)) errors[`${prefix}.docScadenza`] = "Data non valida";
-  else if (p.docScadenza < new Date().toISOString().slice(0, 10)) errors[`${prefix}.docScadenza`] = "Documento scaduto: serve un documento in corso di validità";
+  else if (p.docScadenza <= dayIso()) errors[`${prefix}.docScadenza`] = "La data di scadenza deve essere successiva a oggi: serve un documento in corso di validità";
+  else if (!errors[`${prefix}.docRilascio`] && p.docScadenza <= p.docRilascio) errors[`${prefix}.docScadenza`] = "La scadenza deve essere successiva al rilascio";
   if (!p.docComune.trim() && !p.docStato.trim()) { errors[`${prefix}.docComune`] = "Comune e provincia, oppure stato per le autorità estere"; errors[`${prefix}.docStato`] = "Stato (se autorità estera)"; }
   if (!p.pep) errors[`${prefix}.pep`] = "Seleziona una risposta";
   if (p.pep === "si") req(errors, `${prefix}.pepMotivo`, p.pepMotivo, "Specifica la carica o il legame");
@@ -155,7 +177,8 @@ export function validateContract(d: ContractData): FieldErrors {
   if (!isPartitaIva(d.piva)) e.piva = "Partita IVA non valida (11 cifre)";
   if (!isEmail(d.pec)) e.pec = "Indirizzo PEC non valido";
   if (!/^[A-Za-z0-9]{6,7}$/.test(d.sdi.trim())) e.sdi = "Codice SDI di 7 caratteri (0000000 se si usa la PEC)";
-  if (!isDate(d.repNatoIl)) e.repNatoIl = "Data non valida";
+  const repBirth = birthError(d.repNatoIl, true);
+  if (repBirth) e.repNatoIl = repBirth;
   if (!isCap(d.repResCap)) e.repResCap = "CAP di 5 cifre";
   if (!isProv(d.repResProv)) e.repResProv = "Sigla di 2 lettere";
   if (!isCf(d.repCf)) e.repCf = "Codice fiscale non valido";

@@ -125,3 +125,15 @@ export async function saveClientSignedEncrypted(fileId: number, data: Buffer) {
 export async function readClientSignedDecrypted(fileId: number): Promise<Buffer> {
   return decryptFromFile(clientSignedPath(fileId));
 }
+
+// The administrator's identity document uploaded by the customer (kept apart from the staff-managed `doc` slot,
+// which "Carica e processa" overwrites; staff add this file to the contract with "Aggiungi PDF in coda").
+function clientDocPath(fileId: number) {
+  return path.join(archiveDir(), `${fileId}_clidoc.pdf.enc`);
+}
+export async function saveClientDocEncrypted(fileId: number, data: Buffer) {
+  await encryptToFile(clientDocPath(fileId), data);
+}
+export async function readClientDocDecrypted(fileId: number): Promise<Buffer> {
+  return decryptFromFile(clientDocPath(fileId));
+}

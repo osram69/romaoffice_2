@@ -52,7 +52,7 @@ export async function loadContractDraft(client: DomClient) {
   if (!saved) data = { ...data, ...prefillFrom(client) };
   return {
     data: applyConditions(data, client), conditionsReady: conditionsFrom(client).ready, saved,
-    completedAt: row?.completedAt ?? null, signedAt: client.contrattoClienteAt ?? null,
+    completedAt: row?.completedAt ?? null, signedAt: client.contrattoClienteAt ?? null, adminDocAt: client.docAmmClienteAt ?? null,
   };
 }
 

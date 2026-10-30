@@ -215,6 +215,8 @@ export const domClients = pgTable("dom_clients", {
   // When the customer uploaded the printed-and-signed contract from the Area Clienti (the file itself is
   // kept encrypted next to the other archive documents, see saveClientSignedEncrypted).
   contrattoClienteAt: timestamp("contratto_cliente_at", { withTimezone: true }),
+  // Same for the administrator's identity document the customer uploads from the Area Clienti.
+  docAmmClienteAt: timestamp("doc_amm_cliente_at", { withTimezone: true }),
   amministratore: text("amministratore"),
   telefonoAmm: text("telefono_amm"),
   personaRif: text("persona_rif"),

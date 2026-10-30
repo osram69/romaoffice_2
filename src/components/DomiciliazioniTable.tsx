@@ -323,8 +323,11 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds }: { rows: Dom
                           const clientSigned = viewing.contrattoClienteAt
                             ? <a className="gestione-file-link" style={{ marginRight: 8, fontWeight: 700 }} href={`/api/dom-documents?id=${viewing.id}&type=cli`} target="_blank" rel="noopener noreferrer" title="Stampato e firmato dal cliente: aggiungi la firma del domiciliatario con Carica e processa">Contratto firmato dal cliente ({fmtDate(new Date(viewing.contrattoClienteAt).toISOString().slice(0, 10))})</a>
                             : null;
-                          if (present.length === 0 && !clientSigned) return <span style={{ color: "#aaa" }}>Nessun allegato presente</span>;
-                          return <>{clientSigned}{present.map(d => (
+                          const clientDoc = viewing.docAmmClienteAt
+                            ? <a className="gestione-file-link" style={{ marginRight: 8, fontWeight: 700 }} href={`/api/dom-documents?id=${viewing.id}&type=clidoc`} target="_blank" rel="noopener noreferrer" title="Caricato dal cliente: aggiungilo al contratto con “Aggiungi PDF in coda”">Documento amministratore dal cliente ({fmtDate(new Date(viewing.docAmmClienteAt).toISOString().slice(0, 10))})</a>
+                            : null;
+                          if (present.length === 0 && !clientSigned && !clientDoc) return <span style={{ color: "#aaa" }}>Nessun allegato presente</span>;
+                          return <>{clientSigned}{clientDoc}{present.map(d => (
                             <a key={d.key} className="gestione-file-link" style={{ marginRight: 8 }} href={`/api/dom-documents?id=${viewing.id}&type=${d.key}`} target="_blank" rel="noopener noreferrer">{d.label}</a>
                           ))}</>;
                         })()}

@@ -1,11 +1,11 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, CircleHelp, Download, FileCheck2, Info, LoaderCircle, Plus, Trash2, Upload } from "lucide-react";
-import { MAX_DELEGATI, MAX_TITOLARI, derivedFromParties, emptyPerson, validateContract, type ContractData, type FieldErrors, type Person, type YesNo } from "@/lib/contract-data";
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, CircleHelp, Download, FileCheck2, FileText, Info, LoaderCircle, Plus, Trash2, Upload } from "lucide-react";
+import { MAX_DELEGATI, MAX_TITOLARI, dayIso, derivedFromParties, emptyPerson, validateContract, type ContractData, type FieldErrors, type Person, type YesNo } from "@/lib/contract-data";
 import { ContractInstructions, type InstructionTab } from "./ContractInstructions";
 
-type Draft = { data: ContractData; conditionsReady: boolean; saved: boolean; completedAt: string | null; signedAt: string | null };
-type FieldOpts = { help?: ReactNode; type?: string; placeholder?: string; upper?: boolean; digits?: boolean; maxLength?: number; span?: 1 | 2 | 3; required?: boolean; list?: string[] };
+type Draft = { data: ContractData; conditionsReady: boolean; saved: boolean; completedAt: string | null; signedAt: string | null; adminDocAt: string | null };
+type FieldOpts = { min?: string; max?: string; help?: ReactNode; type?: string; placeholder?: string; upper?: boolean; digits?: boolean; maxLength?: number; span?: 1 | 2 | 3; required?: boolean; list?: string[] };
 
 // --- path helpers (answers are edited by "a.b.0.c" paths so one input component fits every field) -----
 function getPath(obj: unknown, path: string): unknown {
@@ -31,6 +31,58 @@ const STEPS = [
   { id: "riepilogo", title: "Riepilogo e PDF", match: (k: string) => k === "confermaDati" },
 ] as const;
 const AV_FIRST_STEP = 5; // first step of the adeguata verifica (Allegato 3)
+
+type Uploaded = { name: string | null; at: string };
+const fmtSize = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1).replace(".", ",")} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+
+/** One "choose file → see its name → CARICA" row; a green check marks a file that was uploaded correctly. */
+function UploadRow({ title, hint, accept, pickLabel, file, done, busy, canUpload, flag, onPick, onUpload }: {
+  title: string; hint: ReactNode; accept: string; pickLabel: string; file: File | null; done: Uploaded | null; busy: boolean; canUpload: boolean;
+  flag?: ReactNode; onPick: (f: File | null) => void; onUpload: () => void;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  return (
+    <div className="cw-up">
+      <h4>{title}</h4>
+      <p>{hint}</p>
+      <div className="cw-up-row">
+        <div className="cw-up-left">
+          <input ref={input} type="file" accept={accept} hidden onChange={e => { onPick(e.target.files?.[0] ?? null); e.target.value = ""; }} />
+          <button type="button" className="button" disabled={busy} onClick={() => input.current?.click()}><Upload aria-hidden="true" />{pickLabel}</button>
+          <div className="cw-up-file" aria-live="polite">
+            {file ? <><FileText aria-hidden="true" /><b>{file.name}</b><small>{fmtSize(file.size)} · pronto per il caricamento</small></>
+              : done ? <><span className="cw-up-ok" role="img" aria-label="Caricato correttamente"><Check aria-hidden="true" /></span><b>{done.name ?? "File caricato"}</b><small>caricato il {new Date(done.at).toLocaleDateString("it-IT")}</small></>
+              : <small>Nessun file selezionato</small>}
+          </div>
+          {flag}
+        </div>
+        <button type="button" className="button primary cw-up-go" disabled={!canUpload || busy} onClick={onUpload}>{busy ? <LoaderCircle className="spin" aria-hidden="true" /> : null}CARICA</button>
+      </div>
+    </div>
+  );
+}
+
+/** Reminder shown right before the contract PDF is downloaded. */
+function ReadConfirmDialog({ open, onCancel, onConfirm }: { open: boolean; onCancel: () => void; onConfirm: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (open && !d.open) d.showModal();
+    if (!open && d.open) d.close();
+  }, [open]);
+  return (
+    <dialog ref={ref} className="standard-offer-dialog cw-confirm" aria-labelledby="cw-confirm-title" onCancel={e => { e.preventDefault(); onCancel(); }}>
+      <h3 id="cw-confirm-title"><AlertTriangle aria-hidden="true" /> Leggi attentamente il contratto</h3>
+      <p>Stai per scaricare il <b>contratto completo</b>. Prima di stamparlo e firmarlo ti chiediamo di <b>leggere con attenzione tutte le clausole</b>, compresi gli allegati e l’informativa sulla privacy.</p>
+      <p>In particolare le clausole <b>4, 5, 7, 8, 9, 10, 11, 12, 13 e 16</b> vanno approvate specificamente con una seconda firma (art. 1341 c.c., pagina 6). Con la tua firma dichiari di averne compreso e accettato l’intero contenuto.</p>
+      <div className="cw-confirm-actions">
+        <button type="button" className="button" onClick={onCancel}>Annulla</button>
+        <button type="button" className="button primary" onClick={onConfirm}><Download aria-hidden="true" />Ho capito, scarica il PDF</button>
+      </div>
+    </dialog>
+  );
+}
 
 function HelpTip({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -71,7 +123,13 @@ export function ContractWizard({ onSessionExpired: onExpired }: { onSessionExpir
   const [instr, setInstr] = useState<{ open: boolean; tab: InstructionTab }>({ open: false, tab: "titolare" });
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: "ok" | "warn"; text: string } | null>(null);
-  const [signedAt, setSignedAt] = useState<string | null>(null);
+  const [signedDone, setSignedDone] = useState<Uploaded | null>(null);
+  const [adminDone, setAdminDone] = useState<Uploaded | null>(null);
+  const [signedFile, setSignedFile] = useState<File | null>(null);
+  const [adminFile, setAdminFile] = useState<File | null>(null);
+  const [readFlag, setReadFlag] = useState(false);
+  const [uploading, setUploading] = useState<"signed" | "admin" | null>(null);
+  const [readOpen, setReadOpen] = useState(false);
   const [completedAt, setCompletedAt] = useState<string | null>(null);
   const root = useRef<HTMLDivElement>(null);
   const dirty = useRef(false);
@@ -84,7 +142,7 @@ export function ContractWizard({ onSessionExpired: onExpired }: { onSessionExpir
         if (r.status === 401) { onSessionExpired(); return; }
         if (!r.ok) throw new Error();
         const d: Draft = await r.json();
-        setDraft(d); setData(d.data); setSignedAt(d.signedAt); setCompletedAt(d.completedAt);
+        setDraft(d); setData(d.data); setSignedDone(d.signedAt ? { name: null, at: d.signedAt } : null); setAdminDone(d.adminDocAt ? { name: null, at: d.adminDocAt } : null); setCompletedAt(d.completedAt);
       } catch { setLoadError("Non riusciamo a caricare il modulo. Riprova tra poco."); }
     })();
   }, [onSessionExpired]);
@@ -140,7 +198,7 @@ export function ContractWizard({ onSessionExpired: onExpired }: { onSessionExpir
     return (
       <div className={`cw-field span${o.span ?? 1}${err ? " has-error" : ""}`} key={path}>
         <label htmlFor={id}>{label}{o.required !== false && <abbr title="Obbligatorio">*</abbr>}{o.help && <HelpTip>{o.help}</HelpTip>}</label>
-        <input id={id} type={o.type ?? "text"} value={value} placeholder={o.placeholder} maxLength={o.maxLength ?? 120} list={o.list ? `${id}-list` : undefined}
+        <input id={id} type={o.type ?? "text"} value={value} placeholder={o.placeholder} maxLength={o.maxLength ?? 120} min={o.min} max={o.max} list={o.list ? `${id}-list` : undefined}
           autoComplete="off" aria-invalid={!!err} aria-describedby={err ? `${id}-err` : undefined}
           onChange={e => { let v = e.target.value; if (o.upper) v = v.toUpperCase(); if (o.digits) v = v.replace(/\D/g, ""); update(path, v); }}
           onBlur={() => setTouched(t => new Set(t).add(path))} />
@@ -193,10 +251,10 @@ export function ContractWizard({ onSessionExpired: onExpired }: { onSessionExpir
         {F(`${prefix}.cf`, "Codice fiscale", { upper: true, maxLength: 16, help: "16 caratteri, come riportato sulla tessera sanitaria. Viene controllato automaticamente." })}
         {F(`${prefix}.nascLuogo`, "Luogo di nascita", { span: 2 })}
         {F(`${prefix}.nascProv`, "Prov. di nascita", { upper: true, maxLength: 2, placeholder: "RM", help: "Sigla della provincia. Se sei nato all’estero scrivi EE." })}
-        {F(`${prefix}.nascData`, "Data di nascita", { type: "date" })}{F(`${prefix}.cittadinanza`, "Cittadinanza")}
+        {F(`${prefix}.nascData`, "Data di nascita", { type: "date", max: dayIso(-1), min: "1900-01-01" })}{F(`${prefix}.cittadinanza`, "Cittadinanza")}
         {F(`${prefix}.docTipo`, "Tipo documento di identificazione", { span: 2, list: ["Carta d’identità", "Passaporto", "Patente di guida"], help: "Documento in corso di validità. Ne dovrai allegare una fotocopia insieme al contratto firmato." })}
         {F(`${prefix}.docNumero`, "N° documento", { upper: true, maxLength: 22, help: "Il numero stampato sul documento, senza spazi (max 22 caratteri)." })}
-        {F(`${prefix}.docRilascio`, "Data di rilascio", { type: "date" })}{F(`${prefix}.docScadenza`, "Data di scadenza", { type: "date" })}
+        {F(`${prefix}.docRilascio`, "Data di rilascio", { type: "date", max: dayIso(-1), help: "Deve essere antecedente a oggi." })}{F(`${prefix}.docScadenza`, "Data di scadenza", { type: "date", min: dayIso(1), help: "Deve essere successiva a oggi: il documento deve essere in corso di validità." })}
         {F(`${prefix}.docAutorita`, "Autorità emittente", { span: 3, placeholder: "es. Comune di Roma, Questura di Roma, Motorizzazione" })}
         {F(`${prefix}.docComune`, "Comune dell’autorità", { span: 2, required: false, help: "Compila comune e provincia per le autorità italiane, oppure solo lo stato per le autorità straniere." })}
         {F(`${prefix}.docProvincia`, "Provincia", { upper: true, maxLength: 2, required: false })}
@@ -222,7 +280,7 @@ export function ContractWizard({ onSessionExpired: onExpired }: { onSessionExpir
   async function generate() {
     if (!data) return;
     const bad = Object.keys(errors);
-    if (bad.length) { setAttempted(new Set(STEPS.map((_, i) => i))); setMessage({ tone: "warn", text: `Mancano ${bad.length} campi: trovi l’elenco qui sotto.` }); return; }
+    if (bad.length) { setAttempted(new Set(STEPS.map((_, i) => i))); setMessage({ tone: "warn", text: bad.length === 1 && bad[0] === "confermaDati" ? "Spunta la dichiarazione di correttezza dei dati per poter scaricare il contratto." : `Mancano ${bad.length} ${bad.length === 1 ? "campo" : "campi"}: trovi l’elenco qui sotto.` }); return; }
     setBusy(true); setMessage(null);
     try {
       await flushSave();
@@ -246,20 +304,36 @@ export function ContractWizard({ onSessionExpired: onExpired }: { onSessionExpir
     if (!r.ok) throw new Error();
     dirty.current = false; setSavedAt(new Date()); setSaveState("saved");
   }
-  async function uploadSigned(file: File | undefined) {
+  function pickFile(kind: "signed" | "admin", file: File | null) {
     if (!file) return;
-    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) { setMessage({ tone: "warn", text: "Carica il contratto firmato in formato PDF (puoi scansionarlo con il telefono)." }); return; }
-    if (file.size > 20 * 1024 * 1024) { setMessage({ tone: "warn", text: "Il file supera i 20 MB: riduci la risoluzione della scansione." }); return; }
-    setBusy(true); setMessage(null);
+    const name = file.name.toLowerCase();
+    const isPdf = file.type === "application/pdf" || name.endsWith(".pdf");
+    const isImage = /^image\/(jpeg|png)$/.test(file.type) || /\.(jpe?g|png)$/.test(name);
+    if (kind === "signed" && !isPdf) { setMessage({ tone: "warn", text: "Il contratto firmato va caricato in formato PDF (puoi scansionarlo con il telefono)." }); return; }
+    if (kind === "admin" && !isPdf && !isImage) { setMessage({ tone: "warn", text: "Il documento va caricato in PDF oppure come foto (JPG o PNG)." }); return; }
+    const max = kind === "signed" ? 20 : 10;
+    if (file.size > max * 1024 * 1024) { setMessage({ tone: "warn", text: `Il file supera i ${max} MB: riduci la risoluzione della scansione.` }); return; }
+    setMessage(null);
+    if (kind === "signed") { setSignedFile(file); setReadFlag(false); } else setAdminFile(file);
+  }
+  async function upload(kind: "signed" | "admin") {
+    const file = kind === "signed" ? signedFile : adminFile;
+    if (!file) return;
+    setUploading(kind); setMessage(null);
     try {
       const form = new FormData(); form.set("file", file);
-      const r = await fetch("/api/customer/contract/signed", { method: "POST", body: form });
+      const r = await fetch(kind === "signed" ? "/api/customer/contract/signed" : "/api/customer/contract/admin-doc", { method: "POST", body: form });
       if (r.status === 401) { onSessionExpired(); return; }
       if (!r.ok) throw new Error();
-      setSignedAt(new Date().toISOString());
-      setMessage({ tone: "ok", text: "Contratto ricevuto. La reception lo controllerà, aggiungerà la firma del domiciliatario e lo pubblicherà qui nell’area clienti." });
-    } catch { setMessage({ tone: "warn", text: "Caricamento non riuscito. Controlla che sia un PDF valido e riprova." }); }
-    finally { setBusy(false); }
+      const done = { name: file.name, at: new Date().toISOString() };
+      if (kind === "signed") { setSignedDone(done); setSignedFile(null); setReadFlag(false); } else { setAdminDone(done); setAdminFile(null); }
+      setMessage({ tone: "ok", text: kind === "signed" ? "Contratto ricevuto. La reception lo controllerà, aggiungerà la firma del domiciliatario e lo pubblicherà qui nell’area clienti." : "Documento dell’amministratore ricevuto." });
+    } catch { setMessage({ tone: "warn", text: "Caricamento non riuscito. Controlla che il file sia valido e riprova." }); }
+    finally { setUploading(null); }
+  }
+  function requestDownload() {
+    if (Object.keys(errors).length) { void generate(); return; } // shows what is still missing
+    setReadOpen(true);
   }
 
   // --- render ----------------------------------------------------------------------------------------
@@ -306,7 +380,7 @@ export function ContractWizard({ onSessionExpired: onExpired }: { onSessionExpir
       body = <div className="cw-grid">
         {F("repQualifica", "In qualità di", { span: 2, list: ["Amministratore unico", "Presidente del CdA", "Amministratore delegato", "Liquidatore", "Legale rappresentante"], help: "La carica con cui firmi per la società (Presidente, Amministratore unico, Liquidatore…)." })}
         {F("repNome", "Nome e cognome", { span: 3, help: "Del legale rappresentante munito dei necessari poteri." })}
-        {F("repNatoA", "Nato a", { span: 2 })}{F("repNatoIl", "Nato il", { type: "date" })}
+        {F("repNatoA", "Nato a", { span: 2 })}{F("repNatoIl", "Nato il", { type: "date", max: dayIso(-1), min: "1900-01-01" })}
         {F("repResVia", "Residente in via", { span: 2 })}{F("repResCap", "CAP", { digits: true, maxLength: 5 })}
         {F("repResCitta", "Città", { span: 2 })}{F("repResProv", "Provincia", { upper: true, maxLength: 2, placeholder: "RM" })}
         {F("repCf", "Codice fiscale", { upper: true, maxLength: 16 })}{F("repEmail", "Email", { type: "email", span: 2 })}
@@ -443,17 +517,24 @@ export function ContractWizard({ onSessionExpired: onExpired }: { onSessionExpir
         </label>
         {errors.confermaDati && attempted.has(step) && <p className="cw-err" role="alert">{errors.confermaDati}</p>}
         <div className="cw-actions">
-          <button type="button" className="button primary" disabled={busy} onClick={generate}>{busy ? <LoaderCircle className="spin" /> : <Download aria-hidden="true" />}Scarica il contratto compilato (PDF)</button>
+          <button type="button" className="button primary" disabled={busy} onClick={requestDownload}>{busy ? <LoaderCircle className="spin" /> : <Download aria-hidden="true" />}Scarica il contratto compilato (PDF)</button>
         </div>
         {completedAt && <Banner tone="ok">PDF generato il {new Date(completedAt).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" })}. Se modifichi un dato dovrai scaricarlo di nuovo.</Banner>}
         <div className="cw-upload">
-          <h4>Hai firmato il contratto?</h4>
-          <p>Stampa il PDF, firmalo nei punti indicati (pagine 5, 6, 7, 8, 9 e 14: luogo e data, timbro e firma), allega le fotocopie dei documenti d’identità e dei codici fiscali, quindi caricalo qui in PDF (anche una scansione con il telefono).</p>
-          <label className="button">
-            <input type="file" accept="application/pdf" hidden disabled={busy} onChange={e => { void uploadSigned(e.target.files?.[0]); e.target.value = ""; }} />
-            {busy ? <LoaderCircle className="spin" /> : <Upload aria-hidden="true" />}Carica il contratto firmato
-          </label>
-          {signedAt && <Banner tone="ok">Contratto firmato ricevuto il {new Date(signedAt).toLocaleDateString("it-IT")}. Dopo la firma del domiciliatario lo troverai completo in “Il mio contratto”.</Banner>}
+          <UploadRow
+            title="Hai firmato il contratto?"
+            hint="Stampa il PDF, firmalo nei punti indicati (pagine 5, 6, 7, 8, 9 e 14: luogo e data, timbro e firma) e caricalo qui in PDF (anche una scansione con il telefono)."
+            accept="application/pdf" pickLabel="Seleziona il contratto firmato" file={signedFile} done={signedDone} busy={uploading === "signed"}
+            canUpload={!!signedFile && readFlag && uploading === null} onPick={f => pickFile("signed", f)} onUpload={() => void upload("signed")}
+            flag={signedFile ? <label className="cw-check cw-up-flag"><input type="checkbox" checked={readFlag} onChange={e => setReadFlag(e.target.checked)} /><span>Dichiaro di aver letto integralmente il contratto.</span></label> : null}
+          />
+          {signedDone && <Banner tone="ok">Contratto firmato ricevuto il {new Date(signedDone.at).toLocaleDateString("it-IT")}. Dopo la firma del domiciliatario lo troverai completo in “Il mio contratto”.</Banner>}
+          <UploadRow
+            title="Documento dell’amministratore"
+            hint="Carica la copia del documento di identità in corso di validità (e il codice fiscale) dell’amministratore: PDF oppure foto JPG/PNG."
+            accept="application/pdf,image/jpeg,image/png" pickLabel="Seleziona il documento" file={adminFile} done={adminDone} busy={uploading === "admin"}
+            canUpload={!!adminFile && uploading === null} onPick={f => pickFile("admin", f)} onUpload={() => void upload("admin")}
+          />
         </div>
       </>;
       break;
@@ -477,6 +558,7 @@ export function ContractWizard({ onSessionExpired: onExpired }: { onSessionExpir
         {step < STEPS.length - 1 && <button type="button" className="button primary" onClick={next}>{step === 0 ? "Inizia" : "Avanti"}<ArrowRight aria-hidden="true" /></button>}
         {step === STEPS.length - 1 && <span className="cw-ok"><FileCheck2 aria-hidden="true" /></span>}
       </div>
+      <ReadConfirmDialog open={readOpen} onCancel={() => setReadOpen(false)} onConfirm={() => { setReadOpen(false); void generate(); }} />
       <ContractInstructions open={instr.open} tab={instr.tab} onClose={() => setInstr(i => ({ ...i, open: false }))} onTab={tab => setInstr({ open: true, tab })} />
     </div>
   );
