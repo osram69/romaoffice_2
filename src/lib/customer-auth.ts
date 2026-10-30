@@ -35,7 +35,8 @@ export async function verifyPassword(password: string, stored: string | null) {
   const actual = (await derive(password, salt || "invalid-account")).toString("hex");
   return version === "scrypt-v1" && typeof hash === "string" && constantEqual(actual, hash) && stored !== null;
 }
-export function protectMutation(req: NextRequest) {
+/** `upload: true` is for file uploads (multipart body, size checked by the route itself); everything else is a small JSON POST. */
+export function protectMutation(req: NextRequest, opts: { upload?: boolean } = {}) {
   const origin = req.headers.get("origin");
   const allowed = new Set([req.nextUrl.origin, process.env.NEXT_PUBLIC_SITE_URL].filter(Boolean));
   // Behind Next/Hostinger's proxy, nextUrl may name an internal server. A browser
@@ -46,6 +47,10 @@ export function protectMutation(req: NextRequest) {
     catch { throw new CustomerError("forbidden", 403); }
   }
   if (req.headers.get("sec-fetch-site") === "cross-site" || (origin && !allowed.has(origin) && !matchesHost)) throw new CustomerError("forbidden", 403);
+  if (opts.upload) {
+    if (!req.headers.get("content-type")?.includes("multipart/form-data")) throw new CustomerError("invalid", 415);
+    return;
+  }
   if (!req.headers.get("content-type")?.includes("application/json")) throw new CustomerError("invalid", 415);
   if (Number(req.headers.get("content-length") || 0) > 12000) throw new CustomerError("invalid", 413);
 }

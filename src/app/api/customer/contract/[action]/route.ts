@@ -37,8 +37,8 @@ export async function GET(req: NextRequest, { params }: Props) {
 
 export async function POST(req: NextRequest, { params }: Props) {
   try {
-    protectMutation(req);
     const { action } = await params;
+    protectMutation(req, { upload: action === "signed" || action === "admin-doc" });
     const client = await getDomCustomer(req);
     if (action === "save") {
       await limit(`contract-save:${client.id}`, 300, 3600);
