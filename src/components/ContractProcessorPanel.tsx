@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { PenLine } from "lucide-react";
+import { PenLine, Trash2, Undo2 } from "lucide-react";
 import { PDFDocument } from "pdf-lib";
 import { getFirmaDomiciliatarioAction } from "@/app/gestione-domiciliazioni-x9k2m7/actions";
 import { uploadDomDocumentAction } from "@/app/gestione-domiciliazioni-x9k2m7/actions";
@@ -90,6 +90,8 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
   const [quality, setQuality] = useState(DEFAULT_QUALITY);
   const [zoomedPageId, setZoomedPageId] = useState<string | null>(null);
   const [thumbWidth, setThumbWidth] = useState(76);
+  // Pages the operator removed (a stack, so "Ripristina" brings back the most recent first).
+  const [deleted, setDeleted] = useState<{ page: ContractPage; lane: Lane; index: number }[]>([]);
   const previewRef = useRef<HTMLDivElement>(null);
   // The full-resolution render of each page, kept around so the quality slider can re-encode a
   // JPEG on the fly without re-rendering the PDF (slow) every time it moves.
@@ -140,6 +142,11 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
     return () => { cancelled = true; };
   }, [file]);
 
+  // The placement preview sits below all the lanes: bring it into view when a page is picked for the signature.
+  useEffect(() => {
+    if (placementPageId) previewRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [placementPageId]);
+
   function movePage(id: string, targetLane: Lane, targetIndex: number) {
     setLanes(prev => {
       const next: Lanes = { unassigned: [...prev.unassigned], con: [...prev.con], all: [...prev.all], mod: [...prev.mod], avc: [...prev.avc], doc: [...prev.doc] };
@@ -169,6 +176,32 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
         return canvas ? { ...p, thumbnailUrl: canvas.toDataURL("image/jpeg", next) } : p;
       });
       return { unassigned: recompress(prev.unassigned), con: recompress(prev.con), all: recompress(prev.all), mod: recompress(prev.mod), avc: recompress(prev.avc), doc: recompress(prev.doc) };
+    });
+  }
+
+  // Removing a page only drops it from the work in progress — the uploaded PDF is untouched. Its canvas
+  // stays in canvasesRef so a mistaken click can be undone.
+  function deletePage(id: string) {
+    const found = findPage(lanes, id);
+    if (!found) return;
+    const index = lanes[found.lane].findIndex(p => p.id === id);
+    setLanes(prev => ({ ...prev, [found.lane]: prev[found.lane].filter(p => p.id !== id) }));
+    setDeleted(d => [...d, { page: found.page, lane: found.lane, index }]);
+    if (signature?.pageId === id) setSignature(null);
+    if (placementPageId === id) setPlacementPageId(null);
+    if (zoomedPageId === id) setZoomedPageId(null);
+  }
+
+  function restoreDeleted() {
+    const last = deleted[deleted.length - 1];
+    if (!last) return;
+    setDeleted(d => d.slice(0, -1));
+    const canvas = canvasesRef.current.get(last.page.id);
+    const page = canvas ? { ...last.page, thumbnailUrl: canvas.toDataURL("image/jpeg", quality) } : last.page;
+    setLanes(prev => {
+      const list = [...prev[last.lane]];
+      list.splice(clamp(last.index, 0, list.length), 0, page);
+      return { ...prev, [last.lane]: list };
     });
   }
 
@@ -300,6 +333,9 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
         <button type="button" className="contract-proc-thumb-sig-btn" title="Posiziona qui la firma" onClick={e => { e.stopPropagation(); openPlacement(page.id); }}>
           <PenLine size={12} />
         </button>
+        <button type="button" className="contract-proc-thumb-del-btn" title="Elimina questa pagina" aria-label={`Elimina pagina ${page.sourceIndex + 1}`} onClick={e => { e.stopPropagation(); deletePage(page.id); }}>
+          <Trash2 size={12} />
+        </button>
         {signature?.pageId === page.id && <span className="contract-proc-thumb-sig" title="Firma posizionata qui">✒</span>}
       </div>
     );
@@ -322,7 +358,7 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
           {!loading && (
             <>
               <p style={{ fontSize: 12, color: "#666", marginTop: 0 }}>
-                Trascina le pagine (in qualunque ordine siano state scansionate) nelle caselle giuste. Il numero sulla miniatura è la pagina originale nel PDF caricato. Clicca su una pagina per ingrandirla, o sull&apos;icona ✎ per posizionarci la firma del domiciliatario.
+                Trascina le pagine (in qualunque ordine siano state scansionate) nelle caselle giuste. Il numero sulla miniatura è la pagina originale nel PDF caricato. Clicca su una pagina per ingrandirla, sull&apos;icona ✎ per posizionarci la firma del domiciliatario, o sul cestino per eliminare la pagina.
               </p>
 
               <div style={{ display: "flex", flexWrap: "wrap", gap: 24, alignItems: "flex-end", marginBottom: 12 }}>
@@ -337,6 +373,11 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
                     <button type="button" className="gestione-btn gestione-btn-outline" style={{ padding: "2px 12px" }} disabled={thumbWidth >= 180} onClick={() => setThumbWidth(w => Math.min(180, w + 20))}>+</button>
                   </div>
                 </div>
+                {deleted.length > 0 && (
+                  <button type="button" className="gestione-btn gestione-btn-outline" style={{ display: "inline-flex", alignItems: "center", gap: 6 }} onClick={restoreDeleted}>
+                    <Undo2 size={14} /> Ripristina pagina eliminata ({deleted.length})
+                  </button>
+                )}
               </div>
 
               <div className="contract-proc-lane" onDragOver={e => e.preventDefault()} onDrop={() => handleDrop("unassigned", lanes.unassigned.length)}>
