@@ -154,3 +154,11 @@
 .cw-confirm p{font-size:.92rem;line-height:1.55}
 .cw-confirm-actions{display:flex;justify-content:flex-end;gap:.7rem;margin-top:1.2rem;flex-wrap:wrap}
 .cw-confirm-actions .button{display:inline-flex;gap:.5rem;align-items:center}
+
+.cw-modes{display:flex;gap:.5rem;flex-wrap:wrap;margin:0 0 1.1rem;padding:.3rem;background:var(--cw-soft);border-radius:12px}
+.cw-modes button{flex:1 1 240px;display:inline-flex;gap:.5rem;align-items:center;justify-content:center;border:1px solid transparent;background:transparent;padding:.65rem .9rem;border-radius:9px;font:inherit;font-weight:700;color:#4b5b54;cursor:pointer}
+.cw-modes button.on{background:#fff;border-color:var(--cw-or);color:#183229;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.cw-modes button svg{width:1.05rem;height:1.05rem}
+.cw-modes-ok{display:inline-grid;place-items:center;width:1.2rem;height:1.2rem;border-radius:50%;background:#2e7d4f;color:#fff;margin-left:.3rem}
+.cw-modes-ok svg{width:.75rem;height:.75rem;color:#fff}
+.cw-goupload{margin:1.2rem 0}.cw-goupload .button{display:inline-flex;gap:.5rem;align-items:center}

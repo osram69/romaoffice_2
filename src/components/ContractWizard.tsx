@@ -130,6 +130,8 @@ export function ContractWizard({ onSessionExpired: onExpired }: { onSessionExpir
   const [readFlag, setReadFlag] = useState(false);
   const [uploading, setUploading] = useState<"signed" | "admin" | null>(null);
   const [readOpen, setReadOpen] = useState(false);
+  // Two separate areas: filling in/downloading the contract, and uploading the signed copy + documents.
+  const [mode, setMode] = useState<"compila" | "carica">("compila");
   const [completedAt, setCompletedAt] = useState<string | null>(null);
   const root = useRef<HTMLDivElement>(null);
   const dirty = useRef(false);
@@ -143,6 +145,8 @@ export function ContractWizard({ onSessionExpired: onExpired }: { onSessionExpir
         if (!r.ok) throw new Error();
         const d: Draft = await r.json();
         setDraft(d); setData(d.data); setSignedDone(d.signedAt ? { name: null, at: d.signedAt } : null); setAdminDone(d.adminDocAt ? { name: null, at: d.adminDocAt } : null); setCompletedAt(d.completedAt);
+        // Someone who already generated the PDF (or uploaded something) lands straight on the upload area.
+        if (d.completedAt || d.signedAt || d.adminDocAt) setMode("carica");
       } catch { setLoadError("Non riusciamo a caricare il modulo. Riprova tra poco."); }
     })();
   }, [onSessionExpired]);
@@ -345,6 +349,25 @@ export function ContractWizard({ onSessionExpired: onExpired }: { onSessionExpir
   const dmy = (iso: string) => iso.split("-").reverse().join("/");
   const pct = Math.round((step / (STEPS.length - 1)) * 100);
 
+  const uploadBlock = (
+        <div className="cw-upload">
+          <UploadRow
+            title="Hai firmato il contratto?"
+            hint="Stampa il PDF, firmalo nei punti indicati (pagine 6, 7, 8, 9 e 14: luogo e data, timbro e firma) e caricalo qui in PDF (anche una scansione con il telefono)."
+            accept="application/pdf" pickLabel="Seleziona il contratto firmato" file={signedFile} done={signedDone} busy={uploading === "signed"}
+            canUpload={!!signedFile && readFlag && uploading === null} onPick={f => pickFile("signed", f)} onUpload={() => void upload("signed")}
+            flag={signedFile ? <label className="cw-check cw-up-flag"><input type="checkbox" checked={readFlag} onChange={e => setReadFlag(e.target.checked)} /><span>Dichiaro di aver letto integralmente il contratto.</span></label> : null}
+          />
+          {signedDone && <Banner tone="ok">Contratto firmato ricevuto il {new Date(signedDone.at).toLocaleDateString("it-IT")}. Dopo la firma del domiciliatario lo troverai completo in “Il mio contratto”.</Banner>}
+          <UploadRow
+            title="Documento dell’amministratore"
+            hint="Carica la copia del documento di identità in corso di validità (e il codice fiscale) dell’amministratore: PDF oppure foto JPG/PNG."
+            accept="application/pdf,image/jpeg,image/png" pickLabel="Seleziona il documento" file={adminFile} done={adminDone} busy={uploading === "admin"}
+            canUpload={!!adminFile && uploading === null} onPick={f => pickFile("admin", f)} onUpload={() => void upload("admin")}
+          />
+        </div>
+  );
+
   let body: ReactNode = null;
   switch (STEPS[step].id) {
     case "intro":
@@ -520,29 +543,34 @@ export function ContractWizard({ onSessionExpired: onExpired }: { onSessionExpir
           <button type="button" className="button primary" disabled={busy} onClick={requestDownload}>{busy ? <LoaderCircle className="spin" /> : <Download aria-hidden="true" />}Scarica il contratto compilato (PDF)</button>
         </div>
         {completedAt && <Banner tone="ok">PDF generato il {new Date(completedAt).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" })}. Se modifichi un dato dovrai scaricarlo di nuovo.</Banner>}
-        <div className="cw-upload">
-          <UploadRow
-            title="Hai firmato il contratto?"
-            hint="Stampa il PDF, firmalo nei punti indicati (pagine 6, 7, 8, 9 e 14: luogo e data, timbro e firma) e caricalo qui in PDF (anche una scansione con il telefono)."
-            accept="application/pdf" pickLabel="Seleziona il contratto firmato" file={signedFile} done={signedDone} busy={uploading === "signed"}
-            canUpload={!!signedFile && readFlag && uploading === null} onPick={f => pickFile("signed", f)} onUpload={() => void upload("signed")}
-            flag={signedFile ? <label className="cw-check cw-up-flag"><input type="checkbox" checked={readFlag} onChange={e => setReadFlag(e.target.checked)} /><span>Dichiaro di aver letto integralmente il contratto.</span></label> : null}
-          />
-          {signedDone && <Banner tone="ok">Contratto firmato ricevuto il {new Date(signedDone.at).toLocaleDateString("it-IT")}. Dopo la firma del domiciliatario lo troverai completo in “Il mio contratto”.</Banner>}
-          <UploadRow
-            title="Documento dell’amministratore"
-            hint="Carica la copia del documento di identità in corso di validità (e il codice fiscale) dell’amministratore: PDF oppure foto JPG/PNG."
-            accept="application/pdf,image/jpeg,image/png" pickLabel="Seleziona il documento" file={adminFile} done={adminDone} busy={uploading === "admin"}
-            canUpload={!!adminFile && uploading === null} onPick={f => pickFile("admin", f)} onUpload={() => void upload("admin")}
-          />
+        <div className="cw-goupload">
+          <button type="button" className="button" onClick={() => { setMode("carica"); setMessage(null); }}><Upload aria-hidden="true" />Hai già stampato e firmato il contratto? Vai al caricamento</button>
         </div>
       </>;
       break;
     }
   }
 
+  const modes = (
+    <div className="cw-modes" role="tablist" aria-label="Sezioni">
+      <button type="button" role="tab" aria-selected={mode === "compila"} className={mode === "compila" ? "on" : ""} onClick={() => { setMode("compila"); setMessage(null); }}><FileText aria-hidden="true" />1 · Compila e scarica il contratto</button>
+      <button type="button" role="tab" aria-selected={mode === "carica"} className={mode === "carica" ? "on" : ""} onClick={() => { setMode("carica"); setMessage(null); }}><Upload aria-hidden="true" />2 · Carica contratto firmato e documenti{(signedDone || adminDone) && <span className="cw-modes-ok" aria-hidden="true"><Check /></span>}</button>
+    </div>
+  );
+  if (mode === "carica") {
+    return (
+      <div className="cw" ref={root}>
+        {modes}
+        <div className="cw-head"><h4>Carica il contratto firmato e i documenti</h4></div>
+        <p className="cw-lead">Qui carichi il contratto che hai compilato, stampato e firmato e il documento dell’amministratore. Non devi ripetere la compilazione: se non hai ancora il PDF o devi modificare un dato, torna alla sezione 1.</p>
+        {message && <Banner tone={message.tone}>{message.text}</Banner>}
+        {uploadBlock}
+      </div>
+    );
+  }
   return (
     <div className="cw" ref={root}>
+      {modes}
       <ol className="cw-steps" aria-label="Passaggi">
         {STEPS.map((s, i) => {
           const bad = i > 0 && i < step && stepErrors(i).length > 0;
