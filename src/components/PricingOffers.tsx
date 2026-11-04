@@ -45,6 +45,8 @@ function SmartStartCard({ lang, product }: { lang: Lang; product: ProductOffer }
   </div>;
 }
 
+import { FaqJsonLd } from "./JsonLd";
+
 function Faq({ lang, postal }: { lang: Lang; postal: boolean }) {
   const it = lang === "it";
   const common: [string, string][] = it ? [
@@ -69,5 +71,5 @@ function Faq({ lang, postal }: { lang: Lang; postal: boolean }) {
     ["Can I cancel whenever I want?", "Yes, according to the notice terms set out in the full offer terms above."],
   ];
   const items = postal ? [...common, ...postalOnly] : [...common, ...legal];
-  return <div className="pricing-faq"><h4>{it ? "Domande frequenti" : "Frequently asked questions"}</h4>{items.map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}</div>;
+  return <div className="pricing-faq"><FaqJsonLd items={items} /><h4>{it ? "Domande frequenti" : "Frequently asked questions"}</h4>{items.map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}</div>;
 }

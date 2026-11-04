@@ -17,6 +17,14 @@ async function requireAdmin() {
   if (user.role !== "admin") redirect("/gestione-domiciliazioni-x9k2m7");
 }
 
+export async function updateRoomsFlagAction(formData: FormData) {
+  "use server";
+  await requireAdmin();
+  await db.update(siteConfig).set({ roomsMonthlyEnabled: formData.get("roomsMonthlyEnabled") === "on" }).where(eq(siteConfig.id, 1));
+  revalidatePath(BASE_PATH);
+  revalidatePath("/sale-corsi.html"); revalidatePath("/en/course-rooms.html");
+}
+
 export async function updateSmartFlagsAction(formData: FormData) {
   "use server";
   await requireAdmin();

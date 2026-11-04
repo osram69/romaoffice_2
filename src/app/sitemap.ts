@@ -6,22 +6,23 @@ import { BASE_URL, hrefFor, pages, reverseRouteMap } from "@/lib/site";
 // SITE_RELEASE, the date of the last site-wide release that did not touch their text.
 const SITE_RELEASE = "2026-10-13";
 const PAGE_UPDATED: Record<string, string> = {
-  "index.html": "2026-10-19",
-  "uffici-arredati.html": "2026-10-19",
-  "ufficio-giornaliero.html": "2026-10-19",
-  "ufficio-temporaneo.html": "2026-10-19",
-  "sale-corsi.html": "2026-10-19",
-  "segreteria-virtuale.html": "2026-10-19",
-  "servizi-domiciliazione-sede-roma.html": "2026-10-19",
-  "domiciliazione-postale.html": "2026-10-19",
-  "domiciliazione-sede-legale-roma.html": "2026-10-19",
-  "domiciliazione-professionale.html": "2026-10-19",
-  "domiciliazione-ditta-individuale.html": "2026-10-19",
-  "domiciliazione-unita-locale.html": "2026-10-19",
+  "index.html": "2026-11-04",
+  "uffici-arredati.html": "2026-11-04",
+  "ufficio-giornaliero.html": "2026-11-04",
+  "ufficio-temporaneo.html": "2026-11-04",
+  "sale-corsi.html": "2026-11-04",
+  "segreteria-virtuale.html": "2026-11-04",
+  "servizi-domiciliazione-sede-roma.html": "2026-11-04",
+  "domiciliazione-postale.html": "2026-11-04",
+  "domiciliazione-sede-legale-roma.html": "2026-11-04",
+  "domiciliazione-professionale.html": "2026-11-04",
+  "domiciliazione-ditta-individuale.html": "2026-11-04",
+  "domiciliazione-unita-locale.html": "2026-11-04",
   "dove-siamo.html": "2026-10-19",
   "contatti.html": "2026-10-19",
   "chi-siamo.html": "2026-10-19",
   "dicono-di-noi.html": "2026-10-19",
+  "tariffe.html": "2026-11-04",
 };
 const lastModified = (key: string) => new Date(PAGE_UPDATED[reverseRouteMap[key] || key] ?? SITE_RELEASE);
 

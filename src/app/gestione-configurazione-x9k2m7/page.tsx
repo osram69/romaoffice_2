@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { serviceCatalog, siteConfig } from "@/db/schema";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
-import { updateDiscountTogglesAction, updateOnlineDiscountAction, updatePaymentSettingsAction, updateProviderTestModesAction, updateScannerConfigAction, updateSmartFlagsAction, updateSmsBypassAction } from "./actions";
+import { updateDiscountTogglesAction, updateOnlineDiscountAction, updatePaymentSettingsAction, updateProviderTestModesAction, updateRoomsFlagAction, updateScannerConfigAction, updateSmartFlagsAction, updateSmsBypassAction } from "./actions";
 import { GestioneShell } from "@/components/GestioneNav";
 import { RitiroTemplateEditor } from "@/components/RitiroTemplateEditor";
 import { FirmaDomiciliatarioUpload } from "@/components/FirmaDomiciliatarioUpload";
@@ -148,6 +148,16 @@ export default async function ConfigurazioneWebPage() {
         <ConfigForm action={updateSmartFlagsAction} style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "center" }}>
           <label style={checkboxRow}><input type="checkbox" name="smart3x24Active" defaultChecked={legalUnit?.smart3x24Active ?? true} /> Smart 3+24 attivo</label>
           <label style={checkboxRow}><input type="checkbox" name="smart6x24Active" defaultChecked={legalUnit?.smart6x24Active ?? true} /> Smart 6+24 attivo</label>
+        </ConfigForm>
+      </section>
+
+      <section className="gestione-card" style={{ padding: 24, marginBottom: 24 }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: "#232f3e", marginTop: 0 }}>Affitto mensile sala (visibilità su Google)</h2>
+        <p style={{ fontSize: 12, color: "#666", marginTop: -6 }}>
+          Spunta quando hai una sala libera da affittare al mese: la pagina &quot;Sale corsi e riunioni&quot; (italiano e inglese) mostra la tariffa mensile, le due domande dedicate nelle FAQ, i dati per Google e un titolo che cita l&apos;affitto mensile da 750 € + IVA. Togli la spunta quando non hai più sale libere: tutti questi elementi spariscono e la pagina parla solo di affitto a ore e a giornata. Google aggiorna i risultati in alcuni giorni.
+        </p>
+        <ConfigForm action={updateRoomsFlagAction} style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "center" }}>
+          <label style={checkboxRow}><input type="checkbox" name="roomsMonthlyEnabled" defaultChecked={payments?.roomsMonthlyEnabled ?? false} /> Sala disponibile per l&apos;affitto mensile</label>
         </ConfigForm>
       </section>
 

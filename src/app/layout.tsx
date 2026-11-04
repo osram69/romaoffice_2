@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { CookieConsent, Footer, Header } from "@/components/SiteChrome";
 import { Analytics } from "@/components/Analytics";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
-import { alternateFor, BASE_URL, contact, resolvePath } from "@/lib/site";
+import { alternateFor, BASE_URL, contact, hrefFor, pages, resolvePath } from "@/lib/site";
 import "./globals.css";
 import "./features.css";
 import "./commerce.css";
@@ -33,5 +33,13 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     areaServed: { "@type": "City", name: "Roma" }, hasMap: `https://www.google.com/maps?q=41.9037423,12.4934357`, foundingDate: "2014",
     openingHoursSpecification: [{ "@type": "OpeningHoursSpecification", dayOfWeek: ["Monday","Tuesday","Wednesday","Thursday","Friday"], opens: "08:30", closes: "19:00" }, { "@type": "OpeningHoursSpecification", dayOfWeek: "Saturday", opens: "08:30", closes: "13:00", description: lang === "it" ? "Su richiesta" : "On request" }],
   };
-  return <html lang={lang}><body><Analytics /><Header lang={lang} alternate={alternateFor(key)} />{children}<Footer lang={lang}/><CookieConsent lang={lang}/><WhatsAppButton lang={lang} /><script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(jsonLd).replace(/</g,"\\u003c")}} /></body></html>;
+  const pageTitle = pages[key]?.title;
+  const crumbs = key === "index.html" || key === "en/index.html" || !pageTitle || key.endsWith("404.html") ? null : {
+    "@context": "https://schema.org", "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Roma Office Sharing", item: `${BASE_URL}${lang === "it" ? "/" : "/en"}` },
+      { "@type": "ListItem", position: 2, name: pageTitle, item: `${BASE_URL}${hrefFor(key)}` },
+    ],
+  };
+  return <html lang={lang}><body><Analytics /><Header lang={lang} alternate={alternateFor(key)} />{children}<Footer lang={lang}/><CookieConsent lang={lang}/><WhatsAppButton lang={lang} />{crumbs && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs).replace(/</g, "\\u003c") }} />}<script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(jsonLd).replace(/</g,"\\u003c")}} /></body></html>;
 }

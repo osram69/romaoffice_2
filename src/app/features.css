@@ -165,3 +165,8 @@
 
 .contract-row.is-pending{opacity:.62}
 .contract-row.is-pending .button{filter:grayscale(1)}
+
+.rooms-rates .price-snapshot-table{max-width:560px}
+.rooms-monthly{margin-top:1.6rem;padding:1.3rem 1.5rem;border:1px solid #f0b78c;border-left:4px solid var(--accent-orange);background:#fff6ee;border-radius:2px;max-width:640px}
+.rooms-monthly h3{margin:0 0 .4rem}
+.rooms-monthly .button{margin-top:.8rem;display:inline-flex;gap:.5rem;align-items:center}

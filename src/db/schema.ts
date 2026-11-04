@@ -129,6 +129,9 @@ export const siteConfig = pgTable("site_config", {
   cardProcessorTestMode: boolean("card_processor_test_mode").notNull().default(false),
   paypalTestMode: boolean("paypal_test_mode").notNull().default(false),
   smsBypassEnabled: boolean("sms_bypass_enabled").notNull().default(true),
+  // "Affitto mensile sala": while on, the rooms page (title, text, FAQ, structured data) also advertises the monthly
+  // rental; turn it off when no room is left to rent so the site stops attracting those searches.
+  roomsMonthlyEnabled: boolean("rooms_monthly_enabled").notNull().default(false),
   // Network scanner (eSCL) reached by the "Allega" mail-scan panel on the domiciliazioni
   // dashboard — one shared physical scanner for the whole office, so its address/defaults are
   // configured once here rather than per-operator/browser. Per-scan choices (color/source/dpi)

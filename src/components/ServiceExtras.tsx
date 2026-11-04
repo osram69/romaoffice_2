@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { contact, reverseRouteMap, type Lang } from "@/lib/site";
+import type { SiteFlags } from "@/lib/site-flags";
+import { FaqJsonLd } from "./JsonLd";
+import { RoomsRates, roomsContent } from "./RoomsRates";
 
 // Extra on-page copy for the short service pages (offices, day office, temporary office, meeting
 // rooms, virtual secretary). Facts come from the site's own service descriptions; prices and
@@ -99,36 +102,6 @@ const extras: Record<string, Record<Lang, Extra>> = {
       related: [["Day office", "/en/day-office.html"], ["Furnished offices", "/en/offices-furnished.html"], ["Virtual secretary", "/en/virtual-secretary.html"], ["Registered office address", "/en/legal-headquarters-domiliation.html"]],
     },
   },
-  "sale-corsi.html": {
-    it: {
-      heading: "Sale per corsi, colloqui e riunioni nel centro di Roma",
-      paragraphs: [
-        "Le sale di Roma Office Sharing sono spazi modulari e tecnologici, adatti a corsi di formazione, colloqui di selezione, riunioni con clienti e incontri di lavoro. Dispongono di schermo e videoconferenza, il layout può essere configurato in base all’evento e la reception assiste i partecipanti.",
-        "La sede, in Via Venti Settembre 118, è raggiungibile in pochi minuti a piedi da Roma Termini e dalla Metro A (Repubblica): comoda per chi arriva da fuori città. Puoi combinare la sala con un ufficio giornaliero o con altri servizi del centro.",
-      ],
-      faq: [
-        ["Quali dotazioni hanno le sale?", "Schermo e videoconferenza, con layout configurabile in base al tipo di evento. Se hai esigenze particolari, indicale nella richiesta."],
-        ["Per quali eventi sono adatte?", "Corsi e sessioni di formazione, colloqui, riunioni e meeting di lavoro."],
-        ["C’è assistenza durante l’evento?", "La reception offre assistenza ai partecipanti negli orari di apertura del centro."],
-        ["Come prenoto e quanto costa?", `Il prezzo dipende da sala, durata e allestimento: richiedi un preventivo dalla pagina Contatti o chiamando il ${contact.phone}.`],
-      ],
-      related: [["Uffici arredati", "/uffici-arredati.html"], ["Ufficio giornaliero", "/ufficio-giornaliero.html"], ["Dove siamo", "/dove-siamo.html"], ["Contatti", "/contatti.html"]],
-    },
-    en: {
-      heading: "Rooms for training, interviews and meetings in central Rome",
-      paragraphs: [
-        "The rooms at Roma Office Sharing are modular, technology-equipped spaces suited to training courses, job interviews, client meetings and business gatherings. They have a screen and videoconferencing, the layout can be configured for your event, and reception assists your participants.",
-        "The centre, at Via Venti Settembre 118, is a few minutes’ walk from Roma Termini and Metro Line A (Repubblica): convenient for anyone arriving from out of town. You can combine a room with a day office or other services at the centre.",
-      ],
-      faq: [
-        ["What equipment do the rooms have?", "A screen and videoconferencing, with a layout that can be configured for the type of event. If you have special requirements, please mention them in your request."],
-        ["What events are they suitable for?", "Training courses and sessions, interviews, meetings and business gatherings."],
-        ["Is there assistance during the event?", "Reception assists participants during the centre’s opening hours."],
-        ["How do I book and how much does it cost?", `The price depends on the room, duration and set-up: request a quote from the Contact page or by calling ${contact.phone}.`],
-      ],
-      related: [["Furnished offices", "/en/offices-furnished.html"], ["Day office", "/en/day-office.html"], ["Where we are", "/en/where-we-are.html"], ["Contact", "/en/contact.html"]],
-    },
-  },
   "segreteria-virtuale.html": {
     it: {
       heading: "Una segreteria che risponde per te, a nome della tua società",
@@ -161,9 +134,18 @@ const extras: Record<string, Record<Lang, Extra>> = {
   },
 };
 
-export function ServiceExtras({ pageKey, lang }: { pageKey: string; lang: Lang }) {
+const ROOMS_RELATED: Record<Lang, [string, string][]> = {
+  it: [["Uffici arredati", "/uffici-arredati.html"], ["Ufficio giornaliero", "/ufficio-giornaliero.html"], ["Dove siamo", "/dove-siamo.html"], ["Contatti", "/contatti.html"]],
+  en: [["Furnished offices", "/en/offices-furnished.html"], ["Day office", "/en/day-office.html"], ["Where we are", "/en/where-we-are.html"], ["Contact", "/en/contact.html"]],
+};
+
+export function ServiceExtras({ pageKey, lang, flags }: { pageKey: string; lang: Lang; flags: SiteFlags }) {
   const it = lang === "it";
-  const content = extras[reverseRouteMap[pageKey] || pageKey]?.[lang];
+  const itKey = reverseRouteMap[pageKey] || pageKey;
+  const isRooms = itKey === "sale-corsi.html";
+  const base = extras[itKey]?.[lang];
+  const rooms = isRooms ? roomsContent(lang, flags.roomsMonthly) : null;
+  const content = rooms ? { heading: rooms.heading, paragraphs: rooms.paragraphs, faq: rooms.faq, related: ROOMS_RELATED[lang] } : base;
   if (!content) return null;
   return <>
     <section className="section shell service-extra">
@@ -172,6 +154,8 @@ export function ServiceExtras({ pageKey, lang }: { pageKey: string; lang: Lang }
       {content.paragraphs.map(text => <p key={text}>{text}</p>)}
       <p className="service-extra-links">{it ? "Scopri anche: " : "See also: "}{content.related.map(([label, href], i) => <span key={href}>{i > 0 && " · "}<Link href={href}>{label}</Link></span>)}</p>
     </section>
+    {isRooms && <RoomsRates lang={lang} monthly={flags.roomsMonthly} pageKey={pageKey} />}
+    <FaqJsonLd items={content.faq} />
     <section className="section shell address-faq">
       <div><span className="eyebrow">FAQ</span><h2>{it ? "Le risposte, prima di scegliere." : "Answers before you decide."}</h2><Link className="arrow-link" href={it ? "/contatti.html" : "/en/contact.html"}>{it ? "Hai altre domande? Scrivici" : "More questions? Write to us"}<ArrowRight /></Link></div>
       <div>{content.faq.map(([question, answer]) => <details key={question}><summary>{question}</summary><p>{answer}</p></details>)}</div>
