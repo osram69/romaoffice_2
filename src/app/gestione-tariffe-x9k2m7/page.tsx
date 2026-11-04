@@ -19,7 +19,7 @@ export default async function AdminDashboardPage() {
   if (user.role !== "admin") redirect("/gestione-domiciliazioni-x9k2m7");
 
   const [services, tiers, addons, rinnovoPrezzi] = await Promise.all([
-    db.select().from(serviceCatalog),
+    db.select().from(serviceCatalog).orderBy(asc(serviceCatalog.code)),
     db.select().from(servicePrices).orderBy(asc(servicePrices.service), asc(servicePrices.months)),
     db.select().from(serviceAddons).orderBy(asc(serviceAddons.service), asc(serviceAddons.sortOrder)),
     db.select().from(domRinnovoPrezzi).orderBy(asc(domRinnovoPrezzi.mesi)),
