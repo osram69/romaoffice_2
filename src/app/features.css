@@ -170,3 +170,28 @@
 .rooms-monthly{margin-top:1.6rem;padding:1.3rem 1.5rem;border:1px solid #f0b78c;border-left:4px solid var(--accent-orange);background:#fff6ee;border-radius:2px;max-width:640px}
 .rooms-monthly h3{margin:0 0 .4rem}
 .rooms-monthly .button{margin-top:.8rem;display:inline-flex;gap:.5rem;align-items:center}
+
+/* Long-form guide pages (cambio sede legale, startup, società estere, sede virtuale) */
+.guide-head{max-width:980px}
+.guide-head h1{font-family:Georgia,serif;font-weight:400;font-size:clamp(2rem,3.6vw,3.2rem);line-height:1.12;letter-spacing:-.025em;color:var(--ink);margin:.4rem 0 0}
+.guide-meta{font-size:.78rem;color:var(--muted);margin:0 0 1.4rem}
+.guide-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin:0 0 1.8rem}
+.guide-facts div{background:var(--paper);padding:1rem 1.1rem}
+.guide-facts dt{font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 .35rem}
+.guide-facts dd{margin:0;font-size:.95rem;line-height:1.45;color:var(--ink)}
+.guide-body{max-width:860px;padding-top:0}
+.guide-section{margin:0 0 2.6rem}
+.guide-section h2{font-family:Georgia,serif;font-weight:400;color:var(--ink);font-size:clamp(1.5rem,3vw,2.1rem);line-height:1.2;margin:0 0 1rem}
+.guide-section p{color:var(--muted);line-height:1.75}
+.guide-section .check-list{font-size:15px}
+.guide-steps{counter-reset:gstep;list-style:none;padding:0;margin:1rem 0}
+.guide-steps li{counter-increment:gstep;position:relative;padding:.2rem 0 1.1rem 3.2rem;line-height:1.7;color:var(--text)}
+.guide-steps li::before{content:counter(gstep);position:absolute;left:0;top:.1rem;width:2.1rem;height:2.1rem;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-size:.85rem}
+.guide-note{border-left:3px solid var(--gold);background:var(--cream);padding:.9rem 1.1rem;font-size:.9rem;margin:1.2rem 0 0}
+.guide-table-wrap{overflow-x:auto;margin:1rem 0}
+.guide-table{width:100%;border-collapse:collapse;min-width:520px}
+.guide-table th,.guide-table td{text-align:left;vertical-align:top;padding:.75rem .7rem;border-bottom:1px solid var(--line);font-size:.92rem;line-height:1.5}
+.guide-table thead th{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.guide-table tbody th{color:var(--ink);font-weight:600}
+.guide-body .price-snapshot{padding-inline:0;margin:0 0 2.6rem}
+.guide-links .service-grid{margin-top:1.5rem}

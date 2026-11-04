@@ -33,7 +33,7 @@ const detailCopy: Record<string, Record<Lang, Detail>> = {
   },
 };
 
-function PriceSnapshot({ product, lang, activateHref }: { product: ProductOffer; lang: Lang; activateHref: string }) {
+export function PriceSnapshot({ product, lang, activateHref }: { product: ProductOffer; lang: Lang; activateHref: string }) {
   const it = lang === "it"; const copy = copyFor(product.code, lang); const active = offerActive(product);
   const rows = [...product.tiers].sort((a, b) => a.months - b.months).map(t => ({ months: t.months, cents: active && t.offerCents !== null ? t.offerCents : t.listCents }));
   if (!rows.length) return null;
