@@ -63,9 +63,11 @@ export function GestioneSidebar({ role, active, username, tabs, newDomiciliazion
               </li>
             </>
           )}
-          <li className={active === "ordini" ? "active" : ""}>
-            <Link href="/gestione-ordini-x9k2m7" onClick={() => setOpen(false)}>Ordini Online</Link>
-          </li>
+          {role === "admin" && (
+            <li className={active === "ordini" ? "active" : ""}>
+              <Link href="/gestione-ordini-x9k2m7" onClick={() => setOpen(false)}>Ordini Online</Link>
+            </li>
+          )}
           <li><form action={staffLogoutAction}><button type="submit" className="sidebar-link">Esci</button></form></li>
         </ul>
       </aside>

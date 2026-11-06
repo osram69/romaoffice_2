@@ -1,9 +1,7 @@
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { desc, ilike } from "drizzle-orm";
 import { db } from "@/db";
 import { orders } from "@/db/schema";
-import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
+import { requireAdminUser } from "@/lib/staff-guards";
 import { GestioneShell } from "@/components/GestioneNav";
 import { formatEur } from "@/lib/pricing";
 import { shortOrderRef } from "@/lib/order-ref";
@@ -15,9 +13,7 @@ const STATUS_LABELS: Record<string, string> = { pending: "In corso", filled: "In
 const RESENDABLE = new Set(["filled", "paid", "signed"]);
 
 export default async function OrdiniPage({ searchParams }: { searchParams: Promise<{ q?: string; resent?: string }> }) {
-  const store = await cookies();
-  const user = await getStaffUser(store.get(STAFF_SESSION_COOKIE)?.value);
-  if (!user) redirect("/gestione-tariffe-x9k2m7/login?next=/gestione-ordini-x9k2m7");
+  const user = await requireAdminUser("/gestione-ordini-x9k2m7");
 
   const { q } = await searchParams;
   const rows = await db.select().from(orders)
@@ -70,10 +66,8 @@ export default async function OrdiniPage({ searchParams }: { searchParams: Promi
                           <button type="submit" className="gestione-btn gestione-btn-blue">Reinvia conferma</button>
                         </form>
                       )}
-                      {user.role === "admin" && (
-                        <DeleteIconButton id={order.publicId} field="orderId" action={deleteOrderAction} label={`ordine ${ref}`}
-                          warning={order.status === "paid" || order.status === "signed" ? "ATTENZIONE: l'ordine risulta pagato/firmato. L'eliminazione cancella anche i dati della richiesta e non si può annullare." : "L'operazione non si può annullare."} />
-                      )}
+                      <DeleteIconButton id={order.publicId} field="orderId" action={deleteOrderAction} label={`ordine ${ref}`}
+                        warning={order.status === "paid" || order.status === "signed" ? "ATTENZIONE: l'ordine risulta pagato/firmato. L'eliminazione cancella anche i dati della richiesta e non si può annullare." : "L'operazione non si può annullare."} />
                     </div>
                   </td>
                 </tr>

@@ -1,18 +1,14 @@
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { and, asc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { domClients, domMailScans } from "@/db/schema";
-import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
+import { requireOperational } from "@/lib/staff-guards";
 import { GestioneShell } from "@/components/GestioneNav";
 import { DomiciliazioniTable } from "@/components/DomiciliazioniTable";
 
 const LABELS: Record<number, string> = { 1: "Attive", 0: "In Attivazione", 2: "Decadute", 3: "Sospese" };
 
 export default async function DomiciliazioniPage({ searchParams }: { searchParams: Promise<{ stato?: string }> }) {
-  const store = await cookies();
-  const user = await getStaffUser(store.get(STAFF_SESSION_COOKIE)?.value);
-  if (!user) redirect("/gestione-tariffe-x9k2m7/login?next=/gestione-domiciliazioni-x9k2m7");
+  const user = await requireOperational("/gestione-domiciliazioni-x9k2m7");
 
   const { stato: statoParam } = await searchParams;
   const stato = statoParam !== undefined ? Number(statoParam) : 1;

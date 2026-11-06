@@ -1,23 +1,14 @@
 "use server";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { orders, otpVerifications } from "@/db/schema";
-import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
+import { requireAdminUser } from "@/lib/staff-guards";
 import { sendRequestConfirmation } from "@/lib/order-confirmation";
 import type { OrderSnapshot } from "@/lib/order-access";
 import type { RequestData } from "@/lib/request";
 
 const BASE_PATH = "/gestione-ordini-x9k2m7";
-
-async function requireStaff() {
-  const store = await cookies();
-  const user = await getStaffUser(store.get(STAFF_SESSION_COOKIE)?.value);
-  if (!user) redirect(`/gestione-tariffe-x9k2m7/login?next=${BASE_PATH}`);
-  return user;
-}
 
 // Reachable only for orders whose payment/registration is actually final (see the "Reinvia
 // conferma" button in page.tsx) — resending for a still-"pending" or "cancelled" order would be
@@ -26,7 +17,7 @@ const RESENDABLE = new Set(["filled", "paid", "signed"]);
 
 export async function resendConfirmationAction(formData: FormData) {
   "use server";
-  await requireStaff();
+  await requireAdminUser(BASE_PATH);
   const publicId = String(formData.get("orderId") ?? "");
   const [order] = await db.select().from(orders).where(eq(orders.publicId, publicId)).limit(1);
   if (!order || !RESENDABLE.has(order.status)) { revalidatePath(BASE_PATH); return; }
@@ -40,12 +31,11 @@ export async function resendConfirmationAction(formData: FormData) {
   revalidatePath(BASE_PATH);
 }
 
-// Irreversible, so admin-only (operators can read orders but not erase them). Used mostly to clear
+// Irreversible. The whole Ordini area is admin-only (requireAdminUser). Used mostly to clear
 // test orders. The OTP row is keyed by public id with no foreign key, so it is removed by hand.
 export async function deleteOrderAction(formData: FormData) {
   "use server";
-  const user = await requireStaff();
-  if (user.role !== "admin") { revalidatePath(BASE_PATH); return; }
+  await requireAdminUser(BASE_PATH);
   const publicId = String(formData.get("orderId") ?? "");
   if (!publicId) return;
   await db.transaction(async tx => {

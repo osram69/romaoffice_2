@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { domClients } from "@/db/schema";
-import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
+import { STAFF_SESSION_COOKIE, getStaffUser, isOperational } from "@/lib/staff-auth";
 import { DOC_TYPES, readClientDocDecrypted, readClientSignedDecrypted, readDecrypted, type DocType } from "@/lib/dom-archive";
 
 export async function GET(req: NextRequest) {
   const user = await getStaffUser(req.cookies.get(STAFF_SESSION_COOKIE)?.value);
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!isOperational(user.role)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const id = Number(req.nextUrl.searchParams.get("id"));
   const docType = req.nextUrl.searchParams.get("type") as DocType | "cli" | "clidoc" | null;

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
+import { STAFF_SESSION_COOKIE, getStaffUser, isOperational } from "@/lib/staff-auth";
 import { printListaCompleta, printRaccoglitori } from "@/lib/dom-print";
 
 export async function GET(req: NextRequest) {
   const user = await getStaffUser(req.cookies.get(STAFF_SESSION_COOKIE)?.value);
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!isOperational(user.role)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const kind = req.nextUrl.searchParams.get("kind");
   try {
