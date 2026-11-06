@@ -1,6 +1,6 @@
 # Contabilità cifrata e gestione utenti: specifica
 
-Data: 2026-11-06. Stato: **in attesa di approvazione** (nessun codice scritto).
+Data: 2026-11-06. Stato: **approvata e implementata** sul branch `feature/contabilita`.
 
 Due funzioni nella stessa consegna, perché condividono ruoli, login e migrazione SQL:
 
@@ -43,7 +43,7 @@ Pagina `/gestione-utenti-x9k2m7` (solo admin), voce "Utenti e password" nel menu
 - **Elenco**: nome utente, ruolo, stato, ultimo accesso.
 - **Crea utente**: nome utente (minuscolo, 3–60 caratteri, lettere/numeri/punto/trattino/underscore, univoco), ruolo `operatore` o `commercialista`, password scritta dall'admin oppure **generata** e mostrata una sola volta. La password generata rispetta la policy. Il nuovo utente ha `must_change_password = true`.
 - **Reimposta password**: stesso meccanismo; imposta `must_change_password = true` e chiude tutte le sue sessioni.
-- **Disattiva / riattiva**: `active`; la disattivazione chiude subito le sessioni (e gli sblocchi Contabilità, se admin). Nessuna cancellazione.
+- **Disattiva / riattiva**: `active`; la disattivazione chiude subito le sessioni. Nessuna cancellazione.
 - **Cambia la mia password** (tutti i ruoli): `/gestione-password-x9k2m7`, chiede password attuale e nuova (nuova diversa dall'attuale), azzera `must_change_password`, chiude le *altre* sessioni dell'utente e mantiene quella corrente.
 - **Policy**: `passwordMeetsPolicy` esistente (12–128 caratteri, maiuscola, minuscola, numero, simbolo) con `PasswordRequirementsList` per i requisiti in tempo reale.
 - **Cambio obbligato**: `getStaffUser` restituisce `null` per un utente con `must_change_password = true`, a meno che non sia chiamato con `allowMustChange: true` (usato solo dalla pagina e dall'azione di cambio password). Così tutte le guardie esistenti negano l'accesso (fail-closed) senza essere toccate una per una. Il login manda quell'utente alla pagina di cambio password; se tenta altri indirizzi torna al login.
@@ -56,7 +56,7 @@ Pagina `/gestione-utenti-x9k2m7` (solo admin), voce "Utenti e password" nel menu
 
 - Tabella `contab_access` (una sola riga): `password_hash` (scrypt, `hashPassword`), `updated_at`.
 - Primo accesso senza password impostata: la pagina propone di crearla (policy come sopra). Poi richiede la password a ogni nuova sessione di lavoro.
-- Sblocco: tabella `contab_unlocks` (`token_hash` sha256 unico, `user_id`, `session_token_hash` della sessione staff, `last_seen_at`, `expires_at`). Il cookie `ros_contab_unlock` è httpOnly, `sameSite=strict`, `secure` in produzione. Validità a scorrimento: **30 minuti di inattività** (`expires_at` si sposta in avanti a ogni uso). Lo sblocco vale solo insieme alla sessione staff a cui è legato: logout, disattivazione o reset password lo invalidano.
+- Sblocco: tabella `contab_unlocks` (`token_hash` sha256 unico, `user_id`, `session_token_hash` della sessione staff, `last_seen_at`, `expires_at`). Il cookie `ros_contab_unlock` è httpOnly, `sameSite=strict`, `secure` in produzione, con durata pari alla sessione staff (il browser lo conserva quanto la sessione). Validità a scorrimento: **30 minuti di inattività** (`expires_at` lato server si sposta in avanti a ogni uso ed è il vero controllo di scadenza). Lo sblocco vale solo insieme alla sessione staff a cui è legato: logout, disattivazione o reset password lo invalidano.
 - Dalle impostazioni l'admin cambia la seconda password (chiede quella attuale). Se la dimentica: script `scripts/reset-contab-password.ts` sul modello di `reset-staff-password.ts` (stampa l'SQL da incollare in Supabase, oppure aggiorna il database se `DATABASE_URL` è disponibile).
 - Limite di tentativi: `limit("contab-unlock:<userId>", 5, 900)`.
 - Tutte le azioni e le route di Contabilità verificano **ruolo admin + sblocco valido** lato server.
