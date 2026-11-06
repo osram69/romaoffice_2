@@ -96,7 +96,22 @@ export function UserAdminPanel({ users }: { users: PanelUser[] }) {
     run(resetUserPasswordAction, fd, user.username, () => { setResetFor(null); setResetPassword(""); });
   };
 
+  // Opening or cancelling a reset form also closes the revealed generated password (it belongs to a previous action).
+  const toggleResetForm = (user: PanelUser) => {
+    setReveal(null);
+    setResetFor(resetFor === user.id ? null : user.id);
+    setResetPassword("");
+  };
+
+  const cancelResetForm = () => {
+    setReveal(null);
+    setResetFor(null);
+    setResetPassword("");
+  };
+
   const toggle = (user: PanelUser) => {
+    // Deactivation closes the user's sessions and blocks the login: ask first. Reactivation is harmless.
+    if (user.active && !window.confirm(`Disattivare l'utente ${user.username}? Le sue sessioni aperte verranno chiuse e non potrà più accedere finché non lo riattivi.`)) return;
     const fd = new FormData();
     fd.set("targetId", user.id);
     fd.set("active", String(!user.active));
@@ -156,7 +171,7 @@ export function UserAdminPanel({ users }: { users: PanelUser[] }) {
                   <td>
                     {user.role !== "admin" && (
                       <div className="gestione-row-actions">
-                        <button type="button" className="gestione-btn gestione-btn-outline" disabled={pending} onClick={() => { setResetFor(resetFor === user.id ? null : user.id); setResetPassword(""); }}>Reimposta password</button>
+                        <button type="button" className="gestione-btn gestione-btn-outline" disabled={pending} onClick={() => toggleResetForm(user)}>Reimposta password</button>
                         <button type="button" className={`gestione-btn ${user.active ? "gestione-btn-red" : "gestione-btn-blue"}`} disabled={pending} onClick={() => toggle(user)}>{user.active ? "Disattiva" : "Riattiva"}</button>
                       </div>
                     )}
@@ -172,7 +187,7 @@ export function UserAdminPanel({ users }: { users: PanelUser[] }) {
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                           <button type="submit" className="gestione-btn gestione-btn-blue" disabled={pending || !resetReady} style={pending || !resetReady ? disabledStyle : undefined}>Imposta password</button>
                           <button type="button" className="gestione-btn gestione-btn-outline" disabled={pending} onClick={() => submitReset(user, true)}>Genera password e imposta</button>
-                          <button type="button" className="gestione-btn gestione-btn-outline" disabled={pending} onClick={() => { setResetFor(null); setResetPassword(""); }}>Annulla</button>
+                          <button type="button" className="gestione-btn gestione-btn-outline" disabled={pending} onClick={cancelResetForm}>Annulla</button>
                         </div>
                       </form>
                     </td>
