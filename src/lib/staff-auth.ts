@@ -11,7 +11,7 @@ export const digest = (value: string) => createHash("sha256").update(value).dige
 export const token = () => randomBytes(32).toString("hex");
 export { hashPassword };
 
-export type StaffRole = "admin" | "operatore";
+export type StaffRole = "admin" | "operatore" | "commercialista";
 export type StaffUser = { id: string; username: string; role: StaffRole };
 
 export async function login(username: string, password: string): Promise<StaffUser | null> {
