@@ -1,4 +1,5 @@
 import { CustomerError, limit } from "@/lib/customer-auth";
+import { logSafeError } from "@/lib/safe-log";
 import type { StaffUser } from "@/lib/staff-auth";
 import { changeOwnPassword } from "@/lib/staff-users";
 import { validatePasswordChange } from "./validate";
@@ -23,14 +24,14 @@ export async function performPasswordChange(
     await limit("staff-pw-change:" + user.id, 5, 900);
   } catch (error) {
     if (error instanceof CustomerError && error.code === "limited") return { error: TOO_MANY_ATTEMPTS };
-    console.error("staff password change: rate limiter failed", error);
+    logSafeError("staff password change: rate limiter failed", error);
     return { error: UNAVAILABLE };
   }
   try {
     const result = await changeOwnPassword(user.id, rawSession, input.current, input.next);
     return result.ok ? { done: true } : { error: result.message };
   } catch (error) {
-    console.error("staff password change failed", error);
+    logSafeError("staff password change failed", error);
     return { error: UNAVAILABLE };
   }
 }

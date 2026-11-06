@@ -93,3 +93,14 @@ test("actions.ts: every exported function is async and starts with requireAdminU
   const withoutStrings = source.replace(/"(?:[^"\\]|\\.)*"/g, '""');
   assert.doesNotMatch(withoutStrings, /console\.\w+\([^)]*\b(password|generatedPassword)\b/);
 });
+
+test("no console call in the admin actions or in change.ts passes an error object, error.message or a password", () => {
+  for (const file of ["src/app/gestione-utenti-x9k2m7/actions.ts", "src/app/gestione-password-x9k2m7/change.ts"]) {
+    const source = readFileSync(file, "utf8");
+    // Strings are stripped so label text does not count; what remains of a console call is its identifiers.
+    const withoutStrings = source.replace(/"(?:[^"\\]|\\.)*"/g, '""');
+    assert.doesNotMatch(withoutStrings, /console\.\w+\([^;]*\b(error|err|e|cause|message|stack|password|input|next|current)\b/, file);
+    // Errors go through the shared helper, which logs only the class name and the SQLSTATE.
+    assert.match(source, /logSafeError\("/, file);
+  }
+});

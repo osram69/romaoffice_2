@@ -23,8 +23,9 @@ function GeneratedBox({ reveal, onClose }: { reveal: Reveal; onClose: () => void
       setCopied(false); // clipboard blocked: the password can still be selected by hand
     }
   };
+  // No role="status" or aria-live on this box: assistive technology must not announce the plain-text password automatically.
   return (
-    <div role="status" className="gestione-card" style={{ padding: 16, marginBottom: 16, border: "2px solid #ff7900" }}>
+    <div className="gestione-card" style={{ padding: 16, marginBottom: 16, border: "2px solid #ff7900" }}>
       <p style={{ margin: "0 0 8px", fontSize: 13 }}>Password generata per <strong>{reveal.username}</strong>:</p>
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
         <code style={{ fontSize: 16, padding: "6px 10px", background: "#f8f8f8", border: "1px solid #c8c8c8", borderRadius: 4, userSelect: "all" }}>{reveal.password}</code>
