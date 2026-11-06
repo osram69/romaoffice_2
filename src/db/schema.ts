@@ -1,4 +1,4 @@
-import { type AnyPgColumn, boolean, date, integer, jsonb, pgEnum, pgTable, serial, text, timestamp, varchar, uuid, uniqueIndex } from "drizzle-orm/pg-core";
+import { type AnyPgColumn, bigint, boolean, date, integer, jsonb, pgEnum, pgTable, serial, text, timestamp, varchar, uuid, uniqueIndex } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 export const orderStatus = pgEnum("order_status", ["pending", "paid", "filled", "signed", "cancelled"]);
@@ -183,14 +183,17 @@ export const standardOfferRequests = pgTable("standard_offer_requests", {
 });
 
 // Staff accounts for the internal management dashboards (pricing, domiciliazioni).
-// "admin" can reach every dashboard; "operatore" is restricted to domiciliazioni + chat.
-export const staffRole = pgEnum("staff_role", ["admin", "operatore"]);
+// "admin" can reach every dashboard; "operatore" is restricted to domiciliazioni + chat;
+// "commercialista" (accountant) only sees the encrypted accounting area.
+export const staffRole = pgEnum("staff_role", ["admin", "operatore", "commercialista"]);
 export const staffUsers = pgTable("staff_users", {
   id: uuid("id").defaultRandom().primaryKey(),
   username: varchar("username", { length: 60 }).notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   role: staffRole("role").notNull().default("operatore"),
   active: boolean("active").notNull().default(true),
+  // Set when an admin creates the account or resets the password: the user must pick a new one before doing anything else.
+  mustChangePassword: boolean("must_change_password").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
 });
@@ -200,6 +203,47 @@ export const staffSessions = pgTable("staff_sessions", {
   tokenHash: varchar("token_hash", { length: 64 }).notNull().unique(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Encrypted accounting area ("Contabilità"): sections hold files that are stored AES-256-GCM encrypted on disk.
+export const contabSections = pgTable("contab_sections", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 100 }).notNull(),
+  sortOrder: integer("sort_order").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+export const contabFiles = pgTable("contab_files", {
+  id: serial("id").primaryKey(),
+  sectionId: integer("section_id").notNull().references(() => contabSections.id),
+  originalName: text("original_name").notNull(),
+  mime: text("mime").notNull(),
+  sizeBytes: bigint("size_bytes", { mode: "number" }).notNull(),
+  storedName: varchar("stored_name", { length: 36 }).notNull().unique(),
+  uploadedBy: varchar("uploaded_by", { length: 60 }).notNull(),
+  uploadedAt: timestamp("uploaded_at", { withTimezone: true }).defaultNow().notNull(),
+});
+// Download log; fileId is nulled (fileName kept) when the file is deleted.
+export const contabDownloads = pgTable("contab_downloads", {
+  id: serial("id").primaryKey(),
+  fileId: integer("file_id").references(() => contabFiles.id, { onDelete: "set null" }),
+  fileName: text("file_name").notNull(),
+  username: varchar("username", { length: 60 }).notNull(),
+  downloadedAt: timestamp("downloaded_at", { withTimezone: true }).defaultNow().notNull(),
+});
+// Single-row table (id = 1, enforced by a CHECK in the SQL migration): the second password that unlocks the area.
+export const contabAccess = pgTable("contab_access", {
+  id: integer("id").primaryKey(),
+  passwordHash: text("password_hash").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+// Active unlocks: bound to the staff session they were created in, expire after inactivity.
+export const contabUnlocks = pgTable("contab_unlocks", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  tokenHash: varchar("token_hash", { length: 64 }).notNull().unique(),
+  userId: uuid("user_id").notNull().references(() => staffUsers.id, { onDelete: "cascade" }),
+  sessionTokenHash: varchar("session_token_hash", { length: 64 }).notNull(),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).defaultNow().notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 });
 
 // Domiciliazioni manager, ported from the legacy PHP/MySQL tool (u136588113_domiciliazioni).
