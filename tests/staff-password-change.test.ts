@@ -18,6 +18,9 @@ const dbTest = process.env.TEST_DB ? test : test.skip;
 const OLD = "Zz-test-Old-Passw0rd!";
 const STRONG = "Zz-test-Passw0rd-ok!";
 
+// limit() derives its key with AUTH_SECRET; set a dummy one once for every DB test (module imports are lazy about it).
+process.env.AUTH_SECRET ||= "zz-test-secret-".padEnd(40, "x");
+
 const cleanups: Array<() => Promise<void>> = [];
 after(async () => {
   for (const fn of cleanups) await fn();
@@ -68,9 +71,20 @@ test("validatePasswordChange rejects a new password equal to the current one", (
 const asUser = (staff: { id: string; username: string }, role: "admin" | "operatore" | "commercialista", mustChangePassword = false) =>
   ({ id: staff.id, username: staff.username, role, mustChangePassword });
 
+const limiterKey = (userId: string) => createHmac("sha256", process.env.AUTH_SECRET!).update(`staff-pw-change:${userId}`).digest("hex");
+
+// Creates a zz-test- staff user and registers the clean-up of the user, its sessions and its rate-limiter row.
+async function newStaff(...args: Parameters<typeof createTestStaff>) {
+  const staff = await createTestStaff(...args);
+  cleanups.push(async () => {
+    await db.delete(authLimits).where(eq(authLimits.key, limiterKey(staff.id)));
+    await staff.cleanup();
+  });
+  return staff;
+}
+
 dbTest("performPasswordChange changes the password, clears mustChangePassword and keeps only the current session", async () => {
-  const staff = await createTestStaff("commercialista", { mustChange: true });
-  cleanups.push(staff.cleanup);
+  const staff = await newStaff("commercialista", { mustChange: true });
   const other = await createSession(staff.id);
   const result = await performPasswordChange(asUser(staff, "commercialista", true), staff.cookie, { current: staff.password, next: STRONG, confirm: STRONG });
   assert.deepEqual(result, { done: true });
@@ -82,26 +96,14 @@ dbTest("performPasswordChange changes the password, clears mustChangePassword an
 });
 
 dbTest("performPasswordChange reports a wrong current password as an error value, not an exception", async () => {
-  const staff = await createTestStaff("operatore");
-  cleanups.push(staff.cleanup);
-  process.env.AUTH_SECRET ||= "zz-test-secret-".padEnd(40, "x");
-  cleanups.push(async () => {
-    const key = createHmac("sha256", process.env.AUTH_SECRET!).update(`staff-pw-change:${staff.id}`).digest("hex");
-    await db.delete(authLimits).where(eq(authLimits.key, key));
-  });
+  const staff = await newStaff("operatore");
   const result = await performPasswordChange(asUser(staff, "operatore"), staff.cookie, { current: "Zz-test-Wrong-Passw0rd!", next: STRONG, confirm: STRONG });
   assert.match(result.error ?? "", /attuale/);
   assert.equal(result.done, undefined);
 });
 
 dbTest("performPasswordChange: the 6th attempt in the window is refused with a generic message, even with the right password", async () => {
-  process.env.AUTH_SECRET ||= "zz-test-secret-".padEnd(40, "x");
-  const staff = await createTestStaff("operatore");
-  cleanups.push(staff.cleanup);
-  cleanups.push(async () => {
-    const key = createHmac("sha256", process.env.AUTH_SECRET!).update(`staff-pw-change:${staff.id}`).digest("hex");
-    await db.delete(authLimits).where(eq(authLimits.key, key));
-  });
+  const staff = await newStaff("operatore");
   const user = asUser(staff, "operatore");
   for (let i = 1; i <= 5; i++) {
     const result = await performPasswordChange(user, staff.cookie, { current: `Zz-test-Wrong-${i}-Passw0rd!`, next: STRONG, confirm: STRONG });
@@ -117,16 +119,13 @@ dbTest("performPasswordChange: the 6th attempt in the window is refused with a g
 });
 
 dbTest("performPasswordChange: invalid input never consumes attempts and never reaches the database", async () => {
-  process.env.AUTH_SECRET ||= "zz-test-secret-".padEnd(40, "x");
-  const staff = await createTestStaff("admin");
-  cleanups.push(staff.cleanup);
+  const staff = await newStaff("admin");
   const user = asUser(staff, "admin");
   for (let i = 0; i < 8; i++) {
     const result = await performPasswordChange(user, staff.cookie, { current: "x".repeat(PASSWORD_MAX_LENGTH + 1), next: STRONG, confirm: STRONG });
     assert.match(result.error ?? "", /lunga/);
   }
-  const key = createHmac("sha256", process.env.AUTH_SECRET!).update(`staff-pw-change:${staff.id}`).digest("hex");
-  const rows = await db.select().from(authLimits).where(eq(authLimits.key, key));
+  const rows = await db.select().from(authLimits).where(eq(authLimits.key, limiterKey(staff.id)));
   assert.equal(rows.length, 0);
 });
 

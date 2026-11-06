@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
@@ -7,6 +8,21 @@ import { BrandWords } from "@/components/BrandWords";
 import { ChangePasswordForm } from "@/components/ChangePasswordForm";
 
 const LOGIN_PATH = "/gestione-tariffe-x9k2m7/login";
+
+function BarePage({ username, children }: { username: string; children: ReactNode }) {
+  return (
+    <div className="gestione-shell">
+      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "14px 24px", background: "#fff", borderBottom: "1px solid #e3e6ea" }}>
+        <BrandWords />
+        <form action={staffLogoutAction} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ color: "#666" }}>{username}</span>
+          <button type="submit" className="gestione-btn gestione-btn-outline">Esci</button>
+        </form>
+      </header>
+      <main style={{ padding: 24 }}>{children}</main>
+    </div>
+  );
+}
 
 export default async function ChangePasswordPage() {
   const store = await cookies();
@@ -26,20 +42,10 @@ export default async function ChangePasswordPage() {
     </>
   );
 
-  // The accountant has no dashboard menu: a bare page with the brand, the form and "Esci".
-  if (user.role === "commercialista") {
-    return (
-      <div className="gestione-shell">
-        <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "14px 24px", background: "#fff", borderBottom: "1px solid #e3e6ea" }}>
-          <BrandWords />
-          <form action={staffLogoutAction} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ color: "#666" }}>{user.username}</span>
-            <button type="submit" className="gestione-btn gestione-btn-outline">Esci</button>
-          </form>
-        </header>
-        <main style={{ padding: 24 }}>{content}</main>
-      </div>
-    );
+  // No dashboard menu or dashboard data for the accountant, nor for anyone still on a temporary password
+  // (they have not proven yet that the password is theirs): a bare page with the brand, the form and "Esci".
+  if (user.role === "commercialista" || user.mustChangePassword) {
+    return <BarePage username={user.username}>{content}</BarePage>;
   }
 
   return (
