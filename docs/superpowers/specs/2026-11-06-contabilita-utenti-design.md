@@ -34,7 +34,7 @@ Fuori ambito: mail di notifica al commercialista, cancellazione di account (solo
 - Nuovo valore `commercialista` nell'enum `staff_role`.
 - **Punto critico**: oggi le guardie `requireStaff` e quelle delle route `api/dom-documents`, `api/dom-mail-scans`, `api/dom-print` accettano *qualsiasi* utente con sessione valida. Con il nuovo ruolo diventerebbero un buco. Vanno tutte cambiate in "admin oppure operatore". Ogni modifica ha un test di rifiuto per il commercialista.
 - Ordini Online diventa admin-only: pagina (redirect alle Domiciliazioni), link nel menu e `requireStaff` delle azioni in `gestione-ordini-x9k2m7/actions.ts`.
-- Il login manda: admin → Tariffe (come oggi), operatore → Domiciliazioni (come oggi), commercialista → pagina download. Un commercialista che apre a mano un altro indirizzo viene rimandato alla sua pagina o riceve 401 sulle API.
+- Il login manda: admin → Tariffe (come oggi), operatore → Domiciliazioni (come oggi), commercialista → pagina download. Un commercialista che apre a mano un altro indirizzo viene rimandato alla sua pagina. Sulle API: 401 con codice `locked` se manca la sessione o lo sblocco Contabilità è assente o scaduto; 403 con codice `forbidden` per un utente autenticato senza il ruolo giusto (commercialista sulle API `dom-*`, operatore o commercialista su upload ed eliminazione file).
 
 ## 3. Utenti e password
 
@@ -93,7 +93,7 @@ Pagina `/gestione-utenti-x9k2m7` (solo admin), voce "Utenti e password" nel menu
 
 Migrazione `drizzle/0025_contabilita_utenti.sql` (stile delle esistenti, `IF NOT EXISTS`, eseguita a mano su Supabase **prima** del deploy):
 
-- `ALTER TYPE staff_role ADD VALUE IF NOT EXISTS 'commercialista'` — **da eseguire da sola, in una query separata**, e solo dopo le altre istruzioni (PostgreSQL non permette di usare il nuovo valore nella stessa transazione).
+- `ALTER TYPE staff_role ADD VALUE IF NOT EXISTS 'commercialista'` — **da eseguire per prima e da sola, in una query separata**; tutte le altre istruzioni vanno eseguite dopo, in una seconda query (PostgreSQL non permette di usare il nuovo valore nella stessa transazione).
 - `staff_users.must_change_password boolean NOT NULL DEFAULT false`.
 - `contab_sections(id serial pk, title varchar(100) not null, sort_order integer not null, created_at timestamptz default now())`.
 - `contab_files(id serial pk, section_id integer not null references contab_sections(id), original_name text not null, mime text not null, size_bytes bigint not null, stored_name varchar(36) not null unique, uploaded_by varchar(60) not null, uploaded_at timestamptz default now())`.
@@ -104,7 +104,7 @@ Migrazione `drizzle/0025_contabilita_utenti.sql` (stile delle esistenti, `IF NOT
 
 ## 8. Route e file nuovi
 
-- Pagine: `gestione-contabilita-x9k2m7/{page,impostazioni/page,actions,layout}`, `gestione-utenti-x9k2m7/{page,actions,layout}`, `gestione-password-x9k2m7/{page,actions,layout}`, `commercialista-x9k2m7/{page,layout}` (tutte `noindex`, `Cache-Control: no-store`).
+- Pagine: `gestione-contabilita-x9k2m7/{page,impostazioni/page,actions,layout}`, `gestione-utenti-x9k2m7/{page,actions,layout}`, `gestione-password-x9k2m7/{page,actions,layout}`, `commercialista-x9k2m7/{page,layout}` (tutte `noindex`; `Cache-Control: private, no-store` impostato in `next.config.ts`).
 - API: `POST /api/contabilita/files` (upload, corpo grezzo come le scansioni della posta, non Server Action), `GET /api/contabilita/files/[id]`, `GET /api/contabilita/sections/[id]/zip`.
 - Librerie: `src/lib/contab-crypto.ts` (HKDF + GCM, formato file), `src/lib/contab-storage.ts` (disco), `src/lib/contab-auth.ts` (seconda password e sblocco), `src/lib/zip-store.ts` (ZIP), `src/lib/staff-users.ts` (creazione, reset, disattivazione, cambio password).
 - Modifiche: `staff-auth.ts` (`mustChangePassword`, `allowMustChange`, tipo ruolo), `staff-actions.ts` (redirect per ruolo, limite di tentativi, cambio obbligato), `GestioneSidebar.tsx` / `GestioneNav.tsx` (voci Contabilità e Utenti e password per admin, Ordini Online solo admin), le guardie elencate al punto 2, `features.css` o `gestione.css` per lo stile della nuova area.
