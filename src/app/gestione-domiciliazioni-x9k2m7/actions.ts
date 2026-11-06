@@ -393,6 +393,8 @@ export async function inviaScadenzaAction(formData: FormData): Promise<{ success
   const result = await sendDomMail(usaPec ? "pec" : "ordinaria", {
     to, cc: ccList.join(","), subject: scadenzaEmailSubject(client),
     text: html.replace(/<[^>]+>/g, " "), html,
+    // Replies must reach the office mailbox, not the PEC sender address (cubeng@pec.it) the message goes out from.
+    replyTo: "info@romaofficesharing.it",
   });
   if (!result.sent) return { success: false, message: `Invio non riuscito (${result.reason})` };
 
