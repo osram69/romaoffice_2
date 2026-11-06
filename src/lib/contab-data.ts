@@ -187,14 +187,17 @@ export async function deleteSectionIfEmpty(id: number): Promise<Result> {
   return { ok: false, message: existing ? SECTION_NOT_EMPTY : SECTION_NOT_FOUND };
 }
 
-export async function addFile(input: {
+type NewFile = {
   sectionId: number;
   originalName: string;
   mime: string;
   sizeBytes: number;
   storedName: string;
   uploadedBy: string;
-}): Promise<number> {
+};
+
+/** Inserts a file row and returns its id and upload time (one round trip). */
+export async function addFileRow(input: NewFile): Promise<{ id: number; uploadedAt: Date }> {
   const [created] = await db.insert(contabFiles).values({
     sectionId: input.sectionId,
     originalName: input.originalName,
@@ -202,8 +205,12 @@ export async function addFile(input: {
     sizeBytes: input.sizeBytes,
     storedName: input.storedName,
     uploadedBy: input.uploadedBy,
-  }).returning({ id: contabFiles.id });
-  return created.id;
+  }).returning({ id: contabFiles.id, uploadedAt: contabFiles.uploadedAt });
+  return created;
+}
+
+export async function addFile(input: NewFile): Promise<number> {
+  return (await addFileRow(input)).id;
 }
 
 export async function getFile(id: number): Promise<ContabFileRow | null> {

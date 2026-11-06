@@ -10,7 +10,7 @@ import {
   requireContabDownloader,
 } from "@/lib/contab-api";
 import { deleteFileRow, getFile, recordDownload } from "@/lib/contab-data";
-import { contentDisposition } from "@/lib/contab-http";
+import { bodyView, contentDisposition } from "@/lib/contab-http";
 import { removeContabFile } from "@/lib/contab-storage";
 import { logSafeError } from "@/lib/safe-log";
 
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest, { params }: Context) {
     // Only the accountant's downloads are logged. If logging fails the download fails too (500): the log is the audit trail.
     if (access.isAccountant) await recordDownload(file, access.user.username);
 
-    return new NextResponse(new Uint8Array(read.data), {
+    return new NextResponse(bodyView(read.data) as BodyInit, {
       status: 200,
       headers: {
         "Content-Type": file.mime,

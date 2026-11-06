@@ -7,6 +7,7 @@ import { db, pool } from "@/db";
 import { contabDownloads, contabFiles, contabSections } from "@/db/schema";
 import {
   addFile,
+  addFileRow,
   createSection,
   deleteFileRow,
   deleteSectionIfEmpty,
@@ -302,4 +303,15 @@ dbTest("getSection and getSectionWithFiles: found, unknown and invalid ids; file
   }
   assert.equal(await getSection(2147483646), null);
   assert.equal(await getSectionWithFiles(2147483646), null);
+});
+
+dbTest("addFileRow returns the id and the upload time; addFile still returns the plain id", async () => {
+  const sectionId = await newSection("addrow");
+  const input = { sectionId, originalName: `${PREFIX}row.pdf`, mime: "application/pdf", sizeBytes: 10, storedName: randomUUID(), uploadedBy: `${PREFIX}admin` };
+  const row = await addFileRow(input);
+  assert.equal(typeof row.id, "number");
+  assert.ok(row.uploadedAt instanceof Date);
+  assert.equal((await getFile(row.id))?.uploadedAt.getTime(), row.uploadedAt.getTime());
+  const plain = await addFile({ ...input, storedName: randomUUID() });
+  assert.equal(typeof plain, "number");
 });

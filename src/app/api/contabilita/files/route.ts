@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { CONTAB_MAX_BYTES, validateContabUpload } from "@/lib/contab-files";
 import { GENERIC_FAILURE, jsonResponse, parseId, requireContabAdmin } from "@/lib/contab-api";
-import { addFile, getFile, getSection } from "@/lib/contab-data";
+import { addFileRow, getSection } from "@/lib/contab-data";
 import { decodeQueryValue, rawQueryParam, readBodyLimited } from "@/lib/contab-http";
 import { newStoredName, removeContabFile, saveContabFile } from "@/lib/contab-storage";
 import { storeUpload } from "@/lib/contab-upload";
@@ -47,31 +47,30 @@ export async function POST(req: NextRequest) {
     if (!checked.ok) return fail(checked.message, 400);
 
     // Write first, then the row; if the row cannot be added the file is removed again (storeUpload).
+    let uploadedAt = new Date();
     const { id } = await storeUpload(
       {
         newName: newStoredName,
         save: saveContabFile,
         remove: removeContabFile,
-        add: storedName => addFile({
-          sectionId,
-          originalName: checked.name,
-          mime: checked.mime,
-          sizeBytes: data.length,
-          storedName,
-          uploadedBy: access.user.username,
-        }),
+        add: async storedName => {
+          const created = await addFileRow({
+            sectionId,
+            originalName: checked.name,
+            mime: checked.mime,
+            sizeBytes: data.length,
+            storedName,
+            uploadedBy: access.user.username,
+          });
+          uploadedAt = created.uploadedAt;
+          return created.id;
+        },
       },
       data,
       logSafeError,
     );
 
     // The response carries only id, name, size and date: never the stored name or any path.
-    let uploadedAt = new Date();
-    try {
-      uploadedAt = (await getFile(id))?.uploadedAt ?? uploadedAt;
-    } catch {
-      // The upload succeeded; the date is only informative, so fall back to the current time.
-    }
     return jsonResponse({
       success: true,
       file: { id, originalName: checked.name, sizeBytes: data.length, uploadedAt: uploadedAt.toISOString() },

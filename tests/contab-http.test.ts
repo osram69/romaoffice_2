@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { sanitizeFileName } from "@/lib/contab-files";
-import { contentDisposition, decodeQueryValue, rawQueryParam, readBodyLimited } from "@/lib/contab-http";
+import { bodyView, contentDisposition, decodeQueryValue, rawQueryParam, readBodyLimited } from "@/lib/contab-http";
 
 // Pure tests (no database): they run everywhere.
 
@@ -134,4 +134,22 @@ test("readBodyLimited works on a real Request body", async () => {
   assert.equal(await readBodyLimited(req.body, 10), null);
   const req2 = new Request("http://localhost/x", { method: "POST", body: Buffer.alloc(8, 7) });
   assert.equal((await readBodyLimited(req2.body, 10))?.length, 8);
+});
+
+test("bodyView shares the Buffer's memory instead of copying it", () => {
+  const buf = Buffer.from("0123456789");
+  const view = bodyView(buf);
+  assert.equal(view.buffer, buf.buffer);
+  assert.equal(view.byteOffset, buf.byteOffset);
+  assert.equal(view.byteLength, 10);
+  buf[0] = 0x58;
+  assert.equal(view[0], 0x58, "a write through the Buffer is visible in the view, so nothing was copied");
+});
+
+test("bodyView respects byteOffset and byteLength of a Buffer that is a slice of a bigger ArrayBuffer", async () => {
+  const slice = Buffer.from("xxHELLOyy").subarray(2, 7);
+  const view = bodyView(slice);
+  assert.equal(view.byteLength, 5);
+  const body = Buffer.from(await new Response(view as BodyInit).arrayBuffer());
+  assert.equal(body.toString(), "HELLO");
 });

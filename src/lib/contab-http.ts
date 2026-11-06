@@ -18,6 +18,14 @@ export function contentDisposition(name: string): string {
 }
 
 /**
+ * A view of a Buffer's bytes for a Response body, WITHOUT copying them (`new Uint8Array(buffer)` would copy
+ * the whole file or archive, up to 200 MB). Respects byteOffset/byteLength, so pooled Buffers are safe.
+ */
+export function bodyView(buffer: Buffer): Uint8Array {
+  return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+}
+
+/**
  * The raw (still percent-encoded) value of the first `key` in a query string, or null when absent.
  * `URLSearchParams.get` decodes for you; going through it and then calling decodeURIComponent would
  * decode twice (so a name containing "%" would be corrupted or refused), and it never reports a

@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { CONTAB_ZIP_MAX_BYTES, zipEntryNames, zipFileName } from "@/lib/contab-zip";
+import { bodyView } from "@/lib/contab-http";
 import { buildZip } from "@/lib/zip-store";
 import { readZip } from "./helpers/zip-read";
 
@@ -60,4 +61,14 @@ test("zipFileName: never empty, never a path, always ends with .zip, header-safe
 
 test("the ZIP cap is 200 MB of plaintext", () => {
   assert.equal(CONTAB_ZIP_MAX_BYTES, 200 * 1024 * 1024);
+});
+
+test("a Response built from the zero-copy view of the archive carries exactly the archive bytes", async () => {
+  const zip = buildZip([
+    { name: "a.pdf", data: Buffer.from("one") },
+    { name: "a (2).pdf", data: Buffer.from("two") },
+  ]);
+  const body = Buffer.from(await new Response(bodyView(zip) as BodyInit).arrayBuffer());
+  assert.ok(body.equals(zip));
+  assert.deepEqual(readZip(body).map(e => e.name), ["a.pdf", "a (2).pdf"]);
 });

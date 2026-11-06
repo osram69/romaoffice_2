@@ -9,7 +9,7 @@ import {
   requireContabDownloader,
 } from "@/lib/contab-api";
 import { getSectionWithFiles, recordDownload } from "@/lib/contab-data";
-import { contentDisposition } from "@/lib/contab-http";
+import { bodyView, contentDisposition } from "@/lib/contab-http";
 import { CONTAB_ZIP_MAX_BYTES, zipEntryNames, zipFileName } from "@/lib/contab-zip";
 import { buildZip } from "@/lib/zip-store";
 import { logSafeError } from "@/lib/safe-log";
@@ -50,13 +50,15 @@ export async function GET(req: NextRequest, { params }: Context) {
       entries.push({ name: names[index], data: read.data, date: file.uploadedAt });
     }
     const zip = buildZip(entries);
+    // Drop the plaintext now: only the archive stays in memory while the response is built.
+    entries.length = 0;
 
     // One download per file, only for the commercialista. A failure to log fails the request (audit trail).
     if (access.isAccountant) {
       for (const file of section.files) await recordDownload(file, access.user.username);
     }
 
-    return new NextResponse(new Uint8Array(zip), {
+    return new NextResponse(bodyView(zip) as BodyInit, {
       status: 200,
       headers: {
         "Content-Type": "application/zip",
