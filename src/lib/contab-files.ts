@@ -26,13 +26,29 @@ function extensionOf(name: string): string {
   return i > 0 ? name.slice(i + 1).toLowerCase() : "";
 }
 
+// Characters that are invisible or reorder text: C0/C1 controls, zero-width characters and direction
+// marks/overrides (e.g. U+202E, used to fake extensions), U+2028/U+2029 line and paragraph separators,
+// direction isolates and the BOM. Written as escapes so they stay visible in the source.
+const INVISIBLE_CHARS = /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069\ufeff]/g;
+
+// Cuts `text` to at most `maxUnits` UTF-16 units without ever splitting a surrogate pair: it walks
+// code points, so the result is always well-formed (encodeURIComponent never throws on it).
+function cutToUnits(text: string, maxUnits: number): string {
+  let out = "";
+  for (const ch of text) {
+    if (out.length + ch.length > maxUnits) break;
+    out += ch;
+  }
+  return out;
+}
+
 // Turns any client-supplied file name into a name that is safe to store and to put in a
-// Content-Disposition header: no directory parts, no control/bidi characters, no characters that
-// are illegal on Windows, never empty, at most 150 characters (extension kept).
+// Content-Disposition header: well-formed Unicode, no directory parts, no control/bidi characters, no
+// characters that are illegal on Windows, never empty, at most 150 UTF-16 units (extension kept).
 export function sanitizeFileName(name: string): string {
-  let s = String(name ?? "").normalize("NFC");
-  // Control characters and invisible direction overrides (e.g. U+202E used to fake extensions).
-  s = s.replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁦-⁩﻿]/g, "");
+  // toWellFormed() turns a lone surrogate into U+FFFD, so nothing downstream can throw on the name.
+  let s = String(name ?? "").toWellFormed().normalize("NFC");
+  s = s.replace(INVISIBLE_CHARS, "");
   // Keep only the last path component, whatever the separator.
   s = s.replace(/\\/g, "/");
   s = s.slice(s.lastIndexOf("/") + 1);
@@ -43,9 +59,10 @@ export function sanitizeFileName(name: string): string {
   if (s.length > MAX_NAME_LEN) {
     const dot = s.lastIndexOf(".");
     const ext = dot > 0 && s.length - dot <= 12 ? s.slice(dot) : "";
-    s = s.slice(0, MAX_NAME_LEN - ext.length) + ext;
-    // Cutting could expose a trailing space or dot before the extension; clean up again.
-    s = s.replace(/[.\s]+$/, "") || FALLBACK_NAME;
+    const base = ext ? s.slice(0, dot) : s;
+    // Cutting could expose a trailing space or dot: trim it before the extension is appended again.
+    const cut = cutToUnits(base, MAX_NAME_LEN - ext.length).replace(/[.\s]+$/, "");
+    s = (cut || FALLBACK_NAME) + ext;
   }
   return s;
 }
@@ -77,7 +94,7 @@ export function validateContabUpload(
   if (data.length > CONTAB_MAX_BYTES) {
     return {
       ok: false,
-      message: `Il file è troppo grande (${formatMb(data.length)}). Dimensione massima: 25 MB.`,
+      message: `Il file è troppo grande (${formatMb(data.length)}). Dimensione massima: ${CONTAB_MAX_BYTES / (1024 * 1024)} MB.`,
     };
   }
   if (ext === "pdf" && data.subarray(0, 4).toString("latin1") !== "%PDF") {

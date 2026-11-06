@@ -11,6 +11,8 @@ import {
   deleteFileRow,
   deleteSectionIfEmpty,
   getFile,
+  getSection,
+  getSectionWithFiles,
   listSectionsWithFiles,
   moveSection,
   recordDownload,
@@ -277,4 +279,27 @@ dbTest("deleteFileRow returns the deleted row and keeps the download log with fi
   assert.equal(rows[0].username, `${PREFIX}commercialista`);
 
   assert.equal(await deleteFileRow(file.id), null, "a second delete finds nothing");
+});
+
+dbTest("getSection and getSectionWithFiles: found, unknown and invalid ids; files in upload order", async () => {
+  const id = await newSection("lookup");
+  const first = await newFile(id);
+  const second = await newFile(id);
+
+  const section = await getSection(id);
+  assert.ok(section);
+  assert.equal(section.id, id);
+  assert.match(section.title, /^zz-test-lookup-/);
+
+  const withFiles = await getSectionWithFiles(id);
+  assert.ok(withFiles);
+  assert.deepEqual(withFiles.files.map(f => f.id), [first.id, second.id]);
+  assert.equal(withFiles.files[0].originalName, first.name);
+
+  for (const bad of [0, -1, 1.5, 2147483647 + 1, Number.NaN]) {
+    assert.equal(await getSection(bad), null, String(bad));
+    assert.equal(await getSectionWithFiles(bad), null, String(bad));
+  }
+  assert.equal(await getSection(2147483646), null);
+  assert.equal(await getSectionWithFiles(2147483646), null);
 });

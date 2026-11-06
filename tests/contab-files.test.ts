@@ -34,6 +34,38 @@ test("sanitizeFileName caps long names at 150 chars and keeps the extension", ()
   assert.equal(noExt.length, 150);
 });
 
+test("sanitizeFileName never leaves a lone surrogate when it cuts a long emoji name", () => {
+  const out = sanitizeFileName("😀".repeat(200) + ".pdf");
+  assert.doesNotThrow(() => encodeURIComponent(out));
+  assert.ok(out.endsWith(".pdf"));
+  assert.ok(out.length <= 150, `length ${out.length}`);
+  assert.equal(out, out.toWellFormed());
+  // Same without an extension, and with an odd budget so the cut would land inside a pair.
+  const noExt = sanitizeFileName("x" + "😀".repeat(200));
+  assert.doesNotThrow(() => encodeURIComponent(noExt));
+  assert.ok(noExt.length <= 150);
+});
+
+test("sanitizeFileName repairs a lone surrogate in the input", () => {
+  const out = sanitizeFileName("a\ud83dz.pdf");
+  assert.doesNotThrow(() => encodeURIComponent(out));
+  assert.equal(out, "a\ufffdz.pdf");
+});
+
+test("sanitizeFileName drops a trailing space or dot exposed by the cut before re-appending the extension", () => {
+  const out = sanitizeFileName("a".repeat(145) + " zzzz.pdf");
+  assert.equal(out, "a".repeat(145) + ".pdf");
+  const dots = sanitizeFileName("a".repeat(145) + "... zzzz.xml");
+  assert.equal(dots, "a".repeat(145) + ".xml");
+  assert.doesNotMatch(out, /[.\s]\.pdf$/);
+});
+
+test("sanitizeFileName removes zero-width, bidi and line/paragraph separator characters", () => {
+  for (const c of ["\u200b", "\u200c", "\u200d", "\u200e", "\u200f", "\u202a", "\u202d", "\u202e", "\u2028", "\u2029", "\u2066", "\u2069", "\ufeff", "\u0085", "\u009f"]) {
+    assert.equal(sanitizeFileName(`a${c}b.pdf`), "ab.pdf", c.charCodeAt(0).toString(16));
+  }
+});
+
 test("sanitizeFileName falls back to 'documento' for empty or dots-only names", () => {
   for (const n of ["", "...", ".", "..", "   ", "/", "../", "\u0000"]) {
     assert.equal(sanitizeFileName(n), "documento", JSON.stringify(n));
@@ -86,7 +118,7 @@ test("validateContabUpload enforces the 25 MB limit", () => {
   const tooBig = Buffer.alloc(CONTAB_MAX_BYTES + 1, 0x61);
   const r = validateContabUpload("a.csv", tooBig);
   assert.equal(r.ok, false);
-  if (!r.ok) assert.match(r.message, /25/);
+  if (!r.ok) assert.match(r.message, /Dimensione massima: 25 MB\./);
   const exact = Buffer.alloc(CONTAB_MAX_BYTES, 0x61);
   assert.equal(validateContabUpload("a.csv", exact).ok, true);
 });

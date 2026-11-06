@@ -81,6 +81,27 @@ export async function listSectionsWithFiles(): Promise<ContabSectionRow[]> {
   return sections.map(section => ({ ...section, files: bySection.get(section.id) ?? [] }));
 }
 
+/** One section (id and title), or null when the id is invalid or unknown. */
+export async function getSection(id: number): Promise<{ id: number; title: string } | null> {
+  if (!isValidId(id)) return null;
+  const [section] = await db.select({ id: contabSections.id, title: contabSections.title })
+    .from(contabSections)
+    .where(eq(contabSections.id, id))
+    .limit(1);
+  return section ?? null;
+}
+
+/** One section with its files in upload order (oldest first, so ZIP names stay stable); null when it does not exist. */
+export async function getSectionWithFiles(id: number): Promise<{ id: number; title: string; files: Omit<ContabFileRow, "lastDownloadAt">[] } | null> {
+  const section = await getSection(id);
+  if (!section) return null;
+  const files = await db.select(fileColumns)
+    .from(contabFiles)
+    .where(eq(contabFiles.sectionId, section.id))
+    .orderBy(asc(contabFiles.uploadedAt), asc(contabFiles.id));
+  return { ...section, files };
+}
+
 /** New sections go on top: sort_order is the current maximum plus one. */
 export async function createSection(title: string): Promise<{ ok: true; id: number } | { ok: false; message: string }> {
   const checked = normalizeSectionTitle(title);
