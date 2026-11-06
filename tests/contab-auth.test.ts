@@ -347,3 +347,47 @@ dbTest("changeContabPassword with the right current password replaces it", async
   assert.equal((await unlockContab(asUser(admin, "admin"), admin.cookie, PASSWORD)).ok, false);
   assert.equal((await unlockContab(asUser(admin, "admin"), admin.cookie, NEW_PASSWORD)).ok, true);
 });
+
+// The second password is shared by every admin, so a change closes every unlock but the caller's own.
+// (These tests run against a dev database: unlocks of real users there are closed too, which is the behaviour under test.)
+async function openSecondUnlock(admin: Awaited<ReturnType<typeof newStaff>>) {
+  const secondSession = await createSession(admin.id);
+  const result = await unlockContab(asUser(admin, "admin"), secondSession, PASSWORD);
+  assert.equal(result.ok, true);
+  if (!result.ok) throw new Error("unlock failed");
+  return { secondSession, secondUnlockRaw: result.unlockRaw };
+}
+
+dbTest("changeContabPassword with keepSessionRaw closes the other unlocks (other sessions of the user, other admins) and keeps the caller's", async () => {
+  const { admin, unlockRaw } = await unlockedAdmin();
+  const { secondSession, secondUnlockRaw } = await openSecondUnlock(admin);
+  const other = await newStaff("admin");
+  const otherResult = await unlockContab(asUser(other, "admin"), other.cookie, PASSWORD);
+  assert.equal(otherResult.ok, true);
+  if (!otherResult.ok) return;
+
+  assert.deepEqual(await changeContabPassword(PASSWORD, NEW_PASSWORD, admin.cookie), { ok: true });
+
+  assert.equal((await checkContabAccess(admin.cookie, unlockRaw))?.id, admin.id, "the caller's own unlock survives");
+  assert.equal(await checkContabAccess(secondSession, secondUnlockRaw), null, "another session of the same admin is locked again");
+  assert.equal(await checkContabAccess(other.cookie, otherResult.unlockRaw), null, "another admin is locked again");
+  assert.equal((await db.select().from(contabUnlocks).where(eq(contabUnlocks.userId, admin.id))).length, 1);
+  assert.equal((await db.select().from(contabUnlocks).where(eq(contabUnlocks.userId, other.id))).length, 0);
+});
+
+dbTest("changeContabPassword without keepSessionRaw closes every unlock, the caller's included", async () => {
+  const { admin, unlockRaw } = await unlockedAdmin();
+  assert.deepEqual(await changeContabPassword(PASSWORD, NEW_PASSWORD), { ok: true });
+  assert.equal(await checkContabAccess(admin.cookie, unlockRaw), null);
+  assert.equal((await db.select().from(contabUnlocks).where(eq(contabUnlocks.userId, admin.id))).length, 0);
+});
+
+dbTest("a refused changeContabPassword (wrong current, weak or unchanged new password) closes no unlock", async () => {
+  const { admin, unlockRaw } = await unlockedAdmin();
+  const { secondSession, secondUnlockRaw } = await openSecondUnlock(admin);
+  assert.equal((await changeContabPassword(OTHER_PASSWORD, NEW_PASSWORD, admin.cookie)).ok, false);
+  assert.equal((await changeContabPassword(PASSWORD, "debole", admin.cookie)).ok, false);
+  assert.equal((await changeContabPassword(PASSWORD, PASSWORD, admin.cookie)).ok, false);
+  assert.equal((await checkContabAccess(admin.cookie, unlockRaw))?.id, admin.id);
+  assert.equal((await checkContabAccess(secondSession, secondUnlockRaw))?.id, admin.id);
+});

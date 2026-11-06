@@ -6,13 +6,14 @@
 // (getStaffUser gives null for them), no or expired session.
 import { NextResponse, type NextRequest } from "next/server";
 import { contabAccessFromRequest } from "./contab-auth";
+import { CONTAB_GENERIC_FAILURE, CONTAB_LOCKED_MESSAGE } from "./contab-messages";
 import { readContabFile } from "./contab-storage";
 import { logSafeError } from "./safe-log";
 import { STAFF_SESSION_COOKIE, getStaffUser, type StaffUser } from "./staff-auth";
 
 export const NO_STORE = "private, no-store";
-export const LOCKED_MESSAGE = "Sblocco scaduto, reinserisci la password";
-export const GENERIC_FAILURE = "Operazione non riuscita, riprova.";
+export const LOCKED_MESSAGE = CONTAB_LOCKED_MESSAGE;
+export const GENERIC_FAILURE = CONTAB_GENERIC_FAILURE;
 const FORBIDDEN_MESSAGE = "Operazione non consentita.";
 
 const POSTGRES_MAX_INT = 2147483647;

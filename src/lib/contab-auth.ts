@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
-import { and, eq, gt, lt } from "drizzle-orm";
+import { and, eq, gt, lt, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { contabAccess, contabUnlocks } from "@/db/schema";
 import { CustomerError, limit, verifyPassword } from "./customer-auth";
@@ -49,8 +49,13 @@ export async function setInitialContabPassword(password: string): Promise<Result
   }
 }
 
-/** Needs the current password. The update is conditional on the hash that was verified, so a concurrent change makes it fail. */
-export async function changeContabPassword(current: string, next: string): Promise<Result> {
+/**
+ * Needs the current password. The update is conditional on the hash that was verified, so a concurrent change makes it fail.
+ * The second password is shared by every admin, so after a successful change every unlock (of any user) is closed, except the
+ * one bound to the staff session `keepSessionRaw` (the caller's own, so they are not asked again). Without it all are closed.
+ * Update and clean-up are one transaction.
+ */
+export async function changeContabPassword(current: string, next: string, keepSessionRaw?: string): Promise<Result> {
   try {
     const storedHash = await readAccessHash();
     const { candidate, withinLimit } = boundPassword(current);
@@ -60,12 +65,17 @@ export async function changeContabPassword(current: string, next: string): Promi
     if (!passwordMeetsPolicy(next)) return { ok: false, message: POLICY_MESSAGE };
     if (next === current) return { ok: false, message: "La nuova password deve essere diversa da quella attuale." };
 
-    const updated = await db.update(contabAccess)
-      .set({ passwordHash: await hashPassword(next), updatedAt: new Date() })
-      .where(and(eq(contabAccess.id, ACCESS_ROW_ID), eq(contabAccess.passwordHash, storedHash)))
-      .returning({ id: contabAccess.id });
-    if (updated.length === 0) return { ok: false, message: GENERIC_FAILURE_MESSAGE };
-    return { ok: true };
+    const nextHash = await hashPassword(next);
+    const keep = keepSessionRaw ? digest(keepSessionRaw) : null;
+    return await db.transaction(async (tx): Promise<Result> => {
+      const updated = await tx.update(contabAccess)
+        .set({ passwordHash: nextHash, updatedAt: new Date() })
+        .where(and(eq(contabAccess.id, ACCESS_ROW_ID), eq(contabAccess.passwordHash, storedHash)))
+        .returning({ id: contabAccess.id });
+      if (updated.length === 0) return { ok: false, message: GENERIC_FAILURE_MESSAGE };
+      await tx.delete(contabUnlocks).where(keep ? ne(contabUnlocks.sessionTokenHash, keep) : undefined);
+      return { ok: true };
+    });
   } catch (error) {
     logSafeError("Contab second password change failed", error);
     return { ok: false, message: GENERIC_FAILURE_MESSAGE };

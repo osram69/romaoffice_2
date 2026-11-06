@@ -76,10 +76,12 @@ export function formatMb(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(2).replace(".", ",")} MB`;
 }
 
-export function validateContabUpload(
+// Checks on name and size only. Shared by the server (validateContabUpload) and by the browser uploader,
+// so both show exactly the same messages. This module imports nothing, so a client component can use it.
+export function checkContabFileMeta(
   name: string,
-  data: Buffer,
-): { ok: true; name: string; mime: string } | { ok: false; message: string } {
+  sizeBytes: number,
+): { ok: true; name: string; ext: string } | { ok: false; message: string } {
   const safe = sanitizeFileName(name);
   const ext = extensionOf(safe);
   if (!CONTAB_EXTENSIONS.includes(ext)) {
@@ -88,15 +90,25 @@ export function validateContabUpload(
       message: `Tipo di file non consentito. Formati ammessi: ${CONTAB_EXTENSIONS.join(", ")}.`,
     };
   }
-  if (data.length === 0) {
+  if (sizeBytes === 0) {
     return { ok: false, message: "Il file è vuoto (0 byte)." };
   }
-  if (data.length > CONTAB_MAX_BYTES) {
+  if (sizeBytes > CONTAB_MAX_BYTES) {
     return {
       ok: false,
-      message: `Il file è troppo grande (${formatMb(data.length)}). Dimensione massima: ${CONTAB_MAX_BYTES / (1024 * 1024)} MB.`,
+      message: `Il file è troppo grande (${formatMb(sizeBytes)}). Dimensione massima: ${CONTAB_MAX_BYTES / (1024 * 1024)} MB.`,
     };
   }
+  return { ok: true, name: safe, ext };
+}
+
+export function validateContabUpload(
+  name: string,
+  data: Buffer,
+): { ok: true; name: string; mime: string } | { ok: false; message: string } {
+  const meta = checkContabFileMeta(name, data.length);
+  if (!meta.ok) return meta;
+  const { name: safe, ext } = meta;
   if (ext === "pdf" && data.subarray(0, 4).toString("latin1") !== "%PDF") {
     return { ok: false, message: "Il file non sembra un PDF valido." };
   }
