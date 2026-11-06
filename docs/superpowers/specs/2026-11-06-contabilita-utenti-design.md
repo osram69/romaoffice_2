@@ -34,7 +34,7 @@ Fuori ambito: mail di notifica al commercialista, cancellazione di account (solo
 - Nuovo valore `commercialista` nell'enum `staff_role`.
 - **Punto critico**: oggi le guardie `requireStaff` e quelle delle route `api/dom-documents`, `api/dom-mail-scans`, `api/dom-print` accettano *qualsiasi* utente con sessione valida. Con il nuovo ruolo diventerebbero un buco. Vanno tutte cambiate in "admin oppure operatore". Ogni modifica ha un test di rifiuto per il commercialista.
 - Ordini Online diventa admin-only: pagina (redirect alle Domiciliazioni), link nel menu e `requireStaff` delle azioni in `gestione-ordini-x9k2m7/actions.ts`.
-- Il login manda: admin → Tariffe (come oggi), operatore → Domiciliazioni (come oggi), commercialista → pagina download. Un commercialista che apre a mano un altro indirizzo viene rimandato alla sua pagina. Sulle API: 401 con codice `locked` se manca la sessione o lo sblocco Contabilità è assente o scaduto; 403 con codice `forbidden` per un utente autenticato senza il ruolo giusto (commercialista sulle API `dom-*`, operatore o commercialista su upload ed eliminazione file).
+- Il login manda: admin → Domiciliazioni (o la pagina di gestione che stava aprendo; la home di ripiego è Tariffe), operatore → Domiciliazioni (come oggi), commercialista → pagina download. Un commercialista che apre a mano un altro indirizzo viene rimandato alla sua pagina. Sulle API: 401 con codice `locked` su upload ed eliminazione quando lo sblocco Contabilità è assente o scaduto o manca la sessione (anche sui download per un admin senza sblocco); 401 `unauthorized` senza sessione sui download della Contabilità e sulle route `dom-*`; 403 con codice `forbidden` per un utente autenticato senza il ruolo giusto (commercialista sulle API `dom-*`, operatore o commercialista su upload ed eliminazione file, operatore sui download).
 
 ## 3. Utenti e password
 
@@ -47,7 +47,7 @@ Pagina `/gestione-utenti-x9k2m7` (solo admin), voce "Utenti e password" nel menu
 - **Cambia la mia password** (tutti i ruoli): `/gestione-password-x9k2m7`, chiede password attuale e nuova (nuova diversa dall'attuale), azzera `must_change_password`, chiude le *altre* sessioni dell'utente e mantiene quella corrente.
 - **Policy**: `passwordMeetsPolicy` esistente (12–128 caratteri, maiuscola, minuscola, numero, simbolo) con `PasswordRequirementsList` per i requisiti in tempo reale.
 - **Cambio obbligato**: `getStaffUser` restituisce `null` per un utente con `must_change_password = true`, a meno che non sia chiamato con `allowMustChange: true` (usato solo dalla pagina e dall'azione di cambio password). Così tutte le guardie esistenti negano l'accesso (fail-closed) senza essere toccate una per una. Il login manda quell'utente alla pagina di cambio password; se tenta altri indirizzi torna al login.
-- **Protezioni**: l'admin non può disattivare né declassare se stesso; deve restare almeno un admin attivo; il ruolo `admin` non è assegnabile da interfaccia.
+- **Protezioni**: gli account `admin` non si possono disattivare né reimpostare dall'interfaccia (l'admin cambia la propria password solo da "Cambia password", oppure con gli script); il ruolo `admin` non è assegnabile da interfaccia.
 - **Limite di tentativi**: login staff con `limit()` di `customer-auth.ts` (tabella `auth_limits` già esistente): massimo 10 tentativi ogni 15 minuti per nome utente. Superato il limite il login risponde con lo stesso messaggio di errore generico.
 
 ## 4. Area Contabilità (admin)

@@ -21,7 +21,7 @@ Questa guida descrive l'area **Contabilità** della dashboard e la gestione degl
 | Pagina download del commercialista | no | no | sì |
 | Cambia la mia password | sì | sì | sì |
 
-Dopo il login: l'admin va alle Domiciliazioni, l'operatore alle Domiciliazioni, il commercialista alla sua pagina. Chi apre a mano un indirizzo non consentito viene rimandato alla propria pagina.
+Dopo il login l'admin va alle Domiciliazioni (o alla pagina di gestione che stava aprendo), l'operatore alle Domiciliazioni, il commercialista alla sua pagina `/commercialista-x9k2m7`. Chi apre a mano un indirizzo non consentito viene rimandato alla propria pagina.
 
 ## Creare un account (operatore o commercialista)
 
@@ -30,7 +30,7 @@ Dopo il login: l'admin va alle Domiciliazioni, l'operatore alle Domiciliazioni, 
 3. Scrivi tu una password oppure lasciala **generare**: la password generata viene mostrata **una sola volta**, copiala e consegnala all'interessato.
 4. Al primo accesso l'utente è obbligato a cambiare la password; finché non lo fa non può aprire nessun'altra pagina.
 
-La password rispetta la policy: 12-128 caratteri con maiuscola, minuscola, numero e simbolo. Gli account non si cancellano: si **disattivano** (la disattivazione chiude subito le sessioni) e si possono riattivare. L'admin non può disattivare se stesso e deve restare almeno un admin attivo.
+La password rispetta la policy: 12-128 caratteri con maiuscola, minuscola, numero e simbolo. Gli account non si cancellano: si **disattivano** (la disattivazione chiude subito le sessioni) e si possono riattivare. Gli account **admin** non si possono disattivare né reimpostare dall'interfaccia: l'admin cambia la propria password solo da "Cambia password", oppure si usano gli script da terminale.
 
 ## Reimpostare una password
 
@@ -53,8 +53,9 @@ La password rispetta la policy: 12-128 caratteri con maiuscola, minuscola, numer
 
 ## Codici di stato delle API
 
-- **401** con codice `locked`: manca la sessione oppure lo sblocco della Contabilità è assente o scaduto (la pagina chiede di nuovo la seconda password).
-- **403** con codice `forbidden`: utente autenticato ma senza il ruolo giusto (per esempio operatore o commercialista che tenta upload o eliminazione, commercialista sulle API `dom-*`).
+- **401** con codice `locked`: su upload ed eliminazione dei file, quando lo sblocco della Contabilità è assente o scaduto oppure non c'è la sessione (la pagina chiede di nuovo la seconda password). Anche i download rispondono `locked` a un admin senza sblocco.
+- **401** con codice `unauthorized`: sulle route di download della Contabilità, quando non c'è la sessione. Le route `dom-*` (documenti, scansioni di posta, stampe) rispondono 401 `unauthorized` quando non c'è la sessione.
+- **403** con codice `forbidden`: utente autenticato ma senza il ruolo giusto (per esempio operatore o commercialista su upload ed eliminazione, operatore sui download della Contabilità, commercialista sulle route `dom-*`).
 
 ## Messa in produzione, in ordine
 
