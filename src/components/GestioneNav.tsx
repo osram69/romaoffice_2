@@ -18,7 +18,7 @@ async function statoCounts() {
   return STATO_TABS.map(tab => ({ ...tab, count: map.get(tab.stato) ?? 0 }));
 }
 
-export async function GestioneShell({ role, active, username, children }: { role: StaffRole; active: "tariffe" | "domiciliazioni" | "configurazione" | "ordini" | "password"; username: string; children: ReactNode }) {
+export async function GestioneShell({ role, active, username, children }: { role: StaffRole; active: "tariffe" | "domiciliazioni" | "configurazione" | "ordini" | "password" | "contabilita" | "utenti"; username: string; children: ReactNode }) {
   const tabs = await statoCounts();
   // Active companies, for the "società capofila" dropdown of the new/edit domiciliazione form.
   const capofile = active === "domiciliazioni" ? await db.select({ id: domClients.id, ragioneSociale: domClients.ragioneSociale }).from(domClients).where(eq(domClients.stato, 1)).orderBy(asc(domClients.ragioneSociale)) : [];

@@ -9,7 +9,7 @@ import { DomForm, type CapofilaOption } from "./DomForm";
 
 export function GestioneSidebar({ role, active, username, tabs, newDomiciliazioneAction, capofile }: {
   capofile?: CapofilaOption[];
-  role: StaffRole; active: "tariffe" | "domiciliazioni" | "configurazione" | "ordini" | "password"; username: string;
+  role: StaffRole; active: "tariffe" | "domiciliazioni" | "configurazione" | "ordini" | "password" | "contabilita" | "utenti"; username: string;
   tabs: { stato: number; label: string; count: number }[];
   newDomiciliazioneAction?: (formData: FormData) => void;
 }) {
