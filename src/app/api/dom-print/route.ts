@@ -11,12 +11,12 @@ export async function GET(req: NextRequest) {
   try {
     if (kind === "lista") {
       const bytes = await printListaCompleta();
-      return new NextResponse(new Uint8Array(bytes), { headers: { "Content-Type": "application/pdf", "Content-Disposition": 'inline; filename="lista-domiciliazioni.pdf"' } });
+      return new NextResponse(new Uint8Array(bytes), { headers: { "Content-Type": "application/pdf", "Content-Disposition": 'inline; filename="lista-domiciliazioni.pdf"', "Cache-Control": "private, no-store" } });
     }
     if (kind === "raccoglitori") {
       const raccoglitore = Number(req.nextUrl.searchParams.get("raccoglitore") ?? 0);
       const bytes = await printRaccoglitori(raccoglitore);
-      return new NextResponse(new Uint8Array(bytes), { headers: { "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="raccoglitori-${raccoglitore}.pdf"` } });
+      return new NextResponse(new Uint8Array(bytes), { headers: { "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="raccoglitori-${raccoglitore}.pdf"`, "Cache-Control": "private, no-store" } });
     }
     return NextResponse.json({ error: "invalid kind" }, { status: 400 });
   } catch (error) {

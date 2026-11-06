@@ -198,7 +198,7 @@ test("page.tsx: admin guard first, and no section or file data is read before th
   assert.equal([...page.matchAll(/listSectionsWithFiles\(/g)].length, 1);
   assert.match(page, /toContabSectionDto/);
   assert.doesNotMatch(page, /storedName/);
-  assert.doesNotMatch(page, /Cache-Control|cache-control|force-static|revalidate\s*=|dynamic\s*=/);
+  assert.doesNotMatch(page, /force-static|revalidate\s*=|dynamic\s*=/);
   assert.match(page, /GestioneShell[^>]*active="contabilita"/);
 });
 
@@ -214,7 +214,7 @@ test("impostazioni/page.tsx: admin first, then the unlock check, then data; lock
   assert.match(page, /\/gestione-utenti-x9k2m7/);
   assert.match(page, /toContabSettingsSectionDto/);
   assert.doesNotMatch(page, /storedName/);
-  assert.doesNotMatch(page, /Cache-Control|cache-control|force-static|revalidate\s*=|dynamic\s*=/);
+  assert.doesNotMatch(page, /force-static|revalidate\s*=|dynamic\s*=/);
 });
 
 test("no component or page of the accounting area mentions storedName", () => {

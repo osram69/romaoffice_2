@@ -61,6 +61,12 @@ export function GestioneSidebar({ role, active, username, tabs, newDomiciliazion
               <li className={`sidebar-sub${active === "configurazione" ? " active" : ""}`}>
                 <Link href="/gestione-configurazione-x9k2m7" onClick={() => setOpen(false)}>Configurazione Web</Link>
               </li>
+              <li className={`sidebar-sub${active === "contabilita" ? " active" : ""}`}>
+                <Link href="/gestione-contabilita-x9k2m7" onClick={() => setOpen(false)}>Contabilità</Link>
+              </li>
+              <li className={`sidebar-sub${active === "utenti" ? " active" : ""}`}>
+                <Link href="/gestione-utenti-x9k2m7" onClick={() => setOpen(false)}>Utenti e password</Link>
+              </li>
             </>
           )}
           {role === "admin" && (
@@ -68,6 +74,9 @@ export function GestioneSidebar({ role, active, username, tabs, newDomiciliazion
               <Link href="/gestione-ordini-x9k2m7" onClick={() => setOpen(false)}>Ordini Online</Link>
             </li>
           )}
+          <li className={active === "password" ? "active" : ""}>
+            <Link href="/gestione-password-x9k2m7" onClick={() => setOpen(false)}>Cambia password</Link>
+          </li>
           <li><form action={staffLogoutAction}><button type="submit" className="sidebar-link">Esci</button></form></li>
         </ul>
       </aside>
