@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { CONTAB_UNLOCK_SECONDS } from "@/lib/contab-auth";
 import { PASSWORD_MAX_LENGTH } from "@/lib/password-policy";
+import { STAFF_SESSION_SECONDS } from "@/lib/staff-auth";
 import { contabUnlockCookieOptions } from "@/app/gestione-contabilita-x9k2m7/cookie";
 import {
   parseCreateSectionInput,
@@ -83,9 +84,11 @@ test("parsePasswordChangeInput passes the three values through and rejects missi
 
 // ---- the unlock cookie ----
 
-test("contabUnlockCookieOptions: httpOnly, strict, path /, 30 minutes, secure only in production", () => {
-  assert.deepEqual(contabUnlockCookieOptions("production"), { httpOnly: true, secure: true, sameSite: "strict", path: "/", maxAge: CONTAB_UNLOCK_SECONDS });
-  assert.deepEqual(contabUnlockCookieOptions("development"), { httpOnly: true, secure: false, sameSite: "strict", path: "/", maxAge: 1800 });
+test("contabUnlockCookieOptions: httpOnly, strict, path /, lifetime of the staff session (server-side expiry slides), secure only in production", () => {
+  assert.deepEqual(contabUnlockCookieOptions("production"), { httpOnly: true, secure: true, sameSite: "strict", path: "/", maxAge: STAFF_SESSION_SECONDS });
+  assert.deepEqual(contabUnlockCookieOptions("development"), { httpOnly: true, secure: false, sameSite: "strict", path: "/", maxAge: 8 * 60 * 60 });
+  // The cookie must outlive the 30-minute inactivity window, otherwise active use would drop it.
+  assert.ok(contabUnlockCookieOptions("production").maxAge > CONTAB_UNLOCK_SECONDS);
   assert.equal(contabUnlockCookieOptions(undefined).secure, false);
   assert.equal(contabUnlockCookieOptions("test").secure, false);
 });
