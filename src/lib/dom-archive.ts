@@ -23,6 +23,9 @@ function archiveDir() {
   if (!path.isAbsolute(dir)) throw new Error("DOM_ARCHIVE_DIR deve essere un percorso assoluto (deve iniziare con /), non relativo");
   return dir;
 }
+export function archiveRoot(): string {
+  return archiveDir();
+}
 function archiveKey() {
   const key = process.env.AES_MASTER_KEY;
   if (!key) throw new Error("AES_MASTER_KEY non configurata");
