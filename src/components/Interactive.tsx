@@ -4,6 +4,7 @@ import { LoaderCircle } from "lucide-react";
 import { FormEvent, useState } from "react";
 import type { Lang } from "@/lib/site";
 import { track } from "@/lib/analytics";
+import { RECAPTCHA_TIMEOUT_MS, runRecaptcha } from "@/lib/recaptcha-client";
 import { LegalLinkModal } from "./LegalLinkModal";
 import { PrivacyNoticeContent } from "./LegalContent";
 
@@ -14,21 +15,27 @@ let recaptchaScriptPromise: Promise<void> | null = null;
 // reCAPTCHA v3 is invisible and only needed where a form has no other verification (this one has
 // no SMS/email confirmation loop) — skipped entirely when the site key isn't configured, so local
 // dev without the key still works exactly as before.
+//
+// It never hangs: a rejected site key, a blocked script or a silent Google all end with no token
+// after RECAPTCHA_TIMEOUT_MS, so the form can show "send failed" instead of spinning forever.
 async function getRecaptchaToken(action: string): Promise<string | undefined> {
   if (!RECAPTCHA_SITE_KEY) return undefined;
-  if (!window.grecaptcha) {
-    recaptchaScriptPromise ??= new Promise<void>(resolve => {
-      const script = document.createElement("script");
-      script.src = `https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`;
-      script.onload = () => resolve(); script.onerror = () => resolve();
-      document.head.appendChild(script);
-    });
-    await recaptchaScriptPromise;
+  try {
+    if (!window.grecaptcha) {
+      recaptchaScriptPromise ??= new Promise<void>(resolve => {
+        const script = document.createElement("script");
+        script.src = `https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`;
+        script.onload = () => resolve(); script.onerror = () => resolve();
+        document.head.appendChild(script);
+        setTimeout(resolve, RECAPTCHA_TIMEOUT_MS);
+      });
+      await recaptchaScriptPromise;
+    }
+    if (!window.grecaptcha) return undefined;
+    return await runRecaptcha(window.grecaptcha, RECAPTCHA_SITE_KEY, action);
+  } catch {
+    return undefined;
   }
-  if (!window.grecaptcha) return undefined;
-  return new Promise<string | undefined>(resolve => {
-    window.grecaptcha!.ready(() => { window.grecaptcha!.execute(RECAPTCHA_SITE_KEY, { action }).then(resolve).catch(() => resolve(undefined)); });
-  });
 }
 
 export function ContactForm({ lang }: { lang: Lang }) {
