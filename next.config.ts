@@ -46,10 +46,17 @@ const nextConfig: NextConfig = {
     ];
   },
   async headers() {
+    // Accounting, user-management and password pages: sensitive, per-user, never cached by browsers or proxies.
+    const privatePage = [{ key: "Cache-Control", value: "private, no-store" }, { key: "X-Robots-Tag", value: "noindex, nofollow" }];
     return [
       { source: "/:path*", headers: [{ key: "X-Content-Type-Options", value: "nosniff" }, { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" }] },
       { source: "/area-clienti.html", headers: [{ key: "Referrer-Policy", value: "no-referrer" }, { key: "X-Frame-Options", value: "DENY" }, { key: "X-Robots-Tag", value: "noindex, nofollow" }] },
       { source: "/en/customer-area.html", headers: [{ key: "Referrer-Policy", value: "no-referrer" }, { key: "X-Frame-Options", value: "DENY" }, { key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+      { source: "/gestione-contabilita-x9k2m7", headers: privatePage },
+      { source: "/gestione-contabilita-x9k2m7/:path*", headers: privatePage },
+      { source: "/gestione-utenti-x9k2m7", headers: privatePage },
+      { source: "/gestione-password-x9k2m7", headers: privatePage },
+      { source: "/commercialista-x9k2m7", headers: privatePage },
     ];
   },
 };

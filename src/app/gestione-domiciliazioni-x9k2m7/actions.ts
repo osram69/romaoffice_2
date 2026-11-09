@@ -1,11 +1,9 @@
 "use server";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { domClients, domCustomerChallenges, domCustomerSessions, domMailScans, domRinnovoPrezzi, siteConfig } from "@/db/schema";
-import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
+import { requireOperational } from "@/lib/staff-guards";
 import { decryptBytes, readMailScanDecrypted, removeEncrypted, removeMailScanEncrypted, saveEncrypted, type DocType, DOC_TYPES } from "@/lib/dom-archive";
 import { PRESENZA_FILE_BITS, cleanText } from "@/lib/dom-status";
 import { buildScadenzaEmailHtml, contractMonths, defaultScontoApplicabile, scadenzaDefaultMonths, scadenzaEmailSubject, scadenzaOfferMonths } from "@/lib/dom-scadenza-email";
@@ -15,13 +13,6 @@ import { hashPassword } from "@/lib/customer-auth";
 import { passwordMeetsPolicy } from "@/lib/password-policy";
 
 const BASE_PATH = "/gestione-domiciliazioni-x9k2m7";
-
-async function requireStaff() {
-  const store = await cookies();
-  const user = await getStaffUser(store.get(STAFF_SESSION_COOKIE)?.value);
-  if (!user) redirect(`/gestione-tariffe-x9k2m7/login?next=${BASE_PATH}`);
-  return user;
-}
 
 function str(formData: FormData, key: string) {
   const value = String(formData.get(key) ?? "").trim();
@@ -73,7 +64,7 @@ async function validCapofila(values: { aggiuntiva: boolean; capofilaId: number |
 
 export async function createDomiciliazioneAction(formData: FormData) {
   "use server";
-  await requireStaff();
+  await requireOperational(BASE_PATH);
   const values = fields(formData);
   await db.insert(domClients).values({ ...values, capofilaId: await validCapofila(values) });
   revalidatePath(BASE_PATH);
@@ -81,7 +72,7 @@ export async function createDomiciliazioneAction(formData: FormData) {
 
 export async function updateDomiciliazioneAction(formData: FormData) {
   "use server";
-  await requireStaff();
+  await requireOperational(BASE_PATH);
   const id = Number(formData.get("id"));
   const values = { ...fields(formData) };
   values.capofilaId = await validCapofila(values, id);
@@ -98,7 +89,7 @@ export async function updateDomiciliazioneAction(formData: FormData) {
 // here server-side, not just by hiding the button, since this is a real data-safety rule.
 export async function deleteDomiciliazioneAction(formData: FormData) {
   "use server";
-  await requireStaff();
+  await requireOperational(BASE_PATH);
   const id = Number(formData.get("id"));
   await db.delete(domClients).where(and(eq(domClients.id, id), eq(domClients.stato, 0)));
   revalidatePath(BASE_PATH);
@@ -106,7 +97,7 @@ export async function deleteDomiciliazioneAction(formData: FormData) {
 
 export async function decadiDomiciliazioneAction(formData: FormData) {
   "use server";
-  await requireStaff();
+  await requireOperational(BASE_PATH);
   const id = Number(formData.get("id"));
   await db.update(domClients).set({ stato: 2 }).where(eq(domClients.id, id));
   revalidatePath(BASE_PATH);
@@ -114,7 +105,7 @@ export async function decadiDomiciliazioneAction(formData: FormData) {
 
 export async function ripristinaDomiciliazioneAction(formData: FormData) {
   "use server";
-  await requireStaff();
+  await requireOperational(BASE_PATH);
   const id = Number(formData.get("id"));
   await db.update(domClients).set({ stato: 1 }).where(eq(domClients.id, id));
   revalidatePath(BASE_PATH);
@@ -122,7 +113,7 @@ export async function ripristinaDomiciliazioneAction(formData: FormData) {
 
 export async function attivaDomiciliazioneAction(formData: FormData) {
   "use server";
-  await requireStaff();
+  await requireOperational(BASE_PATH);
   const id = Number(formData.get("id"));
   await db.update(domClients).set({ stato: 1 }).where(eq(domClients.id, id));
   revalidatePath(BASE_PATH);
@@ -138,7 +129,7 @@ async function clientFileId(id: number) {
 // archivio_dmcl folder on disk — not in Postgres, these PDFs run into the gigabytes in total.
 export async function uploadDomDocumentAction(id: number, docType: DocType, file: File): Promise<{ success: boolean; message?: string; presenzaFile?: number }> {
   "use server";
-  await requireStaff();
+  await requireOperational(BASE_PATH);
   if (!DOC_TYPES.includes(docType)) return { success: false, message: "Tipo documento non valido" };
   try {
     const { fileId, presenzaFile } = await clientFileId(id);
@@ -155,7 +146,7 @@ export async function uploadDomDocumentAction(id: number, docType: DocType, file
 
 export async function removeDomDocumentAction(id: number, docType: DocType): Promise<{ success: boolean; message?: string; presenzaFile?: number }> {
   "use server";
-  await requireStaff();
+  await requireOperational(BASE_PATH);
   if (!DOC_TYPES.includes(docType)) return { success: false, message: "Tipo documento non valido" };
   try {
     const { fileId, presenzaFile } = await clientFileId(id);
@@ -180,7 +171,7 @@ export type ScannerConfig = {
 // handling) — only admins can change it, in Configurazione Web (see updateScannerConfigAction).
 export async function getScannerConfigAction(): Promise<ScannerConfig> {
   "use server";
-  await requireStaff();
+  await requireOperational(BASE_PATH);
   const [row] = await db.select().from(siteConfig).where(eq(siteConfig.id, 1)).limit(1);
   return {
     host: row?.scannerHost ?? null,
@@ -197,7 +188,7 @@ export async function getScannerConfigAction(): Promise<ScannerConfig> {
 // contract-processing tool as a data URL; never written to disk or exposed unauthenticated.
 export async function getFirmaDomiciliatarioAction(): Promise<{ success: boolean; dataUrl?: string }> {
   "use server";
-  await requireStaff();
+  await requireOperational(BASE_PATH);
   const [row] = await db.select({ firmaDomiciliatarioPng: siteConfig.firmaDomiciliatarioPng }).from(siteConfig).where(eq(siteConfig.id, 1)).limit(1);
   if (!row?.firmaDomiciliatarioPng) return { success: false };
   const png = decryptBytes(row.firmaDomiciliatarioPng);
@@ -206,7 +197,7 @@ export async function getFirmaDomiciliatarioAction(): Promise<{ success: boolean
 
 export async function listMailScansAction(domClientId: number): Promise<{ success: boolean; message?: string; scans?: MailScanSummary[] }> {
   "use server";
-  await requireStaff();
+  await requireOperational(BASE_PATH);
   const rows = await db.select().from(domMailScans).where(eq(domMailScans.domClientId, domClientId)).orderBy(desc(domMailScans.createdAt));
   return { success: true, scans: rows.map(r => ({ id: r.id, createdAt: r.createdAt.toISOString(), scannedBy: r.scannedByUsername })) };
 }
@@ -219,7 +210,7 @@ export async function listMailScansAction(domClientId: number): Promise<{ succes
 
 export async function removeMailScanAction(scanId: number, domClientId: number): Promise<{ success: boolean; message?: string }> {
   "use server";
-  await requireStaff();
+  await requireOperational(BASE_PATH);
   await db.delete(domMailScans).where(and(eq(domMailScans.id, scanId), eq(domMailScans.domClientId, domClientId)));
   await removeMailScanEncrypted(scanId);
   revalidatePath(BASE_PATH);
@@ -297,7 +288,7 @@ function mailScanDraftContent(channel: MailScanChannel, ragioneSociale: string):
 // only skipped this BCC for a "generic" scan not tied to any client record — doesn't apply here).
 export async function sendMailScanAction(domClientId: number, channel: MailScanChannel): Promise<{ success: boolean; message?: string }> {
   "use server";
-  await requireStaff();
+  await requireOperational(BASE_PATH);
 
   const [client] = await db.select().from(domClients).where(eq(domClients.id, domClientId)).limit(1);
   if (!client) return { success: false, message: "Domiciliazione non trovata" };
@@ -351,7 +342,7 @@ export async function sendMailScanAction(domClientId: number, channel: MailScanC
 // and which renewal-offer durations (6/12/24/36/48) get listed.
 export async function getScadenzaDraftAction(id: number, regenerate = false, includeSconto?: boolean, includeMonths?: number[]): Promise<{ success: boolean; message?: string; subject?: string; html?: string; prezzoRinnovo?: number | null; scontoDefault?: boolean; availableMonths?: number[]; defaultMonths?: number[] }> {
   "use server";
-  await requireStaff();
+  await requireOperational(BASE_PATH);
   const [client] = await db.select().from(domClients).where(eq(domClients.id, id)).limit(1);
   if (!client) return { success: false, message: "Domiciliazione non trovata" };
   const prezzi = await db.select().from(domRinnovoPrezzi);
@@ -374,7 +365,7 @@ export async function getScadenzaDraftAction(id: number, regenerate = false, inc
 // CC'd — always with a fixed internal CC so the office keeps a copy either way.
 export async function inviaScadenzaAction(formData: FormData): Promise<{ success: boolean; message?: string }> {
   "use server";
-  await requireStaff();
+  await requireOperational(BASE_PATH);
   const id = Number(formData.get("id"));
   const html = String(formData.get("html") ?? "");
   const prezzoRaw = formData.get("prezzoRinnovo");
@@ -410,7 +401,7 @@ export async function inviaScadenzaAction(formData: FormData): Promise<{ success
 // Reuses a previously edited/sent draft (testoRitiro) unless `regenerate` asks for a fresh one.
 export async function getRitiroDraftAction(id: number, regenerate = false): Promise<{ success: boolean; message?: string; subject?: string; html?: string }> {
   "use server";
-  await requireStaff();
+  await requireOperational(BASE_PATH);
   const [client] = await db.select().from(domClients).where(eq(domClients.id, id)).limit(1);
   if (!client) return { success: false, message: "Domiciliazione non trovata" };
   const [config] = await db.select({ ritiroTestoTemplate: siteConfig.ritiroTestoTemplate, ritiroOggettoTemplate: siteConfig.ritiroOggettoTemplate }).from(siteConfig).where(eq(siteConfig.id, 1));
@@ -428,7 +419,7 @@ export async function getRitiroDraftAction(id: number, regenerate = false): Prom
 // fixed internal CC (scadenza's is info@ instead — different inbox, staff's explicit choice).
 export async function inviaRitiroAction(formData: FormData): Promise<{ success: boolean; message?: string }> {
   "use server";
-  await requireStaff();
+  await requireOperational(BASE_PATH);
   const id = Number(formData.get("id"));
   const html = String(formData.get("html") ?? "");
 
@@ -459,7 +450,7 @@ export async function inviaRitiroAction(formData: FormData): Promise<{ success: 
 // customer is forced to change it on next login, and any live session/pending SMS code is revoked.
 export async function setAreaClientiPasswordAction(id: number, newPassword: string): Promise<{ success: boolean; message?: string }> {
   "use server";
-  await requireStaff();
+  await requireOperational(BASE_PATH);
   if (!passwordMeetsPolicy(newPassword)) return { success: false, message: "La password deve avere almeno 12 caratteri e includere maiuscola, minuscola, numero e carattere speciale" };
   const passwordHash = await hashPassword(newPassword);
   await db.update(domClients).set({ areaClientiPasswordHash: passwordHash, mustChangePassword: true }).where(eq(domClients.id, id));

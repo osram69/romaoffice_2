@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { domMailScans } from "@/db/schema";
-import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
+import { STAFF_SESSION_COOKIE, getStaffUser, isOperational } from "@/lib/staff-auth";
 import { readMailScanDecrypted, removeMailScanEncrypted, saveMailScanEncrypted } from "@/lib/dom-archive";
 
 const BASE_PATH = "/gestione-domiciliazioni-x9k2m7";
@@ -11,6 +11,7 @@ const BASE_PATH = "/gestione-domiciliazioni-x9k2m7";
 export async function GET(req: NextRequest) {
   const user = await getStaffUser(req.cookies.get(STAFF_SESSION_COOKIE)?.value);
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!isOperational(user.role)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const id = Number(req.nextUrl.searchParams.get("id"));
   if (!id) return NextResponse.json({ error: "invalid" }, { status: 400 });
@@ -37,6 +38,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const user = await getStaffUser(req.cookies.get(STAFF_SESSION_COOKIE)?.value);
   if (!user) return NextResponse.json({ success: false, message: "unauthorized" }, { status: 401 });
+  if (!isOperational(user.role)) return NextResponse.json({ success: false, message: "forbidden" }, { status: 403 });
 
   const domClientId = Number(req.nextUrl.searchParams.get("clientId"));
   if (!domClientId) return NextResponse.json({ success: false, message: "Parametro clientId mancante" }, { status: 400 });

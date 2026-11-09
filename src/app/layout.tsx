@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { CookieConsent, Footer, Header } from "@/components/SiteChrome";
 import { Analytics } from "@/components/Analytics";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
+import { isDashboardPath } from "@/lib/dashboard-paths";
 import { alternateFor, BASE_URL, contact, hrefFor, pages, resolvePath } from "@/lib/site";
 import "./globals.css";
 import "./features.css";
@@ -19,7 +20,7 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const h = await headers();
   const pathname = h.get("x-pathname") || "/";
-  if (pathname.startsWith("/gestione-tariffe-x9k2m7") || pathname.startsWith("/gestione-domiciliazioni-x9k2m7") || pathname.startsWith("/gestione-ordini-x9k2m7") || pathname.startsWith("/gestione-configurazione-x9k2m7")) return <html lang="it"><body>{children}</body></html>;
+  if (isDashboardPath(pathname)) return <html lang="it"><body>{children}</body></html>;
   const parts = pathname.split("/").filter(Boolean);
   const { key, lang } = resolvePath(parts);
   const jsonLd = {
