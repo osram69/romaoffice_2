@@ -43,6 +43,14 @@ const nextConfig: NextConfig = {
       { source: "/affitto-ufficio-temporaneo/affitto-ufficio-giornaliero-roma", destination: "/ufficio-giornaliero.html", permanent: true },
       { source: "/it/affitto-ufficio-temporaneo/affitto-ufficio-giornaliero-roma", destination: "/ufficio-giornaliero.html", permanent: true },
       { source: "/home.html", destination: "/", permanent: true },
+      { source: "/index.php", destination: "/", permanent: true },
+      { source: "/it", destination: "/", permanent: true },
+      { source: "/it/affitto-ufficio-temporaneo-roma-economico-oc", destination: "/ufficio-temporaneo.html", permanent: true },
+      { source: "/it/domiciliazione-sede-roma-oc", destination: "/servizi-domiciliazione-sede-roma.html", permanent: true },
+      { source: "/it/tariffe-domiciliazione-sede-legale-roma-oc", destination: "/tariffe.html", permanent: true },
+      { source: "/it/ufficio-virtuale-roma-oc", destination: "/segreteria-virtuale.html", permanent: true },
+      { source: "/it/affitto-sala-riunioni-roma", destination: "/sale-corsi.html", permanent: true },
+      { source: "/it/opinioni-domiciliazione-sede-legale", destination: "/dicono-di-noi.html", permanent: true },
     ];
   },
   async headers() {
