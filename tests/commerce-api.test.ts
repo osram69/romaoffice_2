@@ -69,7 +69,7 @@ test("database offers, immutable attachments and postal checkout", async t => {
       assert.equal((await requestApi(makeRequest("/api/domiciliation-request", { ...body, newActivation: true }))).status, 400);
       assert.equal((await requestApi(makeRequest("/api/domiciliation-request", { ...body, consent: false }))).status, 400);
       const text = termsText(product, "it");
-      for (const expected of ["Logo aziendale esposto al piano (su richiesta)", "10 aperture/mese incluse", "entro le 24h", "40€/mese", "50€", "max 5 faldoni", "Pagamento anticipato", "non è previsto deposito cauzionale"]) assert.ok(text.includes(expected), expected);
+      for (const expected of ["Logo aziendale esposto al piano (su richiesta)", "5 aperture/mese incluse", "entro le 24h", "40€/mese", "50€", "max 5 faldoni", "Pagamento anticipato", "non è previsto deposito cauzionale"]) assert.ok(text.includes(expected), expected);
     });
     await t.test("standard offer attaches exactly the original bytes and is idempotent", async () => {
       let original: Buffer;

@@ -438,7 +438,7 @@ export function ContractWizard({ onSessionExpired: onExpired }: { onSessionExpir
           {Check1("svcLineaTel", <><b>Linea telefonica dedicata</b> con risposta a nome della società — 40 €/mese + IVA</>, "Include solo la risposta telefonica con invio via email dei riferimenti di chi ha chiamato.")}
           {Check1("svcDenomPostale", <><b>Denominazione postale aggiuntiva</b> — 10 €/mese + IVA</>, "Una denominazione alternativa (ad esempio il nome dell’amministratore) con cui ricevere posta. Massimo 2.")}
           {data.svcDenomPostale && <div className="cw-grid inner">{F("denomPostaleTesto", "Denominazione aggiuntiva", { span: 3 })}</div>}
-          {Check1("svcApertura", <><b>Apertura corrispondenza</b> oltre le 10 mensili incluse — 1,50 € l’una + IVA (a consuntivo)</>)}
+          {Check1("svcApertura", <><b>Apertura corrispondenza</b> oltre le 5 mensili incluse — 1,50 € l’una + IVA (a consuntivo)</>)}
           {Check1("svcArchivio", <><b>Servizio archivio documentazione</b> (max 5 faldoni) — 8 €/mese per faldone + IVA (a consuntivo)</>)}
           {Check1("svcInoltro", <><b>Inoltro pacchi e corrispondenza</b> tramite corriere — costo di spedizione + 10 € di gestione + IVA (a consuntivo)</>)}
         </div>

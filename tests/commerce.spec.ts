@@ -45,7 +45,7 @@ test("postal activation preserves language context, blocks missing terms, and pr
   await page.getByRole("button", { name: "Leggi le condizioni obbligatorie" }).click();
   const dialog = page.locator(".terms-dialog[open]");
   const accept = dialog.getByRole("checkbox"); await expect(accept).toBeDisabled();
-  await expect(dialog).toContainText("10 aperture/mese incluse"); await expect(dialog).toContainText("40€/mese"); await expect(dialog).toContainText("NOTA: non è previsto deposito cauzionale");
+  await expect(dialog).toContainText("5 aperture/mese incluse"); await expect(dialog).toContainText("40€/mese"); await expect(dialog).toContainText("NOTA: non è previsto deposito cauzionale");
   await dialog.locator(".terms-scroll").evaluate(el => { el.scrollTop = el.scrollHeight; el.dispatchEvent(new Event("scroll")); });
   await expect(accept).toBeEnabled(); await accept.check(); await dialog.getByRole("button", { name: "Conferma lettura e accettazione" }).click();
   await expect(page.locator(".terms-consent")).toContainText("Lettura e accettazione confermate");
