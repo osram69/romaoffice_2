@@ -26,8 +26,8 @@ function fields(formData: FormData) {
   return {
     ragioneSociale: String(formData.get("ragioneSociale") ?? "").trim(),
     sede: Number(formData.get("sede")) || 0,
-    emailPosta: String(formData.get("emailPosta") ?? "").trim(),
-    emailPec: str(formData, "emailPec"),
+    emailPosta: String(formData.get("emailPosta") ?? "").trim().toLowerCase(),
+    emailPec: str(formData, "emailPec")?.toLowerCase() ?? null,
     amministratore: str(formData, "amministratore"),
     telefonoAmm: str(formData, "telefonoAmm"),
     personaRif: str(formData, "personaRif"),

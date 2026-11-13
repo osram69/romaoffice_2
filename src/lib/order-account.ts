@@ -32,7 +32,7 @@ function addMonths(isoDate: string, months: number): string {
 /**
  * Online legal-address orders get their Area Clienti access straight away: a domiciliazione record is created
  * ("In Attivazione", ready for staff to move to "Attiva" once payment is checked) with the login email, a
- * temporary password the customer must change, the dates/fee of the order and a contract draft prefilled with
+ * temporary password the customer must change, the dates and renewal price of the order and a contract draft prefilled with
  * what they already typed — so they can complete and sign the contract online. Idempotent: if the confirmation
  * email is retried before the customer ever received it, the same record gets a fresh password.
  */
@@ -51,9 +51,11 @@ export async function provisionCustomerAccount(order: OrderRow, data: RequestDat
   }
 
   const inizio = data.startDate;
+  // prezzoRinnovo is what the customer will pay at expiry: the offer price of the chosen term ("Rinnovi successivi"
+  // on the quote), without the one-off new-activation and online discounts — not the discounted amount paid today.
   const [client] = await db.insert(domClients).values({
     ragioneSociale: data.companyName.trim(), emailPosta: email, amministratore: data.representativeName, personaRif: data.representativeName,
-    telefono: data.phone, emailPec: data.companyPec || null, inizioDom: inizio, scadenzaDom: addMonths(inizio, data.months), prezzoRinnovo: Math.round(snapshot.quote.serviceNetCents / 100),
+    telefono: data.phone, emailPec: data.companyPec || null, inizioDom: inizio, scadenzaDom: addMonths(inizio, data.months), prezzoRinnovo: Math.round(snapshot.quote.renewalBaseCents / 100),
     stato: 0, tipologia: 0, areaClientiEmail: email, areaClientiPasswordHash: passwordHash, mustChangePassword: true,
     note: `Creata automaticamente dall'ordine online ${order.publicId}`,
   }).returning();

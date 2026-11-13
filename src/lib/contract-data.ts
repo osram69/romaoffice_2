@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isValidTaxCode, normalizeTaxCode } from "./codice-fiscale";
+import { lowerEmail } from "./email-format";
 
 // Data model of the online-fillable "Contratto di domiciliazione sede legale" (Rev. F): one flat
 // shape that the wizard edits, the server stores (encrypted draft) and contract-pdf.ts prints onto
@@ -232,13 +233,13 @@ const personSchema = z.object({
   pep: z.enum(["", "no", "si"]), pepMotivo: str, procedimenti: yn, indagini: yn, collegato: yn, paesi: yn, quota: yn, motivoTitolare: str,
 });
 export const contractDataSchema = z.object({
-  societa: str, sedeVia: str, sedeCitta: str, sedeCap: str, sedeProv: str, capitale: str, cfRegImp: str, piva: str, pec: str, sdi: str,
-  repQualifica: str, repNome: str, repNatoA: str, repNatoIl: str, repResVia: str, repResCitta: str, repResCap: str, repResProv: str, repCf: str, repEmail: str,
+  societa: str, sedeVia: str, sedeCitta: str, sedeCap: str, sedeProv: str, capitale: str, cfRegImp: str, piva: str, pec: str.transform(lowerEmail), sdi: str,
+  repQualifica: str, repNome: str, repNatoA: str, repNatoIl: str, repResVia: str, repResCitta: str, repResCap: str, repResProv: str, repCf: str, repEmail: str.transform(lowerEmail),
   durataMesi: z.number().int().min(1).max(120), canoneEuro: z.number().min(0).max(1_000_000), dataInizio: str, aggiuntiva: z.boolean().default(false),
   delegati: z.array(z.object({ nome: str, cognome: str, documento: str, note: str })).max(MAX_DELEGATI),
   telUrgenze: str, intestazione: str, inoltroNome: str, inoltroVia: str, inoltroComune: str, inoltroProv: str, inoltroCap: str,
   svcLineaTel: z.boolean(), svcDenomPostale: z.boolean(), denomPostaleTesto: str, svcApertura: z.boolean(), svcArchivio: z.boolean(), svcInoltro: z.boolean(),
-  emailScansioni: str, a2Studio: str, a2DomFiscale1: str, a2DomFiscale2: str, a2Luogo1: str, a2Luogo2: str, a2Tel: str, a2Orario: str, a2Chiuso: str,
+  emailScansioni: str.transform(lowerEmail), a2Studio: str, a2DomFiscale1: str, a2DomFiscale2: str, a2Luogo1: str, a2Luogo2: str, a2Tel: str, a2Orario: str, a2Chiuso: str,
   denominazioneForma: str, indirizzoSede: str, capSede: str, comuneSede: str, provSede: str, cfSocieta: str, pivaSocieta: str, rea: str, ateco: str, sae: str, rae: str,
   rappresentante: personSchema, hasEsecutore: z.boolean(), esecutore: personSchema,
   titolareMode: z.enum(["", "unico", "insieme", "altri", "nessuno"]), titolareNessunoMotivo: str, titolari: z.array(personSchema).max(MAX_TITOLARI),

@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { isValidTaxCode } from "./codice-fiscale";
+import { formatPersonName } from "./person-name";
+import { lowerEmail } from "./email-format";
 export const normalizePhone = (value: string) => value.trim().replace(/^00/, "+").replace(/[\s.()\/-]/g, "");
 export const requestSchema = z.object({
   lang: z.enum(["it", "en"]).default("it"), service: z.enum(["legal_unit", "postal"]).default("legal_unit"),
@@ -7,10 +9,10 @@ export const requestSchema = z.object({
   companyExists: z.boolean().default(false), companyName: z.string().trim().min(2).max(200),
   companyVat: z.string().trim().max(30).default(""), companyTaxCode: z.string().trim().max(30).default(""),
   companyAddress: z.string().trim().max(240).default(""), companyRegister: z.string().trim().max(120).default(""),
-  companyPec: z.string().trim().max(254).default(""), companySdi: z.string().trim().max(7).default(""),
-  representativeName: z.string().trim().min(2).max(200), representativeRole: z.string().trim().max(80).default(""),
+  companyPec: z.string().max(254).transform(lowerEmail).default(""), companySdi: z.string().trim().max(7).default(""),
+  representativeName: z.string().trim().min(2).max(200).transform(formatPersonName), representativeRole: z.string().trim().max(80).default(""),
   representativeTaxCode: z.string().trim().min(1).max(40).refine(isValidTaxCode, "invalid-tax-code"),
-  email: z.string().trim().email().max(254).transform(s => s.toLowerCase()),
+  email: z.string().trim().email().max(254).transform(lowerEmail),
   phone: z.string().max(40).transform(normalizePhone).refine(s => /^\+[1-9]\d{7,14}$/.test(s), "invalid-phone"),
   months: z.union([z.literal(3), z.literal(6), z.literal(12), z.literal(24), z.literal(36), z.literal(48)]),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), newActivation: z.boolean().default(false), additionalDomiciliation: z.boolean().default(false),

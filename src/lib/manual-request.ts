@@ -3,11 +3,13 @@ import { copyFor, formatEur, quote, type Lang, type ProductOffer } from "./prici
 import { adminEmail, type MailPayload } from "./mailer";
 import { normalizePhone } from "./request";
 import { isValidTaxCode } from "./codice-fiscale";
+import { formatPersonName } from "./person-name";
+import { lowerEmail } from "./email-format";
 
 export const manualRequestSchema = z.object({
   requestId: z.string().uuid(), service: z.enum(["legal_unit", "postal"]), lang: z.enum(["it", "en"]),
   companyName: z.string().trim().min(1).max(200), vatNumber: z.string().trim().min(1).max(30), taxCode: z.string().trim().min(1).max(30),
-  representativeName: z.string().trim().min(1).max(150), email: z.string().trim().email().max(254).transform(s => s.toLowerCase()),
+  representativeName: z.string().trim().min(1).max(150).transform(formatPersonName), email: z.string().trim().email().max(254).transform(lowerEmail),
   representativeAddress: z.string().trim().min(1).max(240),
   representativePhone: z.string().max(40).transform(normalizePhone).refine(s => /^\+[1-9]\d{7,14}$/.test(s), "invalid-phone"),
   representativeTaxCode: z.string().trim().min(1).max(40).refine(isValidTaxCode, "invalid-tax-code"),
