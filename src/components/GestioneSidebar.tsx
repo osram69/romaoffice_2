@@ -6,6 +6,7 @@ import { staffLogoutAction } from "@/lib/staff-actions";
 import type { StaffRole } from "@/lib/staff-auth";
 import { BrandWords } from "./BrandWords";
 import { DomForm, type CapofilaOption } from "./DomForm";
+import { ToastHost } from "./Toaster";
 
 export function GestioneSidebar({ role, active, username, tabs, newDomiciliazioneAction, capofile }: {
   capofile?: CapofilaOption[];
@@ -102,6 +103,7 @@ export function GestioneSidebar({ role, active, username, tabs, newDomiciliazion
         </div>
       )}
 
+      <ToastHost />
       {creating && newDomiciliazioneAction && (
         <div className="gestione-modal-overlay" onClick={() => setCreating(false)}>
           <div className="gestione-modal-box" onClick={e => e.stopPropagation()}>

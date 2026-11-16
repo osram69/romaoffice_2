@@ -5,6 +5,8 @@ import type { domClients } from "@/db/schema";
 import { cleanText } from "@/lib/dom-status";
 import { DomDocumentUploads } from "./DomDocumentUploads";
 import { AreaClientiPasswordReset } from "./AreaClientiPasswordReset";
+import { runWithFeedback } from "./Toaster";
+import { FeedbackForm } from "./FeedbackForm";
 
 type DomClient = InferSelectModel<typeof domClients>;
 
@@ -42,9 +44,9 @@ export function DomForm({ client, action, deleteAction, onClose, capofile = [] }
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     setSaving(true);
-    await action(formData);
+    const ok = await runWithFeedback(async () => action(formData), "Scheda salvata");
     setSaving(false);
-    onClose?.();
+    if (ok) onClose?.();
   }
 
   const row = (left: React.ReactNode, right?: React.ReactNode) => (
@@ -164,7 +166,7 @@ export function DomForm({ client, action, deleteAction, onClose, capofile = [] }
       </form>
 
       {client && deleteAction && (
-        <form action={deleteAction} className="gestione-card" style={{ padding: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <FeedbackForm action={deleteAction} successText="Domiciliazione eliminata" onSuccess={onClose} className="gestione-card" style={{ padding: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <input type="hidden" name="id" value={client.id} />
           <p style={{ fontSize: 13, color: "#666", margin: 0 }}>Eliminazione permanente del record.</p>
           {confirmDelete ? (
@@ -172,7 +174,7 @@ export function DomForm({ client, action, deleteAction, onClose, capofile = [] }
           ) : (
             <button type="button" onClick={() => setConfirmDelete(true)} style={{ color: "#dc3545", textDecoration: "underline", fontSize: 13, fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}>Elimina domiciliazione</button>
           )}
-        </form>
+        </FeedbackForm>
       )}
 
     </div>

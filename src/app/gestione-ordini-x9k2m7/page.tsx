@@ -7,6 +7,7 @@ import { formatEur } from "@/lib/pricing";
 import { shortOrderRef } from "@/lib/order-ref";
 import { deleteOrderAction, resendConfirmationAction } from "./actions";
 import { DeleteIconButton } from "@/components/DeleteIconButton";
+import { FeedbackForm } from "@/components/FeedbackForm";
 import type { RequestData } from "@/lib/request";
 
 const STATUS_LABELS: Record<string, string> = { pending: "In corso", filled: "Inviata", paid: "Pagato", signed: "Firmato", cancelled: "Annullato" };
@@ -61,12 +62,12 @@ export default async function OrdiniPage({ searchParams }: { searchParams: Promi
                   <td>
                     <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                       {RESENDABLE.has(order.status) && (
-                        <form action={resendConfirmationAction}>
+                        <FeedbackForm action={resendConfirmationAction} successText="Conferma reinviata">
                           <input type="hidden" name="orderId" value={order.publicId} />
                           <button type="submit" className="gestione-btn gestione-btn-blue">Reinvia conferma</button>
-                        </form>
+                        </FeedbackForm>
                       )}
-                      <DeleteIconButton id={order.publicId} field="orderId" action={deleteOrderAction} label={`ordine ${ref}`}
+                      <DeleteIconButton id={order.publicId} field="orderId" action={deleteOrderAction} successText="Ordine eliminato" label={`ordine ${ref}`}
                         warning={order.status === "paid" || order.status === "signed" ? "ATTENZIONE: l'ordine risulta pagato/firmato. L'eliminazione cancella anche i dati della richiesta e non si può annullare." : "L'operazione non si può annullare."} />
                     </div>
                   </td>

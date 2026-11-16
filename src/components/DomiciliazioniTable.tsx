@@ -224,7 +224,7 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds, capofile = []
                       <td className={decaduteScadClass(row.scadenzaDom)}>{fmtDate(row.scadenzaDom)}</td>
                       <td>
                         <div className="gestione-row-actions">
-                          <ActionFormButton id={row.id} action={ripristinaDomiciliazioneAction} className="gestione-btn gestione-btn-outline" label="Ripristina" confirmText={`Ripristinare "${row.ragioneSociale}" tra le attive?`}>
+                          <ActionFormButton id={row.id} action={ripristinaDomiciliazioneAction} successText="Domiciliazione ripristinata tra le attive" className="gestione-btn gestione-btn-outline" label="Ripristina" confirmText={`Ripristinare "${row.ragioneSociale}" tra le attive?`}>
                             <RotateCcw size={13} /> Ripristina
                           </ActionFormButton>
                         </div>
@@ -249,13 +249,13 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds, capofile = []
                         {stato === 0 ? (
                           // In Attivazione: activate, edit, or delete outright (never truly activated).
                           <div className="gestione-row-actions">
-                            <ActionFormButton id={row.id} action={attivaDomiciliazioneAction} className="gestione-icon-btn edit" label="Attiva" confirmText={`Attivare "${row.ragioneSociale}"?`}>
+                            <ActionFormButton id={row.id} action={attivaDomiciliazioneAction} successText="Domiciliazione attivata" className="gestione-icon-btn edit" label="Attiva" confirmText={`Attivare "${row.ragioneSociale}"?`}>
                               <Check size={14} color="#28a745" />
                             </ActionFormButton>
                             <button type="button" className="gestione-icon-btn edit" aria-label={`Modifica ${row.ragioneSociale}`} title="Modifica" onClick={() => setEditing(row)}>
                               <Pencil size={14} />
                             </button>
-                            <DeleteIconButton id={row.id} action={deleteDomiciliazioneAction} label={row.ragioneSociale} />
+                            <DeleteIconButton id={row.id} action={deleteDomiciliazioneAction} label={row.ragioneSociale} successText="Domiciliazione eliminata" />
                           </div>
                         ) : (
                           // Attive: full action row. The trash icon here "decade" the record
@@ -268,7 +268,7 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds, capofile = []
                             <button type="button" className="gestione-icon-btn edit" aria-label={`Modifica ${row.ragioneSociale}`} title="Modifica" onClick={() => setEditing(row)}>
                               <Pencil size={14} />
                             </button>
-                            <ActionFormButton id={row.id} action={decadiDomiciliazioneAction} className="gestione-icon-btn delete" label="Sposta tra le decadute" confirmText={`Spostare "${row.ragioneSociale}" tra le domiciliazioni decadute? Il record non viene eliminato.`}>
+                            <ActionFormButton id={row.id} action={decadiDomiciliazioneAction} successText="Domiciliazione spostata tra le decadute" className="gestione-icon-btn delete" label="Sposta tra le decadute" confirmText={`Spostare "${row.ragioneSociale}" tra le domiciliazioni decadute? Il record non viene eliminato.`}>
                               <Trash2 size={14} />
                             </ActionFormButton>
                           </div>

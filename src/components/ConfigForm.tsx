@@ -1,6 +1,7 @@
 "use client";
 import { useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { runWithFeedback } from "./Toaster";
 
 // Wraps a plain Server Action so Configurazione Web's save buttons give visible feedback — a bare
 // `<form action={serverAction}>` submits and revalidates silently, which (as found with the
@@ -16,11 +17,9 @@ export function ConfigForm({ action, children, style }: { action: (formData: For
     setSaving(true);
     setStatus(null);
     try {
-      await action(formData);
-      setStatus({ text: "Salvato", color: "green" });
-      router.refresh();
-    } catch {
-      setStatus({ text: "Errore durante il salvataggio", color: "red" });
+      const ok = await runWithFeedback(async () => action(formData), "Salvato");
+      setStatus(ok ? { text: "Salvato", color: "green" } : { text: "Errore durante il salvataggio", color: "red" });
+      if (ok) router.refresh();
     } finally {
       setSaving(false);
     }

@@ -8,6 +8,7 @@ import { addPriceAction, deletePriceAction, updateAddonsAction, updatePriceActio
 import { ConfigForm } from "@/components/ConfigForm";
 import { GestioneShell } from "@/components/GestioneNav";
 import { DeleteIconButton } from "@/components/DeleteIconButton";
+import { FeedbackForm } from "@/components/FeedbackForm";
 
 const SERVICE_LABELS: Record<string, string> = { legal_unit: "Domiciliazione Sede Legale / Unità Locale", postal: "Domiciliazione Postale" };
 const euro = (cents: number | null) => cents === null ? "" : (cents / 100).toFixed(2);
@@ -43,9 +44,9 @@ export default async function AdminDashboardPage() {
               {rinnovoPrezzi.map(row => (
                 <tr key={row.mesi}>
                   <td>
-                    <form id={`rinnovo-${row.mesi}`} action={updateRinnovoPrezzoAction}>
+                    <FeedbackForm id={`rinnovo-${row.mesi}`} action={updateRinnovoPrezzoAction} successText={`Prezzi di rinnovo ${row.mesi} mesi salvati`}>
                       <input type="hidden" name="mesi" value={row.mesi} />
-                    </form>
+                    </FeedbackForm>
                     {row.mesi}
                   </td>
                   <td><input form={`rinnovo-${row.mesi}`} name="prezzoPieno" type="number" min="0" defaultValue={row.prezzoPieno ?? ""} style={inputStyle} /></td>
@@ -67,7 +68,7 @@ export default async function AdminDashboardPage() {
             <section key={service.code} className="gestione-card" style={{ padding: 24 }}>
               <h2 style={{ fontSize: 16, fontWeight: 700, color: "#232f3e", marginTop: 0 }}>{SERVICE_LABELS[service.code] ?? service.code}</h2>
 
-              <form action={updateServiceAction} style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "end", borderBottom: "1px solid #eee", paddingBottom: 20, marginBottom: 20 }}>
+              <FeedbackForm action={updateServiceAction} successText="Impostazioni del servizio salvate" style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "end", borderBottom: "1px solid #eee", paddingBottom: 20, marginBottom: 20 }}>
                 <input type="hidden" name="code" value={service.code} />
                 {service.code === "legal_unit" && (
                   <>
@@ -93,7 +94,7 @@ export default async function AdminDashboardPage() {
                   <input type="checkbox" name="active" defaultChecked={service.active} /> Servizio attivo
                 </label>
                 <button type="submit" className="gestione-btn gestione-btn-blue">Salva</button>
-              </form>
+              </FeedbackForm>
 
               <div>
                 <h3 style={{ fontSize: 13, fontWeight: 700, color: "#232f3e" }}>Durate e prezzi</h3>
@@ -108,10 +109,10 @@ export default async function AdminDashboardPage() {
                       {serviceTiers.map(tier => (
                         <tr key={tier.id}>
                           <td>
-                            <form id={`tier-${tier.id}`} action={updatePriceAction}>
+                            <FeedbackForm id={`tier-${tier.id}`} action={updatePriceAction} successText={`Tariffa ${tier.months} mesi salvata`}>
                               <input type="hidden" name="id" value={tier.id} />
                               {tier.months}
-                            </form>
+                            </FeedbackForm>
                           </td>
                           <td><input form={`tier-${tier.id}`} name="listCents" type="number" step="0.01" min="0" defaultValue={euro(tier.listCents)} style={inputStyle} /></td>
                           <td><input form={`tier-${tier.id}`} name="offerCents" type="number" step="0.01" min="0" defaultValue={euro(tier.offerCents)} style={inputStyle} /></td>
@@ -122,7 +123,7 @@ export default async function AdminDashboardPage() {
                             </>
                           )}
                           <td style={{ textAlign: "center" }}><input form={`tier-${tier.id}`} name="active" type="checkbox" defaultChecked={tier.active} /></td>
-                          <td style={{ display: "flex", gap: 6 }}><button form={`tier-${tier.id}`} type="submit" className="gestione-btn gestione-btn-blue">Salva</button><DeleteIconButton id={tier.id} action={deletePriceAction} label={`durata ${tier.months} mesi`} /></td>
+                          <td style={{ display: "flex", gap: 6 }}><button form={`tier-${tier.id}`} type="submit" className="gestione-btn gestione-btn-blue">Salva</button><DeleteIconButton id={tier.id} action={deletePriceAction} successText="Durata eliminata" label={`durata ${tier.months} mesi`} /></td>
                         </tr>
                       ))}
                     </tbody>
@@ -130,7 +131,7 @@ export default async function AdminDashboardPage() {
                 </div>
                 <details style={{ marginTop: 12 }}>
                   <summary style={{ fontSize: 12, color: "#666", cursor: "pointer" }}>Aggiungi nuova durata</summary>
-                  <form action={addPriceAction} style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "end", marginTop: 10 }}>
+                  <FeedbackForm action={addPriceAction} resetOnSuccess successText="Nuova durata aggiunta" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "end", marginTop: 10 }}>
                     <input type="hidden" name="service" value={service.code} />
                     <div className="gestione-field" style={{ width: 100 }}><label>Mesi</label><input name="months" type="number" min="1" required /></div>
                     <div className="gestione-field" style={{ width: 140 }}><label>Listino (€)</label><input name="listCents" type="number" step="0.01" min="0" required /></div>
@@ -142,7 +143,7 @@ export default async function AdminDashboardPage() {
                       </>
                     )}
                     <button type="submit" className="gestione-btn gestione-btn-blue">Aggiungi</button>
-                  </form>
+                  </FeedbackForm>
                 </details>
               </div>
 
