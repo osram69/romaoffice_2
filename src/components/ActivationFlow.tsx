@@ -11,7 +11,7 @@ import { ManualRequestModal } from "./ManualRequestModal";
 import { LegalLinkModal } from "./LegalLinkModal";
 import { PrivacyNoticeContent } from "./LegalContent";
 type FormState = {
-  companyExists: boolean; companyName: string; companyVat: string; companyTaxCode: string; companyAddress: string; companyRegister: string; companyPec: string; companySdi: string;
+  companyExists: boolean; companyName: string; companyVat: string; companyTaxCode: string; companyAddress: string; companyCap: string; companyCity: string; companyCountry: string; companyRegister: string; companyPec: string; companySdi: string;
   representativeName: string; representativeRole: string; representativeTaxCode: string; email: string; phone: string;
   months: number; startDate: string; newActivation: boolean; additionalDomiciliation: boolean; consent: boolean; website: string; termsAccepted: boolean; addons: SelectedAddon[];
 };
@@ -41,7 +41,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
   const [payment, setPayment] = useState<"stripe" | "paypal" | "sumup" | "bank_transfer" | "on_site">(firstAvailablePayment);
   const [result, setResult] = useState<FinalizeResult | null>(null);
   const [form, setForm] = useState<FormState>({
-    companyExists: postal, companyName: "", companyVat: "", companyTaxCode: "", companyAddress: "", companyRegister: "", companyPec: "", companySdi: "",
+    companyExists: postal, companyName: "", companyVat: "", companyTaxCode: "", companyAddress: "", companyCap: "", companyCity: "", companyCountry: it ? "Italia" : "Italy", companyRegister: "", companyPec: "", companySdi: "",
     representativeName: "", representativeRole: it ? "Legale rappresentante" : "Legal representative", representativeTaxCode: "", email: "", phone: "",
     months: postal ? 6 : 12, startDate: "", newActivation: !postal, additionalDomiciliation: false, consent: false, website: "", termsAccepted: false, addons: [],
   });
@@ -53,7 +53,8 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
     companyExists: it ? "L’azienda è già costituita" : "The company is already incorporated",
     companyName: it ? "Denominazione / Ragione sociale" : "Company name",
     companyVat: it ? "Partita IVA" : "VAT number", companyTaxCode: it ? "Codice fiscale" : "Tax code",
-    companyAddress: it ? "Sede attuale" : "Current registered address", companyRegister: it ? "REA / Registro imprese" : "REA / Company register",
+    companyAddress: it ? "Sede attuale (via e numero civico)" : "Current registered address (street and number)",
+    companyCap: it ? "CAP" : "Postal code", companyCity: it ? "Città" : "City", companyCountry: it ? "Nazione" : "Country", companyRegister: it ? "REA / Registro imprese" : "REA / Company register",
     repTitle: it ? "Legale rappresentante / Amministratore (obbligatorio)" : "Legal representative / administrator (mandatory)",
     repName: it ? "Nome e cognome" : "Full name", repRole: it ? "Ruolo" : "Role",
     repTaxCode: it ? "Codice fiscale" : "Tax code", email: "Email", phone: it ? "Cellulare (per il codice SMS)" : "Mobile number (for the SMS code)",
@@ -257,7 +258,12 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
                 <label>{t.companyVat}<input value={form.companyVat} onChange={e => setForm({ ...form, companyVat: e.target.value })} /></label>
                 <label>{t.companyTaxCode}{postal && "*"}<input id="field-companyTaxCode" value={form.companyTaxCode} onChange={e => setForm({ ...form, companyTaxCode: e.target.value.toUpperCase() })} onBlur={e => setFieldError("companyTaxCode", validateCompanyTaxCodeField(e.target.value))} required={postal} {...aria("companyTaxCode")} />{err("companyTaxCode")}</label>
               </div>
-              <label>{t.companyAddress}<input value={form.companyAddress} onChange={e => setForm({ ...form, companyAddress: e.target.value })} /></label>
+              <label>{t.companyAddress}<input value={form.companyAddress} onChange={e => setForm({ ...form, companyAddress: e.target.value })} autoComplete="street-address" /></label>
+              <div className="form-grid">
+                <label>{t.companyCap}<input value={form.companyCap} maxLength={10} onChange={e => setForm({ ...form, companyCap: e.target.value })} autoComplete="postal-code" /></label>
+                <label>{t.companyCity}<input value={form.companyCity} maxLength={80} onChange={e => setForm({ ...form, companyCity: e.target.value })} autoComplete="address-level2" /></label>
+              </div>
+              <label>{t.companyCountry}<input value={form.companyCountry} maxLength={60} onChange={e => setForm({ ...form, companyCountry: e.target.value })} autoComplete="country-name" /></label>
               <label>{t.companyRegister}<input value={form.companyRegister} onChange={e => setForm({ ...form, companyRegister: e.target.value })} /></label>
               <p className="form-note">{t.pecOrSdiHint}</p>
               <div className="form-grid">

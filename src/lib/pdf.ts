@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import { bankTransfer, formatEur, copyFor, shortServiceLabel, validity, type Lang, type ProductOffer, type Quote } from "./pricing";
-import type { RequestData } from "./request";
+import { formatCompanyAddress, type RequestData } from "./request";
 import { termsText } from "./offer-terms";
 
 /** Human-readable PDF attachment/download filename — word order differs by language, not just the noun. */
@@ -125,7 +125,7 @@ export async function buildRequestPdf(opts: { data: RequestData; lang: Lang; sho
   if (data.companyExists) {
     writer.field(it ? "Partita IVA" : "VAT number", data.companyVat || "-");
     writer.field(it ? "Codice fiscale" : "Tax code", data.companyTaxCode || "-");
-    writer.field(it ? "Sede attuale" : "Current address", data.companyAddress || "-");
+    writer.field(it ? "Sede attuale" : "Current address", formatCompanyAddress(data) || "-");
     writer.field(it ? "REA / Registro imprese" : "REA / Company register", data.companyRegister || "-");
   } else {
     writer.text(it ? "Azienda non ancora costituita: la richiesta è riferita alla futura attività." : "Company not yet incorporated: this request refers to the future business.", { size: 9.5 });

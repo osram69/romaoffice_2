@@ -2,13 +2,20 @@ import { z } from "zod";
 import { isValidTaxCode } from "./codice-fiscale";
 import { formatPersonName } from "./person-name";
 import { lowerEmail } from "./email-format";
+/** "Via Roma 1, 00185 Roma, Italia": the current registered address as one line, leaving out whatever was not filled in
+ * (orders placed before the postal code, city and country fields existed only have the street part). */
+export function formatCompanyAddress(d: { companyAddress?: string; companyCap?: string; companyCity?: string; companyCountry?: string }): string {
+  const clean = (value?: string) => (value ?? "").trim();
+  const cityLine = [clean(d.companyCap), clean(d.companyCity)].filter(Boolean).join(" ");
+  return [clean(d.companyAddress), cityLine, clean(d.companyCountry)].filter(Boolean).join(", ");
+}
 export const normalizePhone = (value: string) => value.trim().replace(/^00/, "+").replace(/[\s.()\/-]/g, "");
 export const requestSchema = z.object({
   lang: z.enum(["it", "en"]).default("it"), service: z.enum(["legal_unit", "postal"]).default("legal_unit"),
   orderId: z.string().uuid().optional(), catalogVersion: z.string().regex(/^[a-f\d]{64}$/), termsVersion: z.string().regex(/^[a-f\d]{64}$/), termsAccepted: z.boolean().default(false),
   companyExists: z.boolean().default(false), companyName: z.string().trim().min(2).max(200),
   companyVat: z.string().trim().max(30).default(""), companyTaxCode: z.string().trim().max(30).default(""),
-  companyAddress: z.string().trim().max(240).default(""), companyRegister: z.string().trim().max(120).default(""),
+  companyAddress: z.string().trim().max(240).default(""), companyCap: z.string().trim().max(10).default(""), companyCity: z.string().trim().max(80).default(""), companyCountry: z.string().trim().max(60).default(""), companyRegister: z.string().trim().max(120).default(""),
   companyPec: z.string().max(254).transform(lowerEmail).default(""), companySdi: z.string().trim().max(7).default(""),
   representativeName: z.string().trim().min(2).max(200).transform(formatPersonName), representativeRole: z.string().trim().max(80).default(""),
   representativeTaxCode: z.string().trim().min(1).max(40).refine(isValidTaxCode, "invalid-tax-code"),

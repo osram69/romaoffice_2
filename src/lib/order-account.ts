@@ -63,7 +63,7 @@ export async function provisionCustomerAccount(order: OrderRow, data: RequestDat
   const digits = (v: string) => v.replace(/\D/g, "");
   await saveContractDraft(client, {
     ...emptyContract(),
-    societa: client.ragioneSociale, denominazioneForma: client.ragioneSociale, sedeVia: data.companyAddress, cfRegImp: (data.companyTaxCode || "").toUpperCase(),
+    societa: client.ragioneSociale, denominazioneForma: client.ragioneSociale, sedeVia: data.companyAddress, sedeCap: (data.companyCap || "").trim(), sedeCitta: (data.companyCity || "").trim(), cfRegImp: (data.companyTaxCode || "").toUpperCase(),
     piva: digits(data.companyVat), cfSocieta: (data.companyTaxCode || data.companyVat || "").toUpperCase(), pivaSocieta: digits(data.companyVat),
     repQualifica: data.representativeRole, repNome: data.representativeName, repCf: data.representativeTaxCode.toUpperCase(), repEmail: email,
     telUrgenze: data.phone, emailScansioni: email, pec: data.companyPec, sdi: (data.companySdi || "").toUpperCase(),
