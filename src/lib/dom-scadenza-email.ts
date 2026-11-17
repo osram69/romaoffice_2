@@ -26,6 +26,22 @@ function fmtEuro(cents: number | null): string {
 
 
 
+/** The renewal fee shown in the reminder. The stored "Prezzo rinnovo" is always the standard price of the
+ * contract; an "aggiuntiva" company whose capofila is still active renews with the additional-domiciliation
+ * discount (discountBps > 0), so the email quotes the discounted whole-euro amount. */
+export function renewalFeeFor(base: number | null, discountBps = 0): number | null {
+  if (base === null || base === undefined) return null;
+  if (!(discountBps > 0)) return base;
+  return Math.round((base * (10000 - Math.min(discountBps, 10000))) / 10000);
+}
+
+/** " (sconto del 10% per domiciliazione aggiuntiva)" — the note that follows the fee when the discount applies. */
+export function additionalDiscountNote(discountBps: number): string {
+  if (!(discountBps > 0)) return "";
+  const percent = discountBps / 100;
+  return ` (sconto del ${Number.isInteger(percent) ? percent : String(percent).replace(".", ",")}% per domiciliazione aggiuntiva)`;
+}
+
 /** Rounds the (inizio_dom -> scadenza_dom) span to the nearest whole month, used to decide which
  * renewal offers count as upsells. */
 export function contractMonths(client: Pick<DomClient, "inizioDom" | "scadenzaDom">): number | null {
@@ -88,9 +104,10 @@ export function scadenzaEmailSubject(client: Pick<DomClient, "ragioneSociale">):
  * plus the (new) activation-discount disclaimer. This is meant to be shown to staff for review/
  * editing before sending — never sent unmodified — but is also a stable building block a future
  * automation (local agent / AI) can call directly with the same DomClient + pricing shape. */
-export function buildScadenzaEmailHtml(client: DomClient, prezzi: RinnovoPrezzo[], includeSconto: boolean, includeMonths?: number[]): string {
+export function buildScadenzaEmailHtml(client: DomClient, prezzi: RinnovoPrezzo[], includeSconto: boolean, includeMonths?: number[], additionalDiscountBps = 0): string {
   const months = contractMonths(client);
-  const prezzoRinnovo = client.prezzoRinnovo !== null ? String(client.prezzoRinnovo) : "[PREZZO]";
+  const fee = renewalFeeFor(client.prezzoRinnovo, additionalDiscountBps);
+  const prezzoRinnovo = fee !== null ? String(fee) : "[PREZZO]";
   const offerMonths = includeMonths ?? scadenzaDefaultMonths(prezzi, months);
   // No offer row selected -> no "Abbiamo altresì attive le seguenti offerte:" intro either.
   const offerte = offerteRows(prezzi, offerMonths);
@@ -98,7 +115,7 @@ export function buildScadenzaEmailHtml(client: DomClient, prezzi: RinnovoPrezzo[
   return `<p>Buongiorno Sig. ${cognomeDi(client)},</p>
 <p>con la presente volevamo informarLa che in data <strong>${fmtDateIT(client.scadenzaDom)}</strong>, scadrà il contratto di domiciliazione legale della società <strong>${client.ragioneSociale}</strong></p>
 <p>Qualora desideri interrompere la domiciliazione, La preghiamo di inviarci richiesta scritta (raccomandata o PEC al nostro indirizzo <a href="mailto:cubeng@pec.it">cubeng@pec.it</a>) oppure di comunicarci l'intento al rinnovo rispondendo a questa email.</p>
-<p>Per il rinnovo possiamo mantenere le stesse condizioni precedenti con canone pari a <span data-prezzo="1">${prezzoRinnovo}</span>&nbsp;€ + IVA${scontoClause(client, includeSconto)}</p>
+<p>Per il rinnovo possiamo mantenere le stesse condizioni precedenti con canone pari a <span data-prezzo="1">${prezzoRinnovo}</span>&nbsp;€ + IVA${additionalDiscountNote(additionalDiscountBps)}${scontoClause(client, includeSconto)}</p>
 <p><u>Nel caso di pagamento tardivo, non sarà possibile rinnovare alle stesse condizioni.</u></p>
 ${offerte ? `<p>Abbiamo altresì attive le seguenti offerte:</p>
 ${offerte}

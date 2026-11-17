@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { getScadenzaDraftAction, inviaScadenzaAction } from "@/app/gestione-domiciliazioni-x9k2m7/actions";
+import { renewalFeeFor } from "@/lib/dom-scadenza-email";
 
 type TinyEditor = { getContent: () => string; setContent: (html: string) => void; remove: () => void; on: (event: string, cb: () => void) => void };
 declare global {
@@ -34,6 +35,7 @@ export function ScadenzaEmailPanel({ id, initialPrezzoRinnovo, initialInviata }:
   const [loading, setLoading] = useState(true);
   const [subject, setSubject] = useState("");
   const [prezzo, setPrezzo] = useState(initialPrezzoRinnovo !== null ? String(initialPrezzoRinnovo) : "");
+  const [discountBps, setDiscountBps] = useState(0);
   const [includeSconto, setIncludeSconto] = useState(false);
   const [availableMonths, setAvailableMonths] = useState<number[]>([]);
   const [selectedMonths, setSelectedMonths] = useState<number[]>([]);
@@ -53,8 +55,15 @@ export function ScadenzaEmailPanel({ id, initialPrezzoRinnovo, initialInviata }:
   // The price lives in a <span data-prezzo> that the server template puts in the email (see
   // buildScadenzaEmailHtml), so only that span's text is rewritten — never a text search, which
   // would also hit the same digits elsewhere (e.g. "1" inside the scadenza date).
+  // The field holds the contract's standard renewal price; the email quotes the discounted fee when the
+  // company is an "aggiuntiva" with its capofila still domiciled (discountBps from the server).
+  function emailFeeText(value: string): string {
+    const base = Number(value);
+    if (!value.trim() || !Number.isFinite(base)) return value.trim() || "[PREZZO]";
+    return String(renewalFeeFor(Math.round(base), discountBps));
+  }
   function syncPrezzoIntoEditor(newValue: string) {
-    const text = (newValue.trim() || "[PREZZO]").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const text = emailFeeText(newValue).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const html = getEditorContent();
     if (!html) return;
     const updated = html.replace(PREZZO_SPAN, (_match, open: string, close: string) => open + text + close);
@@ -77,6 +86,7 @@ export function ScadenzaEmailPanel({ id, initialPrezzoRinnovo, initialInviata }:
     setSubject(draft.subject || "");
     const prezzoText = draft.prezzoRinnovo !== null && draft.prezzoRinnovo !== undefined ? String(draft.prezzoRinnovo) : "";
     setPrezzo(prezzoText);
+    setDiscountBps(draft.additionalDiscountBps ?? 0);
     if (draft.scontoDefault !== undefined) setIncludeSconto(draft.scontoDefault);
     setAvailableMonths(draft.availableMonths ?? []);
     setSelectedMonths(draft.defaultMonths ?? []);
@@ -158,6 +168,9 @@ export function ScadenzaEmailPanel({ id, initialPrezzoRinnovo, initialInviata }:
         <div className="gestione-field" style={{ width: 140 }}>
           <label>Prezzo rinnovo (€)</label>
           <input type="number" value={prezzo} disabled={busy} onChange={e => updatePrezzo(e.target.value)} />
+          {discountBps > 0 && prezzo.trim() !== "" && Number.isFinite(Number(prezzo)) && (
+            <small style={{ display: "block", marginTop: 3, fontSize: 11, color: "#555" }}>In email: {emailFeeText(prezzo)} € (aggiuntiva, −{discountBps / 100}%)</small>
+          )}
         </div>
         <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "#232f3e", height: 34 }}>
           <input type="checkbox" checked={includeSconto} disabled={busy} onChange={e => toggleSconto(e.target.checked)} />
