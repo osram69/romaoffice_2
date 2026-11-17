@@ -67,3 +67,33 @@ test("the admin copy of the confirmation shows the capofila notice, the customer
   assert.match(admin.html, /DA VERIFICARE/); assert.match(admin.text, /DA VERIFICARE/);
   assert.doesNotMatch(customer.html, /DA VERIFICARE/); assert.match(customer.html, /Rossi Consulting/);
 });
+
+test("capofila check with separate first name and surname: same surname but different first name is flagged", () => {
+  const claim = { companyName: "Rossi Consulting", contactName: "Luca Rossi", contactFirstName: "Luca", contactLastName: "Rossi", buyerEmail: "mario@rossi.it", buyerPhone: "+393340000000" };
+  // even with the contacts of the real administrator, a different first name is never "verified"
+  const sameSurname = evaluateParent(claim, [rossi, other]);
+  assert.equal(sameSurname.status, "to-check");
+  assert.equal(sameSurname.reason, "first-name-differs");
+  assert.equal(sameSurname.capofilaId, 7);
+  // a different surname is rejected, even with the right first name
+  assert.equal(evaluateParent({ ...claim, contactName: "Mario Verdi", contactFirstName: "Mario", contactLastName: "Verdi" }, [rossi]).status, "rejected");
+  // both right: verified (with contacts) and no reason
+  const full = evaluateParent({ ...claim, contactName: "Mario Rossi", contactFirstName: "Mario", contactLastName: "Rossi" }, [rossi]);
+  assert.equal(full.status, "verified");
+  assert.equal(full.reason, undefined);
+  // compound surnames and word order on file do not matter
+  const deLuca: ParentCandidate = { ...rossi, id: 9, ragioneSociale: "De Luca Srl", amministratore: "DE LUCA Anna Maria" };
+  assert.equal(evaluateParent({ companyName: "De Luca", contactName: "Anna De Luca", contactFirstName: "Anna", contactLastName: "De Luca", buyerEmail: "x@y.it", buyerPhone: "" }, [deLuca]).status, "to-check");
+});
+
+test("request schema: first name and surname are joined into the full name, and a full name alone is still accepted", () => {
+  const split = requestSchema.safeParse({ ...baseRequest, representativeName: undefined, representativeFirstName: "luca", representativeLastName: "VERDI" });
+  assert.ok(split.success && split.data.representativeName === "Luca Verdi" && split.data.representativeFirstName === "Luca" && split.data.representativeLastName === "Verdi");
+  const whole = requestSchema.safeParse(baseRequest);
+  assert.ok(whole.success && whole.data.representativeFirstName === "Luca" && whole.data.representativeLastName === "Verdi");
+  assert.ok(!requestSchema.safeParse({ ...baseRequest, representativeName: undefined }).success);
+  const parent = requestSchema.safeParse({ ...baseRequest, additionalDomiciliation: true, parentCompanyName: "Rossi Consulting", parentContactSame: false, parentContactFirstName: "mario", parentContactLastName: "rossi" });
+  assert.ok(parent.success && parent.data.parentContactName === "Mario Rossi");
+  const missing = requestSchema.safeParse({ ...baseRequest, additionalDomiciliation: true, parentCompanyName: "Rossi Consulting", parentContactSame: false });
+  assert.ok(!missing.success && missing.error.issues.some(i => i.path[0] === "parentContactName"));
+});

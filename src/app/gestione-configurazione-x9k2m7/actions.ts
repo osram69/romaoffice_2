@@ -35,17 +35,6 @@ export async function updateSmartFlagsAction(formData: FormData) {
   revalidatePath(BASE_PATH);
 }
 
-export async function updateDiscountTogglesAction(formData: FormData) {
-  "use server";
-  await requireAdmin();
-  await db.update(serviceCatalog).set({
-    additionalDiscountEnabled: formData.get("additionalDiscountEnabled") === "on",
-    newActivationDiscountEnabled: formData.get("newActivationDiscountEnabled") === "on",
-  }).where(eq(serviceCatalog.code, "legal_unit"));
-  revalidatePath(BASE_PATH);
-  revalidatePath("/attiva.html"); revalidatePath("/en/activate.html"); revalidatePath("/tariffe.html"); revalidatePath("/en/pricing.html");
-}
-
 export async function updateSmsBypassAction(formData: FormData) {
   "use server";
   await requireAdmin();

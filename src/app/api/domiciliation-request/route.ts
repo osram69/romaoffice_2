@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     let parentCheck: ParentCheck | undefined;
     if (data.additionalDomiciliation && priced.additionalDomiciliationEligible) {
       await limit(`parent-check:${data.email}`, 6, 3600); await limit("parent-check:all", 200, 3600);
-      parentCheck = await verifyParentCompany({ companyName: data.parentCompanyName, contactName: data.parentContactSame ? data.representativeName : data.parentContactName, buyerEmail: data.email, buyerPhone: data.phone });
+      parentCheck = await verifyParentCompany({ companyName: data.parentCompanyName, contactName: data.parentContactSame ? data.representativeName : data.parentContactName, contactFirstName: data.parentContactSame ? data.representativeFirstName : data.parentContactFirstName, contactLastName: data.parentContactSame ? data.representativeLastName : data.parentContactLastName, buyerEmail: data.email, buyerPhone: data.phone });
       if (parentCheck.status === "rejected") { console.warn("Additional domiciliation: capofila not verified"); return json({ error: "parent-not-verified" }, 422); }
     }
     const publicId = data.orderId || randomUUID(); const now = new Date();

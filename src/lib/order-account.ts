@@ -47,6 +47,8 @@ function parentNote(snapshot: OrderSnapshot): string {
   const declared = `capofila dichiarata «${check.declaredName}», referente ${check.declaredContact}`;
   return check.status === "verified"
     ? `. Domiciliazione aggiuntiva: ${declared} — verificata (nome, referente e contatti coincidono con l'anagrafica).`
+    : check.reason === "first-name-differs"
+    ? `. DA VERIFICARE — domiciliazione aggiuntiva: ${declared}; il cognome del referente coincide con quello di «${check.capofilaName}» ma il nome no. Controllare prima di confermare lo sconto.`
     : `. DA VERIFICARE — domiciliazione aggiuntiva: ${declared}; nome e referente coincidono con «${check.capofilaName}», ma email/telefono dell'acquirente non coincidono con quelli in anagrafica. Controllare prima di confermare lo sconto.`;
 }
 

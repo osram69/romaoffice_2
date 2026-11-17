@@ -38,7 +38,7 @@ test("postal activation preserves language context, blocks missing terms, and pr
   await expect(page.locator(".activation")).toHaveAttribute("data-service", "postal");
   const duration = page.getByLabel(/^Durata del contratto/); await expect(duration.locator("option")).toHaveCount(2);
   await expect(page.getByLabel(/^Nuova attivazione/)).toHaveCount(0);
-  await page.locator("#field-representativeName").fill("Mario Rossi"); await page.getByLabel(/^Email\*/).fill("qa-browser@example.invalid"); await page.getByLabel(/^Cellulare/).fill("+393331234567"); await page.getByLabel(/^Data di inizio/).fill(new Date(Date.now() + 86400000).toISOString().slice(0, 10)); await page.getByRole("checkbox", { name: /Acconsento al trattamento/ }).check();
+  await page.locator("#field-representativeFirstName").fill("Mario"); await page.locator("#field-representativeLastName").fill("Rossi"); await page.getByLabel(/^Email\*/).fill("qa-browser@example.invalid"); await page.getByLabel(/^Cellulare/).fill("+393331234567"); await page.getByLabel(/^Data di inizio/).fill(new Date(Date.now() + 86400000).toISOString().slice(0, 10)); await page.getByRole("checkbox", { name: /Acconsento al trattamento/ }).check();
   let requests = 0; page.on("request", r => { if (r.url().endsWith("/api/domiciliation-request")) requests++; });
   await page.getByRole("button", { name: "INVIA IL CODICE DI VERIFICA" }).click();
   await expect(page.locator("#err-terms")).toBeVisible(); expect(requests).toBe(0);

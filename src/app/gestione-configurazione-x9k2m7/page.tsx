@@ -1,10 +1,11 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { serviceCatalog, siteConfig } from "@/db/schema";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
-import { updateDiscountTogglesAction, updateOnlineDiscountAction, updatePaymentSettingsAction, updateProviderTestModesAction, updateRoomsFlagAction, updateScannerConfigAction, updateSmartFlagsAction, updateSmsBypassAction } from "./actions";
+import { updateOnlineDiscountAction, updatePaymentSettingsAction, updateProviderTestModesAction, updateRoomsFlagAction, updateScannerConfigAction, updateSmartFlagsAction, updateSmsBypassAction } from "./actions";
 import { GestioneShell } from "@/components/GestioneNav";
 import { RitiroTemplateEditor } from "@/components/RitiroTemplateEditor";
 import { FirmaDomiciliatarioUpload } from "@/components/FirmaDomiciliatarioUpload";
@@ -131,13 +132,9 @@ export default async function ConfigurazioneWebPage() {
 
       <section className="gestione-card" style={{ padding: 24, marginBottom: 24 }}>
         <h2 style={{ fontSize: 16, fontWeight: 700, color: "#232f3e", marginTop: 0 }}>Sconti domiciliazione sede legale</h2>
-        <p style={{ fontSize: 12, color: "#666", marginTop: -6 }}>
-          Quando disattivi uno sconto qui, sparisce ovunque: percentuale e casella nel modulo di attivazione online, nota nelle tariffe, campo e riga nel PDF del preventivo, email di richiesta manuale e di offerta standard. Le percentuali restano modificabili in Tariffe e Offerte anche da spenti. Riguarda solo la sede legale: la domiciliazione postale non ha mai previsto questi sconti.
+        <p style={{ fontSize: 12, color: "#666", margin: 0 }}>
+          L&apos;attivazione e la percentuale degli sconti «domiciliazioni aggiuntive» e «nuove attivazioni» si impostano insieme nella pagina <Link href="/gestione-tariffe-x9k2m7">Gestione tariffe</Link> (sezione Domiciliazione Sede Legale / Unità Locale). Quando uno sconto è disattivato sparisce ovunque: modulo di attivazione online, nota nelle tariffe, PDF del preventivo, email di richiesta manuale e di offerta standard, promemoria di rinnovo.
         </p>
-        <ConfigForm action={updateDiscountTogglesAction} style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "center" }}>
-          <label style={checkboxRow}><input type="checkbox" name="additionalDiscountEnabled" defaultChecked={legalUnit?.additionalDiscountEnabled ?? true} /> Sconto domiciliazioni aggiuntive</label>
-          <label style={checkboxRow}><input type="checkbox" name="newActivationDiscountEnabled" defaultChecked={legalUnit?.newActivationDiscountEnabled ?? true} /> Sconto nuove attivazioni</label>
-        </ConfigForm>
       </section>
 
       <section className="gestione-card" style={{ padding: 24, marginBottom: 24 }}>

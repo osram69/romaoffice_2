@@ -12,8 +12,8 @@ import { LegalLinkModal } from "./LegalLinkModal";
 import { PrivacyNoticeContent } from "./LegalContent";
 type FormState = {
   companyExists: boolean; companyName: string; companyVat: string; companyTaxCode: string; companyAddress: string; companyCap: string; companyCity: string; companyCountry: string; companyRegister: string; companyPec: string; companySdi: string;
-  representativeName: string; representativeRole: string; representativeTaxCode: string; email: string; phone: string;
-  months: number; startDate: string; newActivation: boolean; additionalDomiciliation: boolean; parentCompanyName: string; parentContactSame: boolean; parentContactName: string; consent: boolean; website: string; termsAccepted: boolean; addons: SelectedAddon[];
+  representativeFirstName: string; representativeLastName: string; representativeRole: string; representativeTaxCode: string; email: string; phone: string;
+  months: number; startDate: string; newActivation: boolean; additionalDomiciliation: boolean; parentCompanyName: string; parentContactSame: boolean; parentContactFirstName: string; parentContactLastName: string; consent: boolean; website: string; termsAccepted: boolean; addons: SelectedAddon[];
 };
 
 type BankDetails = { holder: string; iban: string; bic: string; bank: string; causale: string; amount: string };
@@ -42,8 +42,8 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
   const [result, setResult] = useState<FinalizeResult | null>(null);
   const [form, setForm] = useState<FormState>({
     companyExists: postal, companyName: "", companyVat: "", companyTaxCode: "", companyAddress: "", companyCap: "", companyCity: "", companyCountry: it ? "Italia" : "Italy", companyRegister: "", companyPec: "", companySdi: "",
-    representativeName: "", representativeRole: it ? "Legale rappresentante" : "Legal representative", representativeTaxCode: "", email: "", phone: "",
-    months: postal ? 6 : 12, startDate: "", newActivation: !postal, additionalDomiciliation: false, parentCompanyName: "", parentContactSame: true, parentContactName: "", consent: false, website: "", termsAccepted: false, addons: [],
+    representativeFirstName: "", representativeLastName: "", representativeRole: it ? "Legale rappresentante" : "Legal representative", representativeTaxCode: "", email: "", phone: "",
+    months: postal ? 6 : 12, startDate: "", newActivation: !postal, additionalDomiciliation: false, parentCompanyName: "", parentContactSame: true, parentContactFirstName: "", parentContactLastName: "", consent: false, website: "", termsAccepted: false, addons: [],
   });
 
   const t = {
@@ -56,7 +56,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
     companyAddress: it ? "Sede attuale (via e numero civico)" : "Current registered address (street and number)",
     companyCap: it ? "CAP" : "Postal code", companyCity: it ? "Città" : "City", companyCountry: it ? "Nazione" : "Country", companyRegister: it ? "REA / Registro imprese" : "REA / Company register",
     repTitle: it ? "Legale rappresentante / Amministratore (obbligatorio)" : "Legal representative / administrator (mandatory)",
-    repName: it ? "Nome e cognome" : "Full name", repRole: it ? "Ruolo" : "Role",
+    repFirstName: it ? "Nome" : "First name", repLastName: it ? "Cognome" : "Last name", repRole: it ? "Ruolo" : "Role",
     repTaxCode: it ? "Codice fiscale" : "Tax code", email: "Email", phone: it ? "Cellulare (per il codice SMS)" : "Mobile number (for the SMS code)",
     phoneHint: it ? "Inserisci il numero in formato internazionale, ad es. +39 333 1234567." : "Enter the number in international format, e.g. +39 333 1234567.",
     contractTitle: it ? "Contratto di domiciliazione" : "Registered office address agreement",
@@ -67,7 +67,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
     parentHint: it ? "Lo sconto è riservato a chi ha già una domiciliazione attiva presso Roma Office Sharing con lo stesso referente/amministratore. Scrivi il nome esatto della società già domiciliata: verrà verificato prima di procedere." : "The discount is reserved for those who already have an active domiciliation with Roma Office Sharing with the same contact/administrator. Enter the exact name of the company already domiciled with us: it will be checked before you continue.",
     parentName: it ? "Nome della società già domiciliata presso di noi" : "Name of the company already domiciled with us",
     parentSame: it ? "Il referente/amministratore di quella società sono io (stesso nome indicato sopra)" : "I am the contact/administrator of that company (same name as entered above)",
-    parentContact: it ? "Nome e cognome del referente/amministratore di quella società" : "Full name of that company's contact/administrator",
+    parentFirstName: it ? "Nome del referente/amministratore di quella società" : "First name of that company's contact/administrator", parentLastName: it ? "Cognome del referente/amministratore di quella società" : "Last name of that company's contact/administrator",
     parentNotVerified: it ? "Non siamo riusciti a verificare la società indicata. Controlla il nome e il referente: lo sconto per domiciliazione aggiuntiva è riservato a chi ha già una domiciliazione attiva con noi con lo stesso referente/amministratore. Se pensi sia un errore contatta la reception al 06 2111 6268, oppure togli la spunta per procedere senza sconto." : "We could not verify the company you entered. Please check the name and the contact person: the additional-address discount is reserved for those who already have an active domiciliation with us with the same contact/administrator. If you think this is a mistake call reception on +39 06 21.11.6268, or untick the option to continue without the discount.",
     consent: it ? "Acconsento al trattamento dei dati personali per la gestione della richiesta e dell’eventuale contratto" : "I consent to the processing of personal data to handle this request and any agreement",
     sendCode: it ? "INVIA IL CODICE DI VERIFICA" : "SEND VERIFICATION CODE",
@@ -123,7 +123,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
     } else if (state === "cancelled") setStatus(it ? "Pagamento annullato. Puoi riprendere la procedura quando vuoi." : "Payment cancelled. You can resume whenever you like.");
   }, [it]);
 
-  function validateRepresentativeName(value: string) { return value.trim().length < 2 ? t.required : ""; }
+  function validateNamePart(value: string) { return value.trim().length < 2 ? t.required : ""; }
   function validateEmailField(value: string) { return /^\S+@\S+\.\S+$/.test(value) ? "" : t.invalidEmail; }
   function validatePhoneField(value: string) { return /^\+[1-9]\d{7,14}$/.test(value.trim().replace(/^00/, "+").replace(/[\s.()\/-]/g, "")) ? "" : t.invalidPhone; }
   function validateStartDateField(value: string) {
@@ -155,7 +155,8 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
 
   function validate() {
     const next: Record<string, string> = {};
-    const nameErr = validateRepresentativeName(form.representativeName); if (nameErr) next.representativeName = nameErr;
+    const firstNameErr = validateNamePart(form.representativeFirstName); if (firstNameErr) next.representativeFirstName = firstNameErr;
+    const lastNameErr = validateNamePart(form.representativeLastName); if (lastNameErr) next.representativeLastName = lastNameErr;
     const taxCodeErr = validateTaxCodeField(form.representativeTaxCode); if (taxCodeErr) next.representativeTaxCode = taxCodeErr;
     const emailErr = validateEmailField(form.email); if (emailErr) next.email = emailErr;
     const phoneErr = validatePhoneField(form.phone); if (phoneErr) next.phone = phoneErr;
@@ -166,7 +167,8 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
     if (postal || form.companyExists) Object.assign(next, pecSdiErrors(form.companyPec, form.companySdi));
     if (!postal && form.additionalDomiciliation) {
       if (form.parentCompanyName.trim().length < 2) next.parentCompanyName = t.required;
-      if (!form.parentContactSame && form.parentContactName.trim().length < 2) next.parentContactName = t.required;
+      if (!form.parentContactSame && form.parentContactFirstName.trim().length < 2) next.parentContactFirstName = t.required;
+      if (!form.parentContactSame && form.parentContactLastName.trim().length < 2) next.parentContactLastName = t.required;
     }
     if (!form.consent) next.consent = t.required;
     if (!form.termsAccepted) next.terms = it ? "Leggi e accetta integralmente le condizioni dell’offerta prima di proseguire." : "Read and accept the full offer terms before continuing.";
@@ -290,7 +292,10 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
           </fieldset>
 
           <fieldset><legend>{t.repTitle}</legend>
-            <label>{t.repName}*<input id="field-representativeName" value={form.representativeName} onChange={e => setForm({ ...form, representativeName: e.target.value })} onBlur={e => setFieldError("representativeName", validateRepresentativeName(e.target.value))} autoComplete="name" {...aria("representativeName")} />{err("representativeName")}</label>
+            <div className="form-grid">
+              <label>{t.repFirstName}*<input id="field-representativeFirstName" value={form.representativeFirstName} maxLength={100} onChange={e => setForm({ ...form, representativeFirstName: e.target.value })} onBlur={e => setFieldError("representativeFirstName", validateNamePart(e.target.value))} autoComplete="given-name" {...aria("representativeFirstName")} />{err("representativeFirstName")}</label>
+              <label>{t.repLastName}*<input id="field-representativeLastName" value={form.representativeLastName} maxLength={100} onChange={e => setForm({ ...form, representativeLastName: e.target.value })} onBlur={e => setFieldError("representativeLastName", validateNamePart(e.target.value))} autoComplete="family-name" {...aria("representativeLastName")} />{err("representativeLastName")}</label>
+            </div>
             <div className="form-grid">
               <label>{t.repRole}<select value={form.representativeRole} onChange={e => setForm({ ...form, representativeRole: e.target.value })}>
                 {[it ? "Legale rappresentante" : "Legal representative", it ? "Amministratore" : "Administrator", it ? "Titolare" : "Owner", it ? "Delegato" : "Delegate"].map(r => <option key={r} value={r}>{r}</option>)}
@@ -316,7 +321,10 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
               <p className="form-note"><b>{t.parentTitle}</b><br />{t.parentHint}</p>
               <label>{t.parentName}*<input id="field-parentCompanyName" value={form.parentCompanyName} maxLength={200} autoComplete="off" onChange={e => setForm({ ...form, parentCompanyName: e.target.value })} onBlur={e => setFieldError("parentCompanyName", e.target.value.trim().length < 2 ? t.required : "")} {...aria("parentCompanyName")} />{err("parentCompanyName")}</label>
               <label className="check-label"><input type="checkbox" checked={form.parentContactSame} onChange={e => setForm({ ...form, parentContactSame: e.target.checked })} /> <span>{t.parentSame}</span></label>
-              {!form.parentContactSame && <label>{t.parentContact}*<input id="field-parentContactName" value={form.parentContactName} maxLength={200} autoComplete="off" onChange={e => setForm({ ...form, parentContactName: e.target.value })} onBlur={e => setFieldError("parentContactName", e.target.value.trim().length < 2 ? t.required : "")} {...aria("parentContactName")} />{err("parentContactName")}</label>}
+              {!form.parentContactSame && <div className="form-grid">
+                <label>{t.parentFirstName}*<input id="field-parentContactFirstName" value={form.parentContactFirstName} maxLength={100} autoComplete="off" onChange={e => setForm({ ...form, parentContactFirstName: e.target.value })} onBlur={e => setFieldError("parentContactFirstName", validateNamePart(e.target.value))} {...aria("parentContactFirstName")} />{err("parentContactFirstName")}</label>
+                <label>{t.parentLastName}*<input id="field-parentContactLastName" value={form.parentContactLastName} maxLength={100} autoComplete="off" onChange={e => setForm({ ...form, parentContactLastName: e.target.value })} onBlur={e => setFieldError("parentContactLastName", validateNamePart(e.target.value))} {...aria("parentContactLastName")} />{err("parentContactLastName")}</label>
+              </div>}
             </div>}
             <div className="consent-box">
               <label className="check-label"><input type="checkbox" checked={form.consent} onChange={e => setForm({ ...form, consent: e.target.checked })} {...aria("consent")} /> <span>{t.consent} <LegalLinkModal className="consent-link" label={it ? "Informativa privacy" : "Privacy notice"} title={it ? "Informativa Privacy" : "Privacy Notice"}><PrivacyNoticeContent lang={lang}/></LegalLinkModal>*</span></label>

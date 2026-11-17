@@ -14,6 +14,8 @@ export type ParentCheck = {
   declaredContact: string;
   capofilaId?: number;
   capofilaName?: string;
+  /** to-check only: the surname of the declared referente matches the one on file but the first name does not. */
+  reason?: "first-name-differs";
 };
 
 export type ParentCandidate = {
@@ -22,7 +24,7 @@ export type ParentCandidate = {
   telefono: string | null; telefonoAmm: string | null; telefonoUrg: string | null;
 };
 
-export type ParentClaim = { companyName: string; contactName: string; buyerEmail: string; buyerPhone: string };
+export type ParentClaim = { companyName: string; contactName: string; contactFirstName?: string; contactLastName?: string; buyerEmail: string; buyerPhone: string };
 
 const NAME_THRESHOLD = 0.85;
 
@@ -76,15 +78,31 @@ export function contactMatches(candidate: ParentCandidate, claim: Pick<ParentCla
   return phone.length >= 9 && [candidate.telefono, candidate.telefonoAmm, candidate.telefonoUrg].some(value => phoneKeys(value).includes(phone));
 }
 
+/** How the declared referente matches a person on file: "full" (first name and surname), "surname" (only the surname:
+ * could be a relative or a colleague, so it is flagged) or null. Without a separate first name and surname the whole name is compared. */
+export function personMatch(person: string, claim: Pick<ParentClaim, "contactName" | "contactFirstName" | "contactLastName">): "full" | "surname" | null {
+  const first = personTokens(claim.contactFirstName ?? ""), last = personTokens(claim.contactLastName ?? "");
+  if (!first.length || !last.length) return samePerson(person, claim.contactName) ? "full" : null;
+  const tokens = personTokens(person);
+  if (!last.every(token => tokens.includes(token))) return null;
+  return first.every(token => tokens.includes(token)) ? "full" : "surname";
+}
+
 /** Pure decision, given the active companies: see ParentCheck. */
 export function evaluateParent(claim: ParentClaim, candidates: ParentCandidate[]): ParentCheck {
   const base = { declaredName: claim.companyName.trim(), declaredContact: claim.contactName.trim() };
   const matches = candidates
     .map(candidate => ({ candidate, score: companyNameScore(claim.companyName, candidate.ragioneSociale) }))
     .filter(m => m.score >= NAME_THRESHOLD)
-    .filter(m => [m.candidate.amministratore, m.candidate.personaRif].some(person => person && samePerson(person, claim.contactName)))
-    .sort((x, y) => Number(contactMatches(y.candidate, claim)) - Number(contactMatches(x.candidate, claim)) || y.score - x.score);
+    .flatMap(m => {
+      const levels = [m.candidate.amministratore, m.candidate.personaRif].map(person => (person ? personMatch(person, claim) : null));
+      const level = levels.includes("full") ? ("full" as const) : levels.includes("surname") ? ("surname" as const) : null;
+      return level ? [{ ...m, level }] : [];
+    })
+    .sort((x, y) => Number(y.level === "full") - Number(x.level === "full") || Number(contactMatches(y.candidate, claim)) - Number(contactMatches(x.candidate, claim)) || y.score - x.score);
   const best = matches[0];
   if (!best) return { status: "rejected", ...base };
-  return { status: contactMatches(best.candidate, claim) ? "verified" : "to-check", ...base, capofilaId: best.candidate.id, capofilaName: best.candidate.ragioneSociale };
+  const found = { capofilaId: best.candidate.id, capofilaName: best.candidate.ragioneSociale };
+  if (best.level === "surname") return { status: "to-check", ...base, ...found, reason: "first-name-differs" };
+  return { status: contactMatches(best.candidate, claim) ? "verified" : "to-check", ...base, ...found };
 }

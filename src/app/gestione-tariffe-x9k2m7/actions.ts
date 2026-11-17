@@ -54,15 +54,21 @@ export async function updateServiceAction(formData: FormData): Promise<ActionRes
   return guarded(async () => {
   const code = String(formData.get("code") ?? "") as ServiceCode;
   const offerValidUntilRaw = String(formData.get("offerValidUntil") ?? "").trim();
-  // Postal's form (page.tsx) doesn't submit these two fields at all — it has neither discount —
+  // Postal's form (page.tsx) doesn't submit these fields at all — it has neither discount —
   // so only touch them when actually present, instead of zeroing them out on every postal save.
+  // Each discount is switched on/off next to its percentage (an unchecked box sends nothing).
   const percentBps = (key: string, label: string) => {
     const value = Number(String(formData.get(key) ?? "").replace(",", "."));
     if (!Number.isFinite(value) || value < 0 || value > 100) throw new InputError(`${label}: inserisci una percentuale tra 0 e 100.`);
     return Math.round(value * 100);
   };
   const discountFields = formData.has("additionalDiscountBps")
-    ? { additionalDiscountBps: percentBps("additionalDiscountBps", "Sconto domiciliazioni aggiuntive"), newActivationDiscountBps: percentBps("newActivationDiscountBps", "Sconto nuove attivazioni") }
+    ? {
+      additionalDiscountBps: percentBps("additionalDiscountBps", "Sconto domiciliazioni aggiuntive"),
+      additionalDiscountEnabled: formData.get("additionalDiscountEnabled") === "on",
+      newActivationDiscountBps: percentBps("newActivationDiscountBps", "Sconto nuove attivazioni"),
+      newActivationDiscountEnabled: formData.get("newActivationDiscountEnabled") === "on",
+    }
     : {};
   const openings = Number(formData.get("includedOpenings"));
   if (!Number.isInteger(openings) || openings < 0) throw new InputError("Aperture incluse/mese: inserisci un numero intero, 0 o più.");
@@ -72,6 +78,8 @@ export async function updateServiceAction(formData: FormData): Promise<ActionRes
     offerValidUntil: offerValidUntilRaw ? new Date(`${offerValidUntilRaw}T23:59:59+02:00`) : null,
     active: formData.get("active") === "on",
   }).where(eq(serviceCatalog.code, code));
+  // The discounts show up on the public pricing/activation pages and in the renewal reminders.
+  revalidatePath("/attiva.html"); revalidatePath("/en/activate.html"); revalidatePath("/tariffe.html"); revalidatePath("/en/pricing.html");
   });
 }
 

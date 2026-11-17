@@ -1,13 +1,18 @@
 import type { InferSelectModel } from "drizzle-orm";
 import type { domClients, domRinnovoPrezzi } from "@/db/schema";
+import { titleFor } from "./italian-title";
 
 type DomClient = InferSelectModel<typeof domClients>;
 type RinnovoPrezzo = InferSelectModel<typeof domRinnovoPrezzi>;
 
 // Mirrors getCognome() in the legacy domiciliazioni.php: last word of amministratore if present,
 // else last word of persona_rif — not necessarily a real surname, just what the field contains.
+function personaDi(client: Pick<DomClient, "amministratore" | "personaRif">): string {
+  return client.amministratore?.trim() || client.personaRif?.trim() || "";
+}
+
 function cognomeDi(client: Pick<DomClient, "amministratore" | "personaRif">): string {
-  const source = client.amministratore?.trim() || client.personaRif?.trim() || "";
+  const source = personaDi(client);
   if (!source) return "";
   const parts = source.split(/\s+/);
   return parts[parts.length - 1];
@@ -112,7 +117,7 @@ export function buildScadenzaEmailHtml(client: DomClient, prezzi: RinnovoPrezzo[
   // No offer row selected -> no "Abbiamo altresì attive le seguenti offerte:" intro either.
   const offerte = offerteRows(prezzi, offerMonths);
 
-  return `<p>Buongiorno Sig. ${cognomeDi(client)},</p>
+  return `<p>Buongiorno ${titleFor(personaDi(client))} ${cognomeDi(client)},</p>
 <p>con la presente volevamo informarLa che in data <strong>${fmtDateIT(client.scadenzaDom)}</strong>, scadrà il contratto di domiciliazione legale della società <strong>${client.ragioneSociale}</strong></p>
 <p>Qualora desideri interrompere la domiciliazione, La preghiamo di inviarci richiesta scritta (raccomandata o PEC al nostro indirizzo <a href="mailto:cubeng@pec.it">cubeng@pec.it</a>) oppure di comunicarci l'intento al rinnovo rispondendo a questa email.</p>
 <p>Per il rinnovo possiamo mantenere le stesse condizioni precedenti con canone pari a <span data-prezzo="1">${prezzoRinnovo}</span>&nbsp;€ + IVA${additionalDiscountNote(additionalDiscountBps)}${scontoClause(client, includeSconto)}</p>

@@ -72,14 +72,22 @@ export default async function AdminDashboardPage() {
                 <input type="hidden" name="code" value={service.code} />
                 {service.code === "legal_unit" && (
                   <>
-                    <div className="gestione-field" style={{ width: 220 }}>
-                      <label>Sconto domiciliazioni aggiuntive (%)</label>
-                      <input name="additionalDiscountBps" type="number" step="0.01" min="0" max="100" defaultValue={service.additionalDiscountBps / 100} />
-                    </div>
-                    <div className="gestione-field" style={{ width: 200 }}>
-                      <label>Sconto nuove attivazioni (%)</label>
-                      <input name="newActivationDiscountBps" type="number" step="0.01" min="0" max="100" defaultValue={service.newActivationDiscountBps / 100} />
-                    </div>
+                    <fieldset style={discountBox}>
+                      <legend style={discountLegend}>Sconto domiciliazioni aggiuntive</legend>
+                      <label style={discountToggle}><input type="checkbox" name="additionalDiscountEnabled" defaultChecked={service.additionalDiscountEnabled} /> Attivo</label>
+                      <div className="gestione-field" style={{ width: 110 }}>
+                        <label>Sconto (%)</label>
+                        <input name="additionalDiscountBps" type="number" step="0.01" min="0" max="100" defaultValue={service.additionalDiscountBps / 100} />
+                      </div>
+                    </fieldset>
+                    <fieldset style={discountBox}>
+                      <legend style={discountLegend}>Sconto nuove attivazioni</legend>
+                      <label style={discountToggle}><input type="checkbox" name="newActivationDiscountEnabled" defaultChecked={service.newActivationDiscountEnabled} /> Attivo</label>
+                      <div className="gestione-field" style={{ width: 110 }}>
+                        <label>Sconto (%)</label>
+                        <input name="newActivationDiscountBps" type="number" step="0.01" min="0" max="100" defaultValue={service.newActivationDiscountBps / 100} />
+                      </div>
+                    </fieldset>
                   </>
                 )}
                 <div className="gestione-field" style={{ width: 170 }}>
@@ -186,4 +194,7 @@ export default async function AdminDashboardPage() {
   );
 }
 
+const discountBox = { display: "flex", gap: 14, alignItems: "flex-end", border: "1px solid #dcdcdc", borderRadius: 6, padding: "6px 12px 10px", margin: 0 };
+const discountLegend = { fontSize: 12, fontWeight: 700, color: "#232f3e", padding: "0 6px" };
+const discountToggle = { display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "#232f3e", height: 34 };
 const inputStyle = { border: "1px solid #c8c8c8", borderRadius: 4, padding: "5px 8px", fontSize: 12.5, width: "100%", background: "#f8f8f8" };
