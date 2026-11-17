@@ -77,10 +77,10 @@ export function ScadenzaEmailPanel({ id, initialPrezzoRinnovo, initialInviata }:
 
   // Initial mount / explicit "Rigenera dal modello": resets everything, including prezzo and the
   // month checkboxes, to the server's defaults.
-  async function load() {
+  async function load(regenerate = false) {
     setLoading(true);
     setStatus(null);
-    const draft = await getScadenzaDraftAction(id);
+    const draft = await getScadenzaDraftAction(id, regenerate);
     setLoading(false);
     if (!draft.success) { setStatus({ text: draft.message || "Errore", color: "red" }); return; }
     setSubject(draft.subject || "");
@@ -197,7 +197,7 @@ export function ScadenzaEmailPanel({ id, initialPrezzoRinnovo, initialInviata }:
       </div>
       <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
         <button type="button" className="gestione-btn gestione-btn-blue" disabled={busy || sending} onClick={send}>Invia</button>
-        <button type="button" className="gestione-btn gestione-btn-outline" disabled={busy || sending} onClick={load}>Rigenera dal modello</button>
+        <button type="button" className="gestione-btn gestione-btn-outline" disabled={busy || sending} onClick={() => load(true)}>Rigenera dal modello</button>
         {status && <span style={{ fontSize: 12, color: status.color }}>{status.text}</span>}
       </div>
     </div>
