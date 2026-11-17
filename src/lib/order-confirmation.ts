@@ -48,8 +48,14 @@ export async function sendRequestConfirmation(order: OrderRow, data: RequestData
     bank: paymentMethod === "bank_transfer" ? bankDetails : undefined,
     areaUrl,
   };
-  const customerMail = buildConfirmationEmail({ ...common, account });
-  const adminMail = buildConfirmationEmail({ ...common, account: null });
+  // "Domiciliazione aggiuntiva": both copies name the capofila; the admin copy also says how the check went.
+  const parent = snapshot.parentCheck;
+  const adminNotice = !parent ? undefined : parent.status === "verified"
+    ? { tone: "ok" as const, title: "Domiciliazione aggiuntiva — capofila verificata", lines: [`Capofila dichiarata: ${parent.declaredName}; referente: ${parent.declaredContact}.`, `Corrisponde a «${parent.capofilaName}» (nome, referente e contatti dell'acquirente coincidono con l'anagrafica).`] }
+    : { tone: "warn" as const, title: "ATTENZIONE — domiciliazione aggiuntiva da verificare", lines: [`Capofila dichiarata: ${parent.declaredName}; referente: ${parent.declaredContact}.`, `Nome e referente coincidono con «${parent.capofilaName}», ma l'email e il telefono dell'acquirente NON risultano in anagrafica: controlla che il richiedente sia davvero il referente prima di concedere lo sconto (le informazioni su società e amministratore sono pubbliche nel registro imprese).`] };
+  const parentCompany = data.additionalDomiciliation && data.parentCompanyName ? data.parentCompanyName : undefined;
+  const customerMail = buildConfirmationEmail({ ...common, parentCompany, account });
+  const adminMail = buildConfirmationEmail({ ...common, parentCompany, adminNotice, account: null });
 
   const pdf = Buffer.from(await buildRequestPdf({ data, lang, shortRef, paymentMethod, product, priced }));
   const attachments = [{ filename: requestPdfFilename(product.code, lang, orderId), content: pdf, contentType: "application/pdf" }];

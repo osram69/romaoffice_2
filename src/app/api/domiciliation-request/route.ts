@@ -8,6 +8,8 @@ import { quote } from "@/lib/pricing";
 import { termsText } from "@/lib/offer-terms";
 import { requestSchema } from "@/lib/request";
 import { companyNameTaken } from "@/lib/company-name";
+import { verifyParentCompany } from "@/lib/parent-company-db";
+import type { ParentCheck } from "@/lib/parent-company";
 import { ORDER_COOKIE, ownedOrder } from "@/lib/order-access";
 import { CustomerError, digest, token, json, limit, protectMutation } from "@/lib/customer-auth";
 
@@ -23,6 +25,15 @@ export async function POST(req: NextRequest) {
     // /api/domiciliation-request is only ever called from ActivationFlow's self-service online
     // flow, so the online-activation discount (if enabled) always applies here.
     const priced = quote(product, { ...data, onlineActivation: true }); if (!priced) return json({ error: "invalid-duration-or-addons" }, 400);
+    // A discount for an additional domiciliation needs a real capofila: the claim is checked against the companies
+    // domiciled with us. A failed check never says which part was wrong (name, referente, or no such client), and
+    // attempts are limited, so the form cannot be used to find out who our clients are.
+    let parentCheck: ParentCheck | undefined;
+    if (data.additionalDomiciliation && priced.additionalDomiciliationEligible) {
+      await limit(`parent-check:${data.email}`, 6, 3600); await limit("parent-check:all", 200, 3600);
+      parentCheck = await verifyParentCompany({ companyName: data.parentCompanyName, contactName: data.parentContactSame ? data.representativeName : data.parentContactName, buyerEmail: data.email, buyerPhone: data.phone });
+      if (parentCheck.status === "rejected") { console.warn("Additional domiciliation: capofila not verified"); return json({ error: "parent-not-verified" }, 422); }
+    }
     const publicId = data.orderId || randomUUID(); const now = new Date();
     if (data.orderId) {
       const old = await ownedOrder(req, data.orderId); if (old.status !== "pending") return json({ error: "already-submitted" }, 409);
@@ -30,7 +41,7 @@ export async function POST(req: NextRequest) {
     const raw = data.orderId ? req.cookies.get(ORDER_COOKIE)!.value : token();
     const values = {
       email: data.email, phone: data.phone, service: data.service, durationMonths: data.months, amountCents: priced.totalCents,
-      formData: data, quoteData: { product, quote: priced, createdAt: now.toISOString() }, accessTokenHash: digest(raw),
+      formData: data, quoteData: { product, quote: priced, createdAt: now.toISOString(), ...(parentCheck ? { parentCheck } : {}) }, accessTokenHash: digest(raw),
       termsVersion: product.version, termsAcceptedAt: data.termsAccepted ? now : null, termsText: termsText(product, data.lang), updatedAt: now,
     };
     await db.transaction(async tx => {

@@ -23,6 +23,8 @@ export const requestSchema = z.object({
   phone: z.string().max(40).transform(normalizePhone).refine(s => /^\+[1-9]\d{7,14}$/.test(s), "invalid-phone"),
   months: z.union([z.literal(3), z.literal(6), z.literal(12), z.literal(24), z.literal(36), z.literal(48)]),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), newActivation: z.boolean().default(false), additionalDomiciliation: z.boolean().default(false),
+  // "Domiciliazione aggiuntiva": the buyer types the name of the capofila (already domiciled with us) and, if it is not the buyer, its referente.
+  parentCompanyName: z.string().trim().max(200).default(""), parentContactSame: z.boolean().default(true), parentContactName: z.string().trim().max(200).transform(formatPersonName).default(""),
   addons: z.array(z.object({ code: z.string().max(50), quantity: z.number().int().min(1).max(5) })).max(3).default([]),
   consent: z.literal(true), website: z.string().max(0).optional(),
 }).superRefine((v, ctx) => {
@@ -40,6 +42,10 @@ export const requestSchema = z.object({
   }
   if (v.companyPec && !pecOk) ctx.addIssue({ code: "custom", path: ["companyPec"], message: "invalid-pec" });
   if (v.companySdi && !sdiOk) ctx.addIssue({ code: "custom", path: ["companySdi"], message: "invalid-sdi" });
+  if (v.service === "legal_unit" && v.additionalDomiciliation) {
+    if (v.parentCompanyName.length < 2) ctx.addIssue({ code: "custom", path: ["parentCompanyName"], message: "parent-required" });
+    if (!v.parentContactSame && v.parentContactName.length < 2) ctx.addIssue({ code: "custom", path: ["parentContactName"], message: "parent-contact-required" });
+  }
   if (v.service === "legal_unit" && v.addons.length) ctx.addIssue({ code: "custom", path: ["addons"], message: "invalid-addons" });
 });
 export type RequestData = z.infer<typeof requestSchema>;

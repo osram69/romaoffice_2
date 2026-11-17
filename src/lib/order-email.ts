@@ -28,6 +28,10 @@ export type ConfirmationEmailInput = {
   /** The customer copy carries the Area Clienti access; the admin copy never does. */
   account: null | { alreadyHadAccess: boolean; email: string; password: string | null; phone: string };
   areaUrl: string;
+  /** "Domiciliazione aggiuntiva": the capofila the buyer declared (shown in both copies). */
+  parentCompany?: string;
+  /** Only for the admin copy: a highlighted box (e.g. a capofila that still has to be checked). */
+  adminNotice?: { tone: "ok" | "warn"; title: string; lines: string[] };
 };
 
 export function formatStartDate(iso: string): string {
@@ -87,6 +91,7 @@ export function buildConfirmationEmail(i: ConfirmationEmailInput): { html: strin
     `${L.email}: ${i.email} — ${L.phone}: ${i.phone}`,
     ...(i.companyPec ? [`PEC: ${i.companyPec}`] : []),
     ...(i.companySdi ? [`SDI: ${i.companySdi}`] : []),
+    ...(i.parentCompany ? [`${it ? "Società capofila" : "Main company"}: ${i.parentCompany}`] : []),
   ];
   const textCost = [
     ...i.addonLines.map(a => `${a.label}: ${a.amount}`),
@@ -99,7 +104,8 @@ export function buildConfirmationEmail(i: ConfirmationEmailInput): { html: strin
     ? [`${L.area}: ${L.areaExisting}`, i.areaUrl]
     : [`${L.area}: ${L.areaActive}`, `${it ? "Indirizzo" : "Address"}: ${i.areaUrl}`, `${L.user}: ${i.account.email}`, `${L.pass}: ${i.account.password ?? ""}`, L.sms];
   const signOff = "Roma Office Sharing — +39 06 21.11.6268 — info@romaofficesharing.it";
-  const text = [greeting, intro, textRows.join("\n"), textCost.join("\n"), textPayment.join("\n"), ...(textAccount.length ? [textAccount.join("\n")] : []), closing, signOff].join("\n\n");
+  const textNotice = i.adminNotice ? [[i.adminNotice.title, ...i.adminNotice.lines].join("\n")] : [];
+  const text = [...(textNotice.length ? [textNotice[0]] : []), greeting, intro, textRows.join("\n"), textCost.join("\n"), textPayment.join("\n"), ...(textAccount.length ? [textAccount.join("\n")] : []), closing, signOff].join("\n\n");
 
   // --- html -------------------------------------------------------------------------------------
   const td = (content: string, style = "") => `<td style="font-family:${FONT};${style}">${content}</td>`;
@@ -115,6 +121,7 @@ export function buildConfirmationEmail(i: ConfirmationEmailInput): { html: strin
     kv(L.service, i.serviceName, { bold: true }), kv(L.ref, i.shortRef, { mono: true }), kv(L.duration, i.durationText), kv(L.start, start),
     rule, kv(L.holder, i.representativeName), kv(L.taxCode, i.representativeTaxCode, { mono: true }), kv(L.email, i.email), kv(L.phone, i.phone),
     ...(i.companyPec ? [kv("PEC", i.companyPec)] : []), ...(i.companySdi ? [kv("SDI", i.companySdi, { mono: true })] : []),
+    ...(i.parentCompany ? [rule, kv(it ? "Società capofila" : "Main company", i.parentCompany)] : []),
   ].join("");
 
   const costRows = [
@@ -136,6 +143,8 @@ export function buildConfirmationEmail(i: ConfirmationEmailInput): { html: strin
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:10px 0 0;background:${CREAM};border-radius:6px"><tr><td style="padding:10px 14px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${kv(L.user, i.account.email, { bold: true })}${kv(L.pass, i.account.password ?? "", { bold: true, mono: true })}</table></td></tr></table>
       <div style="font-size:12px;color:${MUTED};margin-top:8px">${e(L.sms)}</div>${button(i.areaUrl, L.button)}</td></tr></table>`;
 
+  const noticeHtml = !i.adminNotice ? "" : `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px"><tr><td style="background:${i.adminNotice.tone === "warn" ? "#fff1d6" : "#e2f4ea"};border:1px solid ${i.adminNotice.tone === "warn" ? "#e0a93b" : "#8fcaa5"};border-radius:8px;padding:14px 20px;font-family:${FONT};font-size:14px;line-height:1.55;color:${i.adminNotice.tone === "warn" ? "#6b4400" : "#176b43"}"><b>${e(i.adminNotice.title)}</b>${i.adminNotice.lines.map(line => `<br>${e(line)}`).join("")}</td></tr></table>`;
+
   const html = `<!doctype html><html lang="${i.lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="x-apple-disable-message-reformatting"><title>${e(title)}</title></head>
 <body style="margin:0;padding:0;background:${CREAM}">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:${CREAM}">${e(preheader)}</div>
@@ -150,6 +159,7 @@ export function buildConfirmationEmail(i: ConfirmationEmailInput): { html: strin
       <p style="margin:0 0 20px;font-size:15px;line-height:1.6">${e(intro)}</p>
     </td></tr>
     <tr><td style="background:#ffffff;padding:0 28px 8px">
+      ${noticeHtml}
       ${card(L.summary, summaryRows)}
       ${card(L.cost, costRows)}
       ${paymentCard}

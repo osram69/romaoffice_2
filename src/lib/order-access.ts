@@ -6,8 +6,10 @@ import { CustomerError, digest } from "./customer-auth";
 import { getOffer } from "./catalog";
 import { quote, type ProductOffer, type Quote, type ServiceCode } from "./pricing";
 import type { RequestData } from "./request";
+import type { ParentCheck } from "./parent-company";
 export const ORDER_COOKIE = "ros_order_access";
-export type OrderSnapshot = { product: ProductOffer; quote: Quote; createdAt: string };
+// parentCheck: outcome of the "società capofila" check, present only for a domiciliazione aggiuntiva order.
+export type OrderSnapshot = { product: ProductOffer; quote: Quote; createdAt: string; parentCheck?: ParentCheck };
 export async function ownedOrder(req: NextRequest, orderId: string) {
   const raw = req.cookies.get(ORDER_COOKIE)?.value;
   if (!raw || !/^[a-f\d]{64}$/.test(raw)) throw new CustomerError("order-session", 401);

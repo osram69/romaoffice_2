@@ -13,7 +13,7 @@ import { PrivacyNoticeContent } from "./LegalContent";
 type FormState = {
   companyExists: boolean; companyName: string; companyVat: string; companyTaxCode: string; companyAddress: string; companyCap: string; companyCity: string; companyCountry: string; companyRegister: string; companyPec: string; companySdi: string;
   representativeName: string; representativeRole: string; representativeTaxCode: string; email: string; phone: string;
-  months: number; startDate: string; newActivation: boolean; additionalDomiciliation: boolean; consent: boolean; website: string; termsAccepted: boolean; addons: SelectedAddon[];
+  months: number; startDate: string; newActivation: boolean; additionalDomiciliation: boolean; parentCompanyName: string; parentContactSame: boolean; parentContactName: string; consent: boolean; website: string; termsAccepted: boolean; addons: SelectedAddon[];
 };
 
 type BankDetails = { holder: string; iban: string; bic: string; bank: string; causale: string; amount: string };
@@ -43,7 +43,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
   const [form, setForm] = useState<FormState>({
     companyExists: postal, companyName: "", companyVat: "", companyTaxCode: "", companyAddress: "", companyCap: "", companyCity: "", companyCountry: it ? "Italia" : "Italy", companyRegister: "", companyPec: "", companySdi: "",
     representativeName: "", representativeRole: it ? "Legale rappresentante" : "Legal representative", representativeTaxCode: "", email: "", phone: "",
-    months: postal ? 6 : 12, startDate: "", newActivation: !postal, additionalDomiciliation: false, consent: false, website: "", termsAccepted: false, addons: [],
+    months: postal ? 6 : 12, startDate: "", newActivation: !postal, additionalDomiciliation: false, parentCompanyName: "", parentContactSame: true, parentContactName: "", consent: false, website: "", termsAccepted: false, addons: [],
   });
 
   const t = {
@@ -63,6 +63,12 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
     duration: it ? "Durata del contratto" : "Contract duration", startDate: it ? "Data di inizio contratto" : "Contract start date",
     newActivation: it ? "Nuova attivazione (nuovo cliente/società)" : "New activation (new client/company)",
     additional: it ? "Domiciliazione aggiuntiva con stesso referente/amministratore" : "Additional address service with the same contact/administrator",
+    parentTitle: it ? "Società già domiciliata presso di noi (capofila)" : "Company already domiciled with us (main company)",
+    parentHint: it ? "Lo sconto è riservato a chi ha già una domiciliazione attiva presso Roma Office Sharing con lo stesso referente/amministratore. Scrivi il nome esatto della società già domiciliata: verrà verificato prima di procedere." : "The discount is reserved for those who already have an active domiciliation with Roma Office Sharing with the same contact/administrator. Enter the exact name of the company already domiciled with us: it will be checked before you continue.",
+    parentName: it ? "Nome della società già domiciliata presso di noi" : "Name of the company already domiciled with us",
+    parentSame: it ? "Il referente/amministratore di quella società sono io (stesso nome indicato sopra)" : "I am the contact/administrator of that company (same name as entered above)",
+    parentContact: it ? "Nome e cognome del referente/amministratore di quella società" : "Full name of that company's contact/administrator",
+    parentNotVerified: it ? "Non siamo riusciti a verificare la società indicata. Controlla il nome e il referente: lo sconto per domiciliazione aggiuntiva è riservato a chi ha già una domiciliazione attiva con noi con lo stesso referente/amministratore. Se pensi sia un errore contatta la reception al 06 2111 6268, oppure togli la spunta per procedere senza sconto." : "We could not verify the company you entered. Please check the name and the contact person: the additional-address discount is reserved for those who already have an active domiciliation with us with the same contact/administrator. If you think this is a mistake call reception on +39 06 21.11.6268, or untick the option to continue without the discount.",
     consent: it ? "Acconsento al trattamento dei dati personali per la gestione della richiesta e dell’eventuale contratto" : "I consent to the processing of personal data to handle this request and any agreement",
     sendCode: it ? "INVIA IL CODICE DI VERIFICA" : "SEND VERIFICATION CODE",
     otpLabel: it ? "Codice ricevuto via SMS (6 cifre)" : "Code received by SMS (6 digits)",
@@ -158,6 +164,10 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
     const companyErr = validateCompanyNameField(form.companyName); if (companyErr) next.companyName = companyErr;
     const companyTaxCodeErr = validateCompanyTaxCodeField(form.companyTaxCode); if (companyTaxCodeErr) next.companyTaxCode = companyTaxCodeErr;
     if (postal || form.companyExists) Object.assign(next, pecSdiErrors(form.companyPec, form.companySdi));
+    if (!postal && form.additionalDomiciliation) {
+      if (form.parentCompanyName.trim().length < 2) next.parentCompanyName = t.required;
+      if (!form.parentContactSame && form.parentContactName.trim().length < 2) next.parentContactName = t.required;
+    }
     if (!form.consent) next.consent = t.required;
     if (!form.termsAccepted) next.terms = it ? "Leggi e accetta integralmente le condizioni dell’offerta prima di proseguire." : "Read and accept the full offer terms before continuing.";
     return next;
@@ -174,6 +184,12 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
         setStatus("");
         setFieldError("companyName", it ? "Esiste già una società con questo nome domiciliata presso di noi. Se sei già nostro cliente contatta la reception, altrimenti scegli una denominazione diversa." : "A company with this name is already domiciled with us. If you are an existing client please contact reception, otherwise choose a different name.");
         requestAnimationFrame(() => document.getElementById("err-companyName")?.focus());
+        return;
+      }
+      if (data.error === "parent-not-verified") {
+        setStatus("");
+        setFieldError("parentCompanyName", t.parentNotVerified);
+        requestAnimationFrame(() => document.getElementById("err-parentCompanyName")?.focus());
         return;
       }
       if (res.status === 409 && data.catalog) { setCatalog(data.catalog); setForm(f => ({ ...f, termsAccepted: false })); setStatus(it ? "Le tariffe sono state aggiornate. Controlla il nuovo riepilogo e accetta nuovamente le condizioni." : "Prices have changed. Review the new summary and accept the terms again."); return; }
@@ -296,6 +312,12 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
             <label>{t.startDate}*<input type="date" value={form.startDate} min={new Date().toISOString().slice(0, 10)} onChange={e => setForm({ ...form, startDate: e.target.value })} onBlur={e => setFieldError("startDate", validateStartDateField(e.target.value))} {...aria("startDate")} />{err("startDate")}</label>
             {!postal && product.newActivationDiscountEnabled && product.tiers.some(x => x.newActivation) && <label className="check-label"><input type="checkbox" checked={form.newActivation} onChange={e => setForm({ ...form, newActivation: e.target.checked })} /> <span>{t.newActivation}</span></label>}
             {!postal && product.additionalDiscountEnabled && product.tiers.some(x => x.additionalDomiciliation) && <label className="check-label"><input type="checkbox" checked={form.additionalDomiciliation} onChange={e => setForm({ ...form, additionalDomiciliation: e.target.checked })} /> <span>{t.additional}</span></label>}
+            {!postal && product.additionalDiscountEnabled && form.additionalDomiciliation && <div className="parent-company-box">
+              <p className="form-note"><b>{t.parentTitle}</b><br />{t.parentHint}</p>
+              <label>{t.parentName}*<input id="field-parentCompanyName" value={form.parentCompanyName} maxLength={200} autoComplete="off" onChange={e => setForm({ ...form, parentCompanyName: e.target.value })} onBlur={e => setFieldError("parentCompanyName", e.target.value.trim().length < 2 ? t.required : "")} {...aria("parentCompanyName")} />{err("parentCompanyName")}</label>
+              <label className="check-label"><input type="checkbox" checked={form.parentContactSame} onChange={e => setForm({ ...form, parentContactSame: e.target.checked })} /> <span>{t.parentSame}</span></label>
+              {!form.parentContactSame && <label>{t.parentContact}*<input id="field-parentContactName" value={form.parentContactName} maxLength={200} autoComplete="off" onChange={e => setForm({ ...form, parentContactName: e.target.value })} onBlur={e => setFieldError("parentContactName", e.target.value.trim().length < 2 ? t.required : "")} {...aria("parentContactName")} />{err("parentContactName")}</label>}
+            </div>}
             <div className="consent-box">
               <label className="check-label"><input type="checkbox" checked={form.consent} onChange={e => setForm({ ...form, consent: e.target.checked })} {...aria("consent")} /> <span>{t.consent} <LegalLinkModal className="consent-link" label={it ? "Informativa privacy" : "Privacy notice"} title={it ? "Informativa Privacy" : "Privacy Notice"}><PrivacyNoticeContent lang={lang}/></LegalLinkModal>*</span></label>
               {err("consent")}

@@ -36,6 +36,20 @@ function addMonths(isoDate: string, months: number): string {
  * what they already typed — so they can complete and sign the contract online. Idempotent: if the confirmation
  * email is retried before the customer ever received it, the same record gets a fresh password.
  */
+/** An online "domiciliazione aggiuntiva" is recorded as such, linked to the capofila the check matched. */
+function parentFields(snapshot: OrderSnapshot): { aggiuntiva?: boolean; capofilaId?: number } {
+  const check = snapshot.parentCheck;
+  return check && check.status !== "rejected" && check.capofilaId ? { aggiuntiva: true, capofilaId: check.capofilaId } : {};
+}
+function parentNote(snapshot: OrderSnapshot): string {
+  const check = snapshot.parentCheck;
+  if (!check) return "";
+  const declared = `capofila dichiarata «${check.declaredName}», referente ${check.declaredContact}`;
+  return check.status === "verified"
+    ? `. Domiciliazione aggiuntiva: ${declared} — verificata (nome, referente e contatti coincidono con l'anagrafica).`
+    : `. DA VERIFICARE — domiciliazione aggiuntiva: ${declared}; nome e referente coincidono con «${check.capofilaName}», ma email/telefono dell'acquirente non coincidono con quelli in anagrafica. Controllare prima di confermare lo sconto.`;
+}
+
 export async function provisionCustomerAccount(order: OrderRow, data: RequestData, snapshot: OrderSnapshot): Promise<CustomerAccount | null> {
   if (snapshot.product.code !== "legal_unit") return null;
   const email = data.email.trim().toLowerCase();
@@ -56,8 +70,9 @@ export async function provisionCustomerAccount(order: OrderRow, data: RequestDat
   const [client] = await db.insert(domClients).values({
     ragioneSociale: data.companyName.trim(), emailPosta: email, amministratore: data.representativeName, personaRif: data.representativeName,
     telefono: data.phone, emailPec: data.companyPec || null, inizioDom: inizio, scadenzaDom: addMonths(inizio, data.months), prezzoRinnovo: Math.round(snapshot.quote.renewalBaseCents / 100),
+    ...parentFields(snapshot),
     stato: 0, tipologia: 0, areaClientiEmail: email, areaClientiPasswordHash: passwordHash, mustChangePassword: true,
-    note: `Creata automaticamente dall'ordine online ${order.publicId}`,
+    note: `Creata automaticamente dall'ordine online ${order.publicId}${parentNote(snapshot)}`,
   }).returning();
 
   const digits = (v: string) => v.replace(/\D/g, "");

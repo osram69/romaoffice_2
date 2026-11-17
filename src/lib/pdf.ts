@@ -145,6 +145,10 @@ export async function buildRequestPdf(opts: { data: RequestData; lang: Lang; sho
   writer.field(it ? "Data di inizio contratto" : "Contract start date", data.startDate);
   if (!postal && product.newActivationDiscountEnabled) writer.field(it ? "Nuova attivazione (nuovo cliente/società)" : "New activation (new client/company)", data.newActivation ? (it ? "Sì" : "Yes") : it ? "No" : "No");
   if (!postal && product.additionalDiscountEnabled) writer.field(it ? "Domiciliazione aggiuntiva (stesso referente/amministratore)" : "Additional address service (same contact/administrator)", data.additionalDomiciliation ? (it ? "Sì" : "Yes") : it ? "No" : "No");
+  if (!postal && product.additionalDiscountEnabled && data.additionalDomiciliation) {
+    writer.field(it ? "Società capofila (già domiciliata)" : "Main company (already domiciled)", data.parentCompanyName || "-");
+    writer.field(it ? "Referente della società capofila" : "Main company contact", (data.parentContactSame ? data.representativeName : data.parentContactName) || "-");
+  }
 
   if (priced) {
     // Keep the whole quotation block together: forcing a break here (rather than letting each
