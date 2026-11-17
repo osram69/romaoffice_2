@@ -338,12 +338,15 @@ export async function sendMailScanAction(domClientId: number, channel: MailScanC
 // Discount (in basis points) that the renewal fee of this company carries: the additional-domiciliation
 // discount when it is an "aggiuntiva" whose capofila is still domiciled (stato 1) and the discount is on in
 // the catalogue; 0 for a capofila / standalone company or an aggiuntiva that lost its capofila.
-async function additionalRenewalDiscountBps(client: { aggiuntiva: boolean; capofilaId: number | null }): Promise<number> {
-  if (!client.aggiuntiva || !client.capofilaId) return 0;
-  const [capofila] = await db.select({ stato: domClients.stato }).from(domClients).where(eq(domClients.id, client.capofilaId)).limit(1);
-  if (!capofila || capofila.stato !== 1) return 0;
+async function additionalRenewalDiscount(client: { aggiuntiva: boolean; capofilaId: number | null }): Promise<{ bps: number; reason: string }> {
+  if (!client.aggiuntiva) return { bps: 0, reason: "Non è una domiciliazione aggiuntiva: nessuno sconto." };
+  if (!client.capofilaId) return { bps: 0, reason: "È segnata come aggiuntiva ma la società capofila non è indicata: sconto NON applicato. Modifica la domiciliazione e seleziona la capofila." };
+  const [capofila] = await db.select({ stato: domClients.stato, name: domClients.ragioneSociale }).from(domClients).where(eq(domClients.id, client.capofilaId)).limit(1);
+  if (!capofila || capofila.stato !== 1) return { bps: 0, reason: `La società capofila${capofila ? ` «${capofila.name}»` : ""} non è più attiva: sconto NON applicato.` };
   const [catalog] = await db.select({ bps: serviceCatalog.additionalDiscountBps, enabled: serviceCatalog.additionalDiscountEnabled }).from(serviceCatalog).where(eq(serviceCatalog.code, "legal_unit")).limit(1);
-  return catalog?.enabled ? catalog.bps : 0;
+  if (!catalog?.enabled) return { bps: 0, reason: "Lo «Sconto domiciliazioni aggiuntive» è disattivato in Configurazione Web: sconto NON applicato." };
+  if (!(catalog.bps > 0)) return { bps: 0, reason: "La percentuale dello sconto per domiciliazioni aggiuntive è 0: sconto NON applicato." };
+  return { bps: catalog.bps, reason: `Aggiuntiva con capofila «${capofila.name}» attiva: sconto del ${catalog.bps / 100}% applicato al canone.` };
 }
 
 // Draft the scadenza reminder for staff to review/edit before sending — never sent unmodified.
@@ -351,13 +354,13 @@ async function additionalRenewalDiscountBps(client: { aggiuntiva: boolean; capof
 // `includeSconto`, when given, overrides the automatic (contract-duration-based) default for the
 // "sconto attivazioni non più applicabile" disclaimer while regenerating; same for `includeMonths`
 // and which renewal-offer durations (6/12/24/36/48) get listed.
-export async function getScadenzaDraftAction(id: number, regenerate = false, includeSconto?: boolean, includeMonths?: number[]): Promise<{ success: boolean; message?: string; subject?: string; html?: string; prezzoRinnovo?: number | null; additionalDiscountBps?: number; scontoDefault?: boolean; availableMonths?: number[]; defaultMonths?: number[] }> {
+export async function getScadenzaDraftAction(id: number, regenerate = false, includeSconto?: boolean, includeMonths?: number[]): Promise<{ success: boolean; message?: string; subject?: string; html?: string; prezzoRinnovo?: number | null; additionalDiscountBps?: number; discountReason?: string; staleDraft?: boolean; scontoDefault?: boolean; availableMonths?: number[]; defaultMonths?: number[] }> {
   "use server";
   await requireOperational(BASE_PATH);
   const [client] = await db.select().from(domClients).where(eq(domClients.id, id)).limit(1);
   if (!client) return { success: false, message: "Domiciliazione non trovata" };
   const prezzi = await db.select().from(domRinnovoPrezzi);
-  const additionalDiscountBps = await additionalRenewalDiscountBps(client);
+  const { bps: additionalDiscountBps, reason: discountReason } = await additionalRenewalDiscount(client);
   const scontoDefault = defaultScontoApplicabile(client);
   const defaultMonths = scadenzaDefaultMonths(prezzi, contractMonths(client));
   const stored = !regenerate ? client.testoScadenza?.trim() : "";
@@ -367,6 +370,9 @@ export async function getScadenzaDraftAction(id: number, regenerate = false, inc
     html: stored || buildScadenzaEmailHtml(client, prezzi, includeSconto ?? scontoDefault, includeMonths ?? defaultMonths, additionalDiscountBps),
     prezzoRinnovo: client.prezzoRinnovo,
     additionalDiscountBps,
+    discountReason,
+    // a saved draft written before the discount existed still quotes the full fee: staff must regenerate it
+    staleDraft: Boolean(stored) && additionalDiscountBps > 0 && !(stored ?? "").includes("per domiciliazione aggiuntiva"),
     scontoDefault,
     availableMonths: scadenzaOfferMonths(prezzi),
     defaultMonths,

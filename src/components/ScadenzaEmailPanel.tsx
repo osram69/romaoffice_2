@@ -36,6 +36,8 @@ export function ScadenzaEmailPanel({ id, initialPrezzoRinnovo, initialInviata }:
   const [subject, setSubject] = useState("");
   const [prezzo, setPrezzo] = useState(initialPrezzoRinnovo !== null ? String(initialPrezzoRinnovo) : "");
   const [discountBps, setDiscountBps] = useState(0);
+  const [discountReason, setDiscountReason] = useState("");
+  const [staleDraft, setStaleDraft] = useState(false);
   const [includeSconto, setIncludeSconto] = useState(false);
   const [availableMonths, setAvailableMonths] = useState<number[]>([]);
   const [selectedMonths, setSelectedMonths] = useState<number[]>([]);
@@ -87,6 +89,8 @@ export function ScadenzaEmailPanel({ id, initialPrezzoRinnovo, initialInviata }:
     const prezzoText = draft.prezzoRinnovo !== null && draft.prezzoRinnovo !== undefined ? String(draft.prezzoRinnovo) : "";
     setPrezzo(prezzoText);
     setDiscountBps(draft.additionalDiscountBps ?? 0);
+    setDiscountReason(draft.discountReason ?? "");
+    setStaleDraft(Boolean(draft.staleDraft));
     if (draft.scontoDefault !== undefined) setIncludeSconto(draft.scontoDefault);
     setAvailableMonths(draft.availableMonths ?? []);
     setSelectedMonths(draft.defaultMonths ?? []);
@@ -168,15 +172,19 @@ export function ScadenzaEmailPanel({ id, initialPrezzoRinnovo, initialInviata }:
         <div className="gestione-field" style={{ width: 140 }}>
           <label>Prezzo rinnovo (€)</label>
           <input type="number" value={prezzo} disabled={busy} onChange={e => updatePrezzo(e.target.value)} />
-          {discountBps > 0 && prezzo.trim() !== "" && Number.isFinite(Number(prezzo)) && (
-            <small style={{ display: "block", marginTop: 3, fontSize: 11, color: "#555" }}>In email: {emailFeeText(prezzo)} € (aggiuntiva, −{discountBps / 100}%)</small>
-          )}
         </div>
         <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "#232f3e", height: 34 }}>
           <input type="checkbox" checked={includeSconto} disabled={busy} onChange={e => toggleSconto(e.target.checked)} />
           Sconto non più applicabile
         </label>
       </div>
+
+      {discountReason && (
+        <p style={{ margin: "0 0 8px", fontSize: 12, color: discountBps > 0 ? "#1a7f37" : "#9a6700", fontWeight: 600 }}>
+          {discountReason}{discountBps > 0 && prezzo.trim() !== "" && Number.isFinite(Number(prezzo)) ? ` In email: ${emailFeeText(prezzo)} €.` : ""}
+          {staleDraft && <span style={{ color: "#c00" }}> Il testo mostrato è una bozza salvata PRIMA dello sconto e riporta il canone intero: premi «Rigenera dal modello».</span>}
+        </p>
+      )}
 
       {availableMonths.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 8, fontSize: 12 }}>
