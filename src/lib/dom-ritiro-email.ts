@@ -25,16 +25,23 @@ const PERSONAL_RITIRO_EMAIL_BODY = `<p>la presente per comunicarLe che è in gia
 <p>La invitiamo a provvedere al ritiro quanto prima o a richiedere la spedizione da parte nostra comunicandoci l'indirizzo di spedizione.</p>
 <p>Grazie<br>Segreteria Roma Office Sharing</p>`;
 
+const plainText = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
+const DEFAULT_PLAIN_TEXT = plainText(DEFAULT_RITIRO_EMAIL_HTML);
+
 /** The draft of the pickup email. Without a custom template: the default text, personal (singular) when the
  * administrator / reference person is known and generic (plural) otherwise. A custom template (Configurazione Web)
- * keeps its own wording; only its opening "Buongiorno," is made personal when a person is known. */
+ * keeps its own wording; when a person is known its opening "Buongiorno," becomes personal and "comunicarVi" /
+ * "Vi invitiamo" become "comunicarLe" / "La invitiamo". */
 export function buildRitiroEmailHtml(client: Pick<DomClient, "amministratore" | "personaRif">, customTemplate?: string | null): string {
   const greeting = personalGreeting(client);
-  // the editor in Configurazione Web shows the default text, so a saved copy of it is still "the default"
+  // the editor in Configurazione Web shows the default text, and saving it through the rich-text editor rewrites
+  // the HTML (spaces, <br />, line breaks): a saved copy of the default text is still "the default"
   const trimmed = customTemplate?.trim();
-  const custom = trimmed && trimmed !== DEFAULT_RITIRO_EMAIL_HTML.trim() ? trimmed : "";
+  const custom = trimmed && plainText(trimmed) !== DEFAULT_PLAIN_TEXT ? trimmed : "";
   if (!greeting) return custom || DEFAULT_RITIRO_EMAIL_HTML;
   if (!custom) return `<p>${greeting}</p>
 ${PERSONAL_RITIRO_EMAIL_BODY}`;
-  return /^\s*<p>\s*Buongiorno\s*,?\s*<\/p>/i.test(custom) ? custom.replace(/^\s*<p>\s*Buongiorno\s*,?\s*<\/p>/i, `<p>${greeting}</p>`) : custom;
+  const opening = /^\s*<p>\s*Buongiorno\s*,?\s*<\/p>/i;
+  const personal = opening.test(custom) ? custom.replace(opening, `<p>${greeting}</p>`) : custom;
+  return personal.replace(/comunicarVi\b/g, "comunicarLe").replace(/\bVi invitiamo\b/g, "La invitiamo");
 }

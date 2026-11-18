@@ -25,3 +25,13 @@ test("pickup email: a custom template keeps its text, only its opening greeting 
   // a saved copy of the default text is still the default
   assert.match(buildRitiroEmailHtml(client, DEFAULT_RITIRO_EMAIL_HTML), /comunicarLe/);
 });
+
+test("pickup email: the default text saved through the rich-text editor (reformatted HTML) is still treated as the default", () => {
+  const reformatted = "<p>Buongiorno,</p>\r\n<p>la presente per comunicarVi che è in giacenza presso i nostri uffici una notevole quantità di posta.</p>\n"
+    + "<p>Vi invitiamo a provvedere al ritiro quanto prima o a richiedere la spedizione da parte nostra comunicandoci l'indirizzo di spedizione.</p>\n<p>Grazie<br />\nSegreteria Roma Office Sharing</p>";
+  const html = buildRitiroEmailHtml({ amministratore: "Maria Rossi", personaRif: null }, reformatted);
+  assert.ok(html.includes("Buongiorno Sig.ra Rossi,") && html.includes("comunicarLe") && html.includes("La invitiamo") && !html.includes("comunicarVi"));
+  // an edited custom text gets only the person-specific forms
+  const edited = buildRitiroEmailHtml({ amministratore: "Maria Rossi", personaRif: null }, "<p>Buongiorno,</p><p>Vi invitiamo al ritiro.</p>");
+  assert.equal(edited, "<p>Buongiorno Sig.ra Rossi,</p><p>La invitiamo al ritiro.</p>");
+});
