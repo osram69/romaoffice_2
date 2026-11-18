@@ -133,7 +133,14 @@ export async function printListaCompleta() {
   for (const row of rows) {
     if (!(row.stato === 1 || row.stato === 3) || /avvocato/i.test(row.ragioneSociale)) continue;
     const letter = row.ragioneSociale.charAt(0).toUpperCase();
-    if (letter !== currentLetter) { currentLetter = letter; w.line(currentLetter, { size: 14, bold: true, gap: 8 }); }
+    if (letter !== currentLetter) {
+      // Extra air above the initial so it does not touch the last company of the previous letter, and keep it
+      // together with the first company below it (no initial alone at the bottom of a page).
+      if (currentLetter) w.space(14);
+      w.ensureSpace(14 + 8 + 12 + 4 + 14);
+      currentLetter = letter;
+      w.line(currentLetter, { size: 14, bold: true, gap: 8 });
+    }
     if (row.stato === 3) {
       const end = row.scadenzaDom ? new Date(new Date(row.scadenzaDom).getTime() + 30 * 86400000) : null;
       w.line(`${row.ragioneSociale}           (Fine servizio ritiro posta: ${end ? fmtDate(end.toISOString().slice(0, 10)) : "—"})`, { size: 12 });
