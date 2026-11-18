@@ -7,15 +7,22 @@ type RinnovoPrezzo = InferSelectModel<typeof domRinnovoPrezzi>;
 
 // Mirrors getCognome() in the legacy domiciliazioni.php: last word of amministratore if present,
 // else last word of persona_rif — not necessarily a real surname, just what the field contains.
-function personaDi(client: Pick<DomClient, "amministratore" | "personaRif">): string {
+export function personaDi(client: Pick<DomClient, "amministratore" | "personaRif">): string {
   return client.amministratore?.trim() || client.personaRif?.trim() || "";
 }
 
-function cognomeDi(client: Pick<DomClient, "amministratore" | "personaRif">): string {
+export function cognomeDi(client: Pick<DomClient, "amministratore" | "personaRif">): string {
   const source = personaDi(client);
   if (!source) return "";
   const parts = source.split(/\s+/);
   return parts[parts.length - 1];
+}
+
+/** "Buongiorno Sig.ra Rossi," from the administrator (or, failing that, the reference person); "" when neither is on file. */
+export function personalGreeting(client: Pick<DomClient, "amministratore" | "personaRif">): string {
+  const persona = personaDi(client);
+  const cognome = cognomeDi(client);
+  return persona && cognome ? `Buongiorno ${titleFor(persona)} ${cognome},` : "";
 }
 
 function fmtDateIT(value: string | null): string {

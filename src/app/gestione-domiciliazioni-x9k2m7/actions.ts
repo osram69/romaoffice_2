@@ -7,7 +7,7 @@ import { requireOperational } from "@/lib/staff-guards";
 import { decryptBytes, readMailScanDecrypted, removeEncrypted, removeMailScanEncrypted, saveEncrypted, type DocType, DOC_TYPES } from "@/lib/dom-archive";
 import { PRESENZA_FILE_BITS, cleanText } from "@/lib/dom-status";
 import { buildScadenzaEmailHtml, contractMonths, defaultScontoApplicabile, scadenzaDefaultMonths, scadenzaEmailSubject, scadenzaOfferMonths } from "@/lib/dom-scadenza-email";
-import { DEFAULT_RITIRO_EMAIL_HTML, ritiroEmailSubject } from "@/lib/dom-ritiro-email";
+import { buildRitiroEmailHtml, ritiroEmailSubject } from "@/lib/dom-ritiro-email";
 import { sendDomMail, type DomMailAccount } from "@/lib/mailer";
 import { hashPassword } from "@/lib/customer-auth";
 import { passwordMeetsPolicy } from "@/lib/password-policy";
@@ -428,12 +428,12 @@ export async function getRitiroDraftAction(id: number, regenerate = false): Prom
   return {
     success: true,
     subject: ritiroEmailSubject(client, config?.ritiroOggettoTemplate),
-    html: stored || config?.ritiroTestoTemplate?.trim() || DEFAULT_RITIRO_EMAIL_HTML,
+    html: stored || buildRitiroEmailHtml(client, config?.ritiroTestoTemplate),
   };
 }
 
 // Unlike inviaScadenzaAction, this never uses PEC even when the client has one on file (staff's
-// explicit choice — a pickup reminder isn't the kind of formal notice PEC is meant for): always
+// explicit choice — a pickup reminder isn't the kind of formal notice PEC is meant for): by default
 // the "ordinaria" account, to the first ordinary address with the rest CC'd, plus posta@ as the
 // fixed internal CC (scadenza's is info@ instead — different inbox, staff's explicit choice).
 export async function inviaRitiroAction(formData: FormData): Promise<{ success: boolean; message?: string }> {
@@ -448,14 +448,21 @@ export async function inviaRitiroAction(formData: FormData): Promise<{ success: 
   const subject = String(formData.get("subject") ?? "").replace(/[\r\n]+/g, " ").trim();
   if (!subject) return { success: false, message: "Oggetto email vuoto" };
 
+  // Default: ordinary mail to the first ordinary address (the rest CC'd). With the PEC switch: sent from the PEC
+  // account to the client's PEC, with all their ordinary addresses CC'd — like the scadenza email.
   const ordinarie = cleanText(client.emailPosta).split(";").map(s => s.trim()).filter(Boolean);
-  const to = ordinarie[0];
+  const usaPec = formData.get("pec") === "on";
+  const pec = cleanText(client.emailPec);
+  if (usaPec && !pec) return { success: false, message: "Questa società non ha un indirizzo PEC: togli la spunta PEC per inviare via email ordinaria" };
+  const to = usaPec ? pec : ordinarie[0];
   if (!to) return { success: false, message: "Nessun indirizzo email ordinario per questa società" };
-  const ccList = [...ordinarie.slice(1), "posta@romaofficesharing.it"];
+  const ccList = [...(usaPec ? ordinarie : ordinarie.slice(1)), "posta@romaofficesharing.it"];
 
-  const result = await sendDomMail("ordinaria", {
+  const result = await sendDomMail(usaPec ? "pec" : "ordinaria", {
     to, cc: ccList.join(","), subject,
     text: html.replace(/<[^>]+>/g, " "), html,
+    // Replies must reach the office mailbox, not the PEC sender address the message goes out from.
+    ...(usaPec ? { replyTo: "posta@romaofficesharing.it" } : {}),
   });
   if (!result.sent) return { success: false, message: `Invio non riuscito (${result.reason})` };
 

@@ -364,7 +364,7 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds, capofile = []
               )}
 
               {schedaTab === "ritiro" && (
-                <RitiroCorrispondenzaPanel key={viewing.id} id={viewing.id} lastSentAt={viewing.ritiroInviatoAt ? new Date(viewing.ritiroInviatoAt).toISOString() : null} previouslySent={!!viewing.testoRitiro?.trim()} />
+                <RitiroCorrispondenzaPanel key={viewing.id} id={viewing.id} lastSentAt={viewing.ritiroInviatoAt ? new Date(viewing.ritiroInviatoAt).toISOString() : null} previouslySent={!!viewing.testoRitiro?.trim()} hasPec={!!viewing.emailPec?.trim()} />
               )}
 
               {schedaTab === "proforma" && (

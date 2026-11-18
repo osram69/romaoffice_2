@@ -35,7 +35,7 @@ function daysAgo(iso: string) {
   return days <= 0 ? "oggi" : days === 1 ? "ieri" : `${days} giorni fa`;
 }
 
-export function RitiroCorrispondenzaPanel({ id, lastSentAt, previouslySent }: { id: number; lastSentAt: string | null; previouslySent: boolean }) {
+export function RitiroCorrispondenzaPanel({ id, lastSentAt, previouslySent, hasPec = true }: { id: number; lastSentAt: string | null; previouslySent: boolean; hasPec?: boolean }) {
   const editorId = useRef(`ritiro-editor-${id}`);
   const pendingHtml = useRef<string | null>(null);
   const [editorReady, setEditorReady] = useState(false);
@@ -43,6 +43,7 @@ export function RitiroCorrispondenzaPanel({ id, lastSentAt, previouslySent }: { 
   const [subject, setSubject] = useState("");
   const [status, setStatus] = useState<{ text: string; color: string } | null>(null);
   const [sending, setSending] = useState(false);
+  const [viaPec, setViaPec] = useState(false);
   const [sentAt, setSentAt] = useState<string | null>(lastSentAt);
 
   function setEditorContent(html: string) {
@@ -88,13 +89,14 @@ export function RitiroCorrispondenzaPanel({ id, lastSentAt, previouslySent }: { 
     const html = getEditorContent();
     if (!html.trim()) { setStatus({ text: "Testo email vuoto", color: "red" }); return; }
     if (!subject.trim()) { setStatus({ text: "Oggetto email vuoto", color: "red" }); return; }
-    if (!confirm("Inviare questa richiesta di ritiro corrispondenza via email ordinaria?")) return;
+    if (!confirm(viaPec ? "Inviare questa richiesta di ritiro corrispondenza via PEC (con in copia le email ordinarie del cliente)?" : "Inviare questa richiesta di ritiro corrispondenza via email ordinaria?")) return;
     setSending(true);
     setStatus({ text: "Invio in corso...", color: "#555" });
     const formData = new FormData();
     formData.set("id", String(id));
     formData.set("html", html);
     formData.set("subject", subject);
+    if (viaPec) formData.set("pec", "on");
     const result = await inviaRitiroAction(formData);
     setSending(false);
     if (result.success) setSentAt(new Date().toISOString());
@@ -124,7 +126,11 @@ export function RitiroCorrispondenzaPanel({ id, lastSentAt, previouslySent }: { 
         {loading && <p style={{ fontSize: 12, color: "#666", margin: "4px 0 0" }}>Caricamento...</p>}
       </div>
       <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-        <button type="button" className="gestione-btn gestione-btn-blue" disabled={busy || sending} onClick={send}>Invia</button>
+        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "#232f3e" }} title={hasPec ? "Invia dalla PEC alla PEC del cliente, con in copia le sue email ordinarie" : "Questa società non ha un indirizzo PEC"}>
+          <input type="checkbox" checked={viaPec} disabled={busy || sending || !hasPec} onChange={e => setViaPec(e.target.checked)} />
+          Invia come PEC{!hasPec ? " (nessuna PEC)" : ""}
+        </label>
+        <button type="button" className="gestione-btn gestione-btn-blue" disabled={busy || sending} onClick={send}>{viaPec ? "Invia PEC" : "Invia"}</button>
         <button type="button" className="gestione-btn gestione-btn-outline" disabled={busy || sending} onClick={() => load(true)}>Rigenera dal modello</button>
         {status && <span style={{ fontSize: 12, color: status.color }}>{status.text}</span>}
       </div>
