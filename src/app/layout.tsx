@@ -25,7 +25,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const { key, lang } = resolvePath(parts);
   const jsonLd = {
     "@context": "https://schema.org", "@type": "LocalBusiness", "@id": `${BASE_URL}/#business`,
-    name: "Roma Office Sharing", alternateName: lang === "it" ? "Business Center Roma" : "Rome Business Centre",
+    name: "Roma Office Sharing",
     description: lang === "it" ? "Uffici arredati e servizi di domiciliazione nel centro di Roma." : "Furnished offices and registered office and mailing address services in central Rome.",
     sameAs: ["https://www.facebook.com/romaofficesharing/", "https://www.linkedin.com/company/27175315"],
     url: `${BASE_URL}${lang === "it" ? "/" : "/en"}`, telephone: contact.phoneHref, email: contact.email,
