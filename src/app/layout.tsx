@@ -25,15 +25,19 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const { key, lang } = resolvePath(parts);
   const jsonLd = {
     "@context": "https://schema.org", "@type": "LocalBusiness", "@id": `${BASE_URL}/#business`,
-    name: "ROMA OFFICE SHARING", alternateName: lang === "it" ? "Business Center Roma" : "Rome Business Centre",
+    name: "Roma Office Sharing", alternateName: lang === "it" ? "Business Center Roma" : "Rome Business Centre",
     description: lang === "it" ? "Uffici arredati e servizi di domiciliazione nel centro di Roma." : "Furnished offices and registered office and mailing address services in central Rome.",
-    url: `${BASE_URL}${pathname}`, telephone: contact.phoneHref, email: contact.email,
+    url: `${BASE_URL}${lang === "it" ? "/" : "/en"}`, telephone: contact.phoneHref, email: contact.email,
     image: `${BASE_URL}/images/office-hero-og.jpg`, logo: `${BASE_URL}/LogoFull_trasp.svg`, priceRange: "€€",
     address: { "@type": "PostalAddress", streetAddress: "Via Venti Settembre, 118 int.1", postalCode: "00187", addressLocality: "Roma", addressRegion: "RM", addressCountry: "IT" },
     geo: { "@type": "GeoCoordinates", latitude: 41.9037423, longitude: 12.4934357 },
     parentOrganization: { "@type": "Organization", name: "Cube Engineering s.r.l.", vatID: "IT12870461006", sameAs: ["https://cubeacademy.eu/"] }, areaServed: { "@type": "City", name: "Roma" }, hasMap: `https://www.google.com/maps?q=41.9037423,12.4934357`, foundingDate: "2014",
     openingHoursSpecification: [{ "@type": "OpeningHoursSpecification", dayOfWeek: ["Monday","Tuesday","Wednesday","Thursday","Friday"], opens: "08:30", closes: "19:00" }, { "@type": "OpeningHoursSpecification", dayOfWeek: "Saturday", opens: "08:30", closes: "13:00", description: lang === "it" ? "Su richiesta" : "On request" }],
   };
+  const website = key === "index.html" || key === "en/index.html" ? {
+    "@context": "https://schema.org", "@type": "WebSite", "@id": `${BASE_URL}/#website`, url: `${BASE_URL}${lang === "it" ? "/" : "/en"}`,
+    name: "Roma Office Sharing", inLanguage: lang === "it" ? "it-IT" : "en-GB", publisher: { "@id": `${BASE_URL}/#business` },
+  } : null;
   const pageTitle = pages[key]?.title;
   const crumbs = key === "index.html" || key === "en/index.html" || !pageTitle || key.endsWith("404.html") ? null : {
     "@context": "https://schema.org", "@type": "BreadcrumbList",
@@ -42,5 +46,5 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       { "@type": "ListItem", position: 2, name: pageTitle, item: `${BASE_URL}${hrefFor(key)}` },
     ],
   };
-  return <html lang={lang}><body><Analytics /><Header lang={lang} alternate={alternateFor(key)} />{children}<Footer lang={lang}/><CookieConsent lang={lang}/><WhatsAppButton lang={lang} />{crumbs && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs).replace(/</g, "\\u003c") }} />}<script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(jsonLd).replace(/</g,"\\u003c")}} /></body></html>;
+  return <html lang={lang}><body><Analytics /><Header lang={lang} alternate={alternateFor(key)} />{children}<Footer lang={lang}/><CookieConsent lang={lang}/><WhatsAppButton lang={lang} />{website && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(website).replace(/</g, "\\u003c") }} />}{crumbs &&<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs).replace(/</g, "\\u003c") }} />}<script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(jsonLd).replace(/</g,"\\u003c")}} /></body></html>;
 }
