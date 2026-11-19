@@ -27,6 +27,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     "@context": "https://schema.org", "@type": "LocalBusiness", "@id": `${BASE_URL}/#business`,
     name: "Roma Office Sharing", alternateName: lang === "it" ? "Business Center Roma" : "Rome Business Centre",
     description: lang === "it" ? "Uffici arredati e servizi di domiciliazione nel centro di Roma." : "Furnished offices and registered office and mailing address services in central Rome.",
+    sameAs: ["https://www.facebook.com/romaofficesharing/", "https://www.linkedin.com/company/27175315"],
     url: `${BASE_URL}${lang === "it" ? "/" : "/en"}`, telephone: contact.phoneHref, email: contact.email,
     image: `${BASE_URL}/images/office-hero-og.jpg`, logo: `${BASE_URL}/LogoFull_trasp.svg`, priceRange: "€€",
     address: { "@type": "PostalAddress", streetAddress: "Via Venti Settembre, 118 int.1", postalCode: "00187", addressLocality: "Roma", addressRegion: "RM", addressCountry: "IT" },
