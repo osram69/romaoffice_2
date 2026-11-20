@@ -254,6 +254,10 @@ export const domClients = pgTable("dom_clients", {
   sede: integer("sede").default(1),
   emailPosta: text("email_posta").notNull().default(""),
   emailPec: text("email_pec"),
+  // Invoicing data shown in the scheda (VAT number and SDI recipient code, when known): copied from online orders and
+  // from the contract the customer fills in, editable by staff.
+  partitaIva: text("partita_iva"),
+  codiceSdi: text("codice_sdi"),
   testoScadenza: text("testo_scadenza"),
   testoProforma: text("testo_proforma"),
   testoSospensione: text("testo_sospensione"),

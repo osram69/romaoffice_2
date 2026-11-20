@@ -317,6 +317,8 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds, capofile = []
                       ["Tipologia", TIPOLOGIE[viewing.tipologia]],
                       ["Email", viewing.emailPosta],
                       ["Email PEC", viewing.emailPec],
+                      ["Partita IVA", viewing.partitaIva],
+                      ["Codice SDI", viewing.codiceSdi],
                       ["Amministratore", cleanText(viewing.amministratore)],
                       ["Telefono amministratore", cleanText(viewing.telefonoAmm)],
                       ["Persona di riferimento", cleanText(viewing.personaRif)],
@@ -330,12 +332,6 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds, capofile = []
                       ["Prezzo rinnovo", viewing.prezzoRinnovo !== null ? `${viewing.prezzoRinnovo} €` : null],
                       ["Indirizzo spedizione posta", cleanText(viewing.indSpedPosta)],
                       ["Note", cleanText(viewing.note)],
-                      ["Contratto firmato", viewing.contrFirmato ? "Sì" : "No"],
-                      ["Controfirmato inviato", viewing.controfirmatoInviato ? "Sì" : "No"],
-                      ["Modulo", viewing.moduloCont ? "Sì" : "No"],
-                      ["Doc. amministratore", viewing.docAmmPres ? "Sì" : "No"],
-                      ["Allegato 1", viewing.allegato1Pres ? "Sì" : "No"],
-                      ["Visura", viewing.visuraPres ? "Sì" : "No"],
                     ])}
                     <tr>
                       <th>Allegati PDF</th>

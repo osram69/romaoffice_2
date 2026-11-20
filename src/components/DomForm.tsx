@@ -74,6 +74,10 @@ export function DomForm({ client, action, deleteAction, onClose, capofile = [] }
               field("Email PEC", text("emailPec", client?.emailPec))
             )}
             {row(
+              field("Partita IVA", text("partitaIva", client?.partitaIva)),
+              field("Codice SDI", text("codiceSdi", client?.codiceSdi))
+            )}
+            {row(
               field("Amministratore", text("amministratore", client?.amministratore)),
               field("Telefono amministratore", text("telefonoAmm", client?.telefonoAmm))
             )}
@@ -134,18 +138,6 @@ export function DomForm({ client, action, deleteAction, onClose, capofile = [] }
               field("Email area clienti", <input name="areaClientiEmail" type="email" defaultValue={client?.areaClientiEmail ?? ""} placeholder="email usata dal cliente per accedere" />)
             )}
             {row(field("Note", <textarea name="note" rows={2} defaultValue={cleanText(client?.note)} />))}
-            {row(
-              field("Contratto firmato", <input type="checkbox" name="contrFirmato" defaultChecked={!!client?.contrFirmato} />),
-              field("Controfirmato inviato", <input type="checkbox" name="controfirmatoInviato" defaultChecked={!!client?.controfirmatoInviato} />)
-            )}
-            {row(
-              field("Modulo presente", <input type="checkbox" name="moduloCont" defaultChecked={!!client?.moduloCont} />),
-              field("Doc. amministratore presente", <input type="checkbox" name="docAmmPres" defaultChecked={!!client?.docAmmPres} />)
-            )}
-            {row(
-              field("Allegato 1 presente", <input type="checkbox" name="allegato1Pres" defaultChecked={!!client?.allegato1Pres} />),
-              field("Visura presente", <input type="checkbox" name="visuraPres" defaultChecked={!!client?.visuraPres} />)
-            )}
           </tbody>
         </table>
 

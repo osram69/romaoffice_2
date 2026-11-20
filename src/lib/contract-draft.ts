@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { domClients, domContractDrafts } from "@/db/schema";
 import { decryptBytes, encryptBytes } from "./dom-archive";
-import { contractDataSchema, emptyContract, type ContractData } from "./contract-data";
+import { contractDataSchema, emptyContract, isPartitaIva, type ContractData } from "./contract-data";
 
 type DomClient = typeof domClients.$inferSelect;
 
@@ -64,6 +64,12 @@ export async function saveContractDraft(client: DomClient, input: unknown) {
   // Editing the answers after the PDF was generated invalidates that "completed" mark.
   await db.insert(domContractDrafts).values({ domClientId: client.id, dataEnc, completedAt: null })
     .onConflictDoUpdate({ target: domContractDrafts.domClientId, set: { dataEnc, completedAt: null, updatedAt: new Date() } });
+  // The VAT number and SDI code the customer types in the contract go into the scheda too, where it has none yet
+  // (staff can then copy them into the invoicing program without opening the contract); staff's own values stay.
+  const piva = data.piva.replace(/\s+/g, "");
+  const sdi = data.sdi.replace(/\s+/g, "").toUpperCase();
+  const fill = { ...(!client.partitaIva && isPartitaIva(piva) ? { partitaIva: piva } : {}), ...(!client.codiceSdi && /^[A-Z0-9]{7}$/.test(sdi) ? { codiceSdi: sdi } : {}) };
+  if (Object.keys(fill).length) await db.update(domClients).set(fill).where(eq(domClients.id, client.id));
 }
 
 export async function markContractCompleted(client: DomClient) {

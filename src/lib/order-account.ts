@@ -55,8 +55,16 @@ function parentNote(snapshot: OrderSnapshot): string {
 export async function provisionCustomerAccount(order: OrderRow, data: RequestData, snapshot: OrderSnapshot): Promise<CustomerAccount | null> {
   if (snapshot.product.code !== "legal_unit") return null;
   const email = data.email.trim().toLowerCase();
+  const digits = (v: string) => v.replace(/\D/g, "");
   const [existing] = await db.select().from(domClients).where(eq(domClients.areaClientiEmail, email)).limit(1);
-  const mine = existing && existing.ragioneSociale === data.companyName.trim() && existing.mustChangePassword;
+  const sameCompany = existing !== undefined && existing.ragioneSociale === data.companyName.trim();
+  const mine = sameCompany && existing.mustChangePassword;
+  // The company is already in the list (entered by reception before the order): the VAT number and SDI code typed in
+  // the order are copied into its scheda, but only where the scheda has none, so nothing staff entered is overwritten.
+  if (sameCompany) {
+    const fill = { ...(!existing.partitaIva && digits(data.companyVat) ? { partitaIva: digits(data.companyVat) } : {}), ...(!existing.codiceSdi && data.companySdi ? { codiceSdi: data.companySdi.toUpperCase() } : {}) };
+    if (Object.keys(fill).length) await db.update(domClients).set(fill).where(eq(domClients.id, existing.id));
+  }
   if (existing && !mine) return { email, password: null, phone: data.phone, alreadyHadAccess: true };
 
   const password = generatePassword();
@@ -76,13 +84,13 @@ export async function provisionCustomerAccount(order: OrderRow, data: RequestDat
   const prezzoPrimoPeriodoCents = !parent.aggiuntiva && quote.offerApplied && [6, 12].includes(quote.months) && quote.serviceNetCents < quote.renewalBaseCents ? quote.serviceNetCents : null;
   const [client] = await db.insert(domClients).values({
     ragioneSociale: data.companyName.trim(), emailPosta: email, amministratore: data.representativeName, personaRif: data.representativeName,
-    telefono: data.phone, emailPec: data.companyPec || null, inizioDom: inizio, scadenzaDom: addMonths(inizio, data.months), prezzoRinnovo: Math.round(snapshot.quote.renewalBaseCents / 100),
+    telefono: data.phone, emailPec: data.companyPec || null,
+    partitaIva: digits(data.companyVat) || null, codiceSdi: (data.companySdi || "").toUpperCase() || null, inizioDom: inizio, scadenzaDom: addMonths(inizio, data.months), prezzoRinnovo: Math.round(snapshot.quote.renewalBaseCents / 100),
     prezzoPrimoPeriodoCents, ...parent,
     stato: 0, tipologia: 0, areaClientiEmail: email, areaClientiPasswordHash: passwordHash, mustChangePassword: true,
     note: `Creata automaticamente dall'ordine online ${order.publicId}${parentNote(snapshot)}`,
   }).returning();
 
-  const digits = (v: string) => v.replace(/\D/g, "");
   await saveContractDraft(client, {
     ...emptyContract(),
     societa: client.ragioneSociale, denominazioneForma: client.ragioneSociale, sedeVia: data.companyAddress, sedeCap: (data.companyCap || "").trim(), sedeCitta: (data.companyCity || "").trim(), cfRegImp: (data.companyTaxCode || "").toUpperCase(),
