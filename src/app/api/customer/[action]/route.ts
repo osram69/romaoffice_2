@@ -32,7 +32,7 @@ export async function GET(req: NextRequest, { params }: Props) {
       await limit(`download:${client.id}`, 40, 300);
       // Only these four documents are ever offered to the customer (not the adeguata verifica, revocation, etc.).
       const type = req.nextUrl.searchParams.get("type") || "con";
-      const names = { con: "contratto-domiciliazione", all: "allegato-1", mod: "modulo-tenuta-libri-contabili", doc: "documento-amministratore" } as const;
+      const names = { con: "contratto-domiciliazione-firmato", all: "allegato-1", mod: "modulo-tenuta-libri-contabili", doc: "documento-amministratore" } as const;
       if (!(type in names)) throw new CustomerError("notFound", 404);
       const kind = type as keyof typeof names;
       const fileId = client.legacyId ?? client.id;

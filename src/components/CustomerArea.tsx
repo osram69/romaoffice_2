@@ -101,7 +101,7 @@ export function CustomerArea({ lang }: { lang: Lang }) {
       if (r.status === 401) { setProfile(null); setView("login"); throw new Error("session"); }
       if (!r.ok) throw new Error("notFound");
       const blob = await r.blob(); const url = URL.createObjectURL(blob); const a = document.createElement("a");
-      const names: Record<DocKey, string> = { con: "contratto-domiciliazione", all: "allegato-1", mod: "modulo-tenuta-libri-contabili", doc: "documento-amministratore" };
+      const names: Record<DocKey, string> = { con: "contratto-domiciliazione-firmato", all: "allegato-1", mod: "modulo-tenuta-libri-contabili", doc: "documento-amministratore" };
       a.href = url; a.download = `${names[type]}.pdf`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
       setNotice(it ? "Download avviato." : "Your download has started.");
     } catch (e) { setError(textError(e instanceof Error ? e.message : "unavailable")); } finally { setDownloading(null); }
