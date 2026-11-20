@@ -197,7 +197,7 @@ export async function buildRequestPdf(opts: { data: RequestData; lang: Lang; sho
   for (const line of priced.addonLines) writer.text(`${it ? line.titleIt : line.titleEn} x ${line.quantity}: ${formatEur(line.monthlyCents, lang)}/${it ? "mese" : "month"}${line.annualCents ? ` + ${formatEur(line.annualCents, lang)}/${it ? "anno numero VoIP" : "year VoIP number"}` : ""}. ${it ? "Totale periodo" : "Period total"}: ${formatEur(line.totalCents, lang)} ${it ? "+ IVA" : "+ VAT"}.`);
   if (postal) writer.text(it ? "I costi a consumo, postali e di spedizione sono esclusi dal totale iniziale e si applicano solo ai servizi richiesti." : "Usage, postage and shipping charges are excluded from the initial total and apply only to requested services.");
   writer.section(it ? `Condizioni dell’offerta di ${shortServiceLabel(product.code, lang).toLowerCase()} accettate` : `Accepted ${shortServiceLabel(product.code, lang).toLowerCase()} offer terms`);
-  writer.text(`${it ? "Versione" : "Version"}: ${product.termsRevision} / ${product.version.slice(0, 16)}`, {size: 8});
+  writer.text(`${it ? "Versione" : "Version"}: ${product.termsRevision} / ${product.version.slice(0, 16)}`, { size: 8, gap: 10 });
   for (const paragraph of termsText(product, lang).split("\n")) writer.text(paragraph, { size: 9, gap: 4 });
   // Footer on every page
   const pages = pdf.getPages();
