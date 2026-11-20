@@ -87,6 +87,8 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
   const [processing, setProcessing] = useState(false);
   const [status, setStatus] = useState<{ text: string; color: string } | null>(null);
   const [firmaDataUrl, setFirmaDataUrl] = useState<string | null>(null);
+  // Height / width of the signature image: the box on the page always keeps it, so a resized signature is never squashed or stretched.
+  const [firmaAspect, setFirmaAspect] = useState(158 / 524);
   const [placementPageId, setPlacementPageId] = useState<string | null>(null);
   const [signature, setSignature] = useState<SignaturePlacement | null>(null);
   const [quality, setQuality] = useState(DEFAULT_QUALITY);
@@ -106,6 +108,12 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
   useEffect(() => {
     getFirmaDomiciliatarioAction().then(r => setFirmaDataUrl(r.success ? r.dataUrl ?? null : null));
   }, []);
+  useEffect(() => {
+    if (!firmaDataUrl) return;
+    const img = new Image();
+    img.onload = () => { if (img.naturalWidth > 0 && img.naturalHeight > 0) setFirmaAspect(img.naturalHeight / img.naturalWidth); };
+    img.src = firmaDataUrl;
+  }, [firmaDataUrl]);
 
   // Rasterizes every page of a PDF (pdf.js) into canvases + JPEG thumbnails, numbering them after the pages
   // already loaded. Used for the uploaded contract and for any PDF the operator appends afterwards.
@@ -248,7 +256,7 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
     if (!signature || signature.pageId !== pageId) {
       // Sensible starting box: centered horizontally, a bit above vertical middle, sized to a
       // plausible signature-line width — the operator drags/resizes it onto the real line anyway.
-      setSignature({ pageId, xFrac: 0.25, yFrac: 0.45, wFrac: 0.35, hFrac: 0.35 * (158 / 524) });
+      setSignature({ pageId, xFrac: 0.25, yFrac: 0.45, wFrac: 0.35, hFrac: 0.35 * (595 / 842) * firmaAspect }); // A4 page; corrected to the real page once shown (fitSignatureHeight)
     }
   }
 
@@ -278,19 +286,33 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
     const container = previewRef.current;
     if (!container || !signature) return;
     const rect = container.getBoundingClientRect();
-    const startX = e.clientX, startY = e.clientY;
-    const startW = signature.wFrac, startH = signature.hFrac;
+    const startX = e.clientX;
+    const startW = signature.wFrac;
+    // Width/height of the box in page fractions are tied by the signature's own proportions and the page's shape.
+    const hPerW = (rect.width / rect.height) * firmaAspect;
     function onMove(ev: MouseEvent) {
       setSignature(s => {
         if (!s) return s;
-        const wFrac = clamp(startW + (ev.clientX - startX) / rect.width, 0.05, 1 - s.xFrac);
-        const hFrac = clamp(startH + (ev.clientY - startY) / rect.height, 0.02, 1 - s.yFrac);
-        return { ...s, wFrac, hFrac };
+        const maxW = Math.min(1 - s.xFrac, (1 - s.yFrac) / hPerW);
+        const wFrac = clamp(startW + (ev.clientX - startX) / rect.width, Math.min(0.05, maxW), maxW);
+        return { ...s, wFrac, hFrac: wFrac * hPerW };
       });
     }
     function onUp() { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); }
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
+  }
+
+  // Makes the box height match the signature's proportions on the page as actually shown (the start value assumes A4).
+  function fitSignatureHeight() {
+    const rect = previewRef.current?.getBoundingClientRect();
+    if (!rect || rect.width < 50 || rect.height < 50) return;
+    const hPerW = (rect.width / rect.height) * firmaAspect;
+    setSignature(s => {
+      if (!s) return s;
+      const wFrac = Math.min(s.wFrac, (1 - s.yFrac) / hPerW, 1 - s.xFrac);
+      return Math.abs(s.hFrac - wFrac * hPerW) < 1e-4 && wFrac === s.wFrac ? s : { ...s, wFrac, hFrac: wFrac * hPerW };
+    });
   }
 
   // Fine positioning of the signature with the arrow keys (1 px per press, 10 px with Shift), in addition to
@@ -317,6 +339,12 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [signatureOpen]);
+  useEffect(() => {
+    if (!signatureOpen) return;
+    const frame = requestAnimationFrame(fitSignatureHeight);
+    return () => cancelAnimationFrame(frame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the preview opens or the signature image proportions become known
+  }, [signatureOpen, firmaAspect, placementPageId]);
 
   function requestClose() {
     const hasWork = ZONES.some(z => lanes[z.key].length > 0);
@@ -351,7 +379,7 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
           const { width, height } = page.getSize();
           const image = await outDoc.embedPng(firmaBytes);
           const w = signature.wFrac * width;
-          const h = signature.hFrac * height;
+          const h = w * image.height / image.width; // always the signature's own proportions
           const x = signature.xFrac * width;
           const y = height - signature.yFrac * height - h;
           page.drawImage(image, { x, y, width: w, height: h });
@@ -469,13 +497,13 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
               {placement && (
                 <div className="contract-proc-placement">
                   <div className="contract-proc-lane-title">
-                    Posiziona la firma — trascina per spostarla (oppure usa le frecce ↑ ↓ ← →, con Maiusc a passi più grandi), usa la maniglia in basso a destra per ridimensionarla
+                    Posiziona la firma — trascina per spostarla (oppure usa le frecce ↑ ↓ ← →, con Maiusc a passi più grandi), usa la maniglia in basso a destra per ridimensionarla (le proporzioni della firma restano sempre quelle originali)
                     <button type="button" className="gestione-btn gestione-btn-outline" style={{ marginLeft: 10, fontSize: 11, padding: "2px 8px" }} onClick={() => { setSignature(null); setPlacementPageId(null); }}>Rimuovi firma da questa pagina</button>
                     <button type="button" className="gestione-btn gestione-btn-outline" style={{ marginLeft: 6, fontSize: 11, padding: "2px 8px" }} onClick={() => setPlacementPageId(null)}>Chiudi anteprima</button>
                   </div>
                   <div ref={previewRef} className="contract-proc-preview">
                     {/* eslint-disable-next-line @next/next/no-img-element -- transient canvas-rendered data URL */}
-                    <img src={placement.page.thumbnailUrl} alt="Pagina selezionata" className="contract-proc-preview-page" draggable={false} />
+                    <img src={placement.page.thumbnailUrl} alt="Pagina selezionata" className="contract-proc-preview-page" draggable={false} onLoad={fitSignatureHeight} />
                     {signature && signature.pageId === placementPageId && firmaDataUrl && (
                       <div
                         className="contract-proc-sig-box"
