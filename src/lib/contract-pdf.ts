@@ -73,6 +73,25 @@ class Pen {
     });
   }
 
+  /** A justified paragraph of the original Times 10 pt body text (last line left-aligned), wrapped greedily. Returns the line count. */
+  paragraph(text: string, x0: number, x1: number, firstBaseline: number, leading: number, times: PDFFont, size = 9.957): number {
+    const words = this.cleanWith(times, text.trim()).split(" ");
+    const space = times.widthOfTextAtSize(" ", size);
+    const lines: string[][] = [[]];
+    let used = 0;
+    for (const word of words) {
+      const w = times.widthOfTextAtSize(word, size);
+      const current = lines[lines.length - 1];
+      if (current.length && used + space + w > x1 - x0) { lines.push([word]); used = w; } else { current.push(word); used += (current.length > 1 ? space : 0) + w; }
+    }
+    lines.forEach((line, i) => {
+      const baseline = firstBaseline + i * leading;
+      if (i === lines.length - 1) this.page.drawText(line.join(" "), { x: x0, y: PAGE_H - baseline, size, font: times, color: rgb(0, 0, 0) });
+      else this.justified(line.join(" "), x0, x1, baseline, times, size);
+    });
+    return lines.length;
+  }
+
   private cleanWith(font: PDFFont, text: string) {
     const set = new Set(font.getCharacterSet());
     return Array.from(text).map(ch => (set.has(ch.codePointAt(0)!) ? ch : "?")).join("");
@@ -169,9 +188,16 @@ export async function buildContractPdf(template: ArrayBuffer | Uint8Array, d: Co
 
   // Page 4 — canone, durata e decorrenza (printed values replaced, same Times 10 pt look)
   p = pen(byIndex[3]);
-  p.whiteout(42, 285.6, 567, 296.7);
-  // The "aggiuntiva" contract continues the same sentence on the next line ("… sconto 10% su domiciliazione aggiuntiva¹ …").
-  p.justified(`Il canone del servizio di domiciliazione con durata di ${d.durataMesi} mesi è fissato complessivamente in € ${eur(d.canoneEuro)} + IVA ${d.aggiuntiva ? "(attuale promozione +" : "(attuale"}`, 42.6, 558.5, 294.2, times);
+  if (!d.aggiuntiva && d.canonePrimoEuro > 0 && d.canonePrimoEuro < d.canoneEuro) {
+    // Standard contract on an active 6/12-month offer: the whole clause 9 paragraph (4 lines) is rewritten with the
+    // first-period fee and the renewal fee; the unchanged tail of the sentence is kept verbatim.
+    p.whiteout(42, 285.6, 567, 331.5);
+    p.paragraph(`Il canone del servizio di domiciliazione per il primo periodo di ${d.durataMesi} mesi è fissato complessivamente in € ${eur(d.canonePrimoEuro)} + IVA. Al successivo rinnovo il canone per ${d.durataMesi} mesi è di € ${eur(d.canoneEuro)} + IVA, più eventuali costi associati ai servizi accessori richiesti (vedi Allegato 1). I pagamenti andranno effettuati secondo quanto indicato al punto 16. I servizi “accessori a consuntivo” verranno calcolati a consuntivo su base mensile e fatturati con cadenza mensile.`, 42.6, 558.5, 294.2, 11.5, times);
+  } else {
+    p.whiteout(42, 285.6, 567, 296.7);
+    // The "aggiuntiva" contract continues the same sentence on the next line ("… sconto 10% su domiciliazione aggiuntiva¹ …").
+    p.justified(`Il canone del servizio di domiciliazione con durata di ${d.durataMesi} mesi è fissato complessivamente in € ${eur(d.canoneEuro)} + IVA ${d.aggiuntiva ? "(attuale promozione +" : "(attuale"}`, 42.6, 558.5, 294.2, times);
+  }
   p.whiteout(42, 363.3, 557, 374.3);
   p.justified(`Il servizio di domiciliazione avrà durata di ${d.durataMesi} mesi a partire dalla data del ${dmy(d.dataInizio)}. Il servizio si intenderà tacitamente`, 42.6, 548.3, 372.0, times);
 

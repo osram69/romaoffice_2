@@ -381,7 +381,7 @@ export function ContractWizard({ onSessionExpired: onExpired }: { onSessionExpir
         </ol>
         <div className="cw-summary">
           <h4>Condizioni del servizio (fissate dalla reception)</h4>
-          <dl><div><dt>Durata</dt><dd>{data.durataMesi} mesi</dd></div><div><dt>Decorrenza</dt><dd>{dmy(data.dataInizio)}</dd></div><div><dt>Canone al prossimo rinnovo</dt><dd>€ {fmtEur(data.canoneEuro)} + IVA</dd></div></dl>
+          <dl><div><dt>Durata</dt><dd>{data.durataMesi} mesi</dd></div><div><dt>Decorrenza</dt><dd>{dmy(data.dataInizio)}</dd></div>{data.canonePrimoEuro > 0 && !data.aggiuntiva && data.canonePrimoEuro < data.canoneEuro && <div><dt>Canone primo periodo</dt><dd>€ {fmtEur(data.canonePrimoEuro)} + IVA</dd></div>}<div><dt>Canone al prossimo rinnovo</dt><dd>€ {fmtEur(data.canoneEuro)} + IVA</dd></div></dl>
         </div>
         <Banner>In ogni campo trovi il simbolo <b>?</b> in un cerchio: cliccalo per leggere spiegazioni ed esempi. Per le sezioni sull’antiriciclaggio ci sono anche le istruzioni complete.</Banner>
         {draft.saved && <Banner tone="ok">Hai già una bozza salvata: riprendi da dove avevi lasciato.</Banner>}

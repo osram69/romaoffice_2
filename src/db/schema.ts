@@ -290,6 +290,9 @@ export const domClients = pgTable("dom_clients", {
   tipologia: integer("tipologia").notNull().default(0),
   raccoglitore: integer("raccoglitore").notNull().default(0),
   prezzoRinnovo: integer("prezzo_rinnovo"),
+  // Online orders on a 6/12-month term with the offer active: what the customer paid for the first period (ex VAT, in
+  // cents, after the one-off discounts). The contract prints it next to the renewal fee; null = single fee wording.
+  prezzoPrimoPeriodoCents: integer("prezzo_primo_periodo_cents"),
   scadenzaInviata: boolean("scadenza_inviata"),
   // Whether the one-time "sconto attivazioni" still needs to be disclaimed away in the next
   // scadenza email. Defaults true for every client (a fresh activation is always due its first

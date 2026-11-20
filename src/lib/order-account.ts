@@ -69,10 +69,15 @@ export async function provisionCustomerAccount(order: OrderRow, data: RequestDat
   const inizio = data.startDate;
   // prezzoRinnovo is what the customer will pay at expiry: the offer price of the chosen term ("Rinnovi successivi"
   // on the quote), without the one-off new-activation and online discounts — not the discounted amount paid today.
+  // The contract states the first-period fee next to the renewal fee only when the 6/12-month offer is active, the
+  // one-off discounts really lowered the first period, and it is not an "aggiuntiva" order (its own contract wording).
+  const parent = parentFields(snapshot);
+  const { quote } = snapshot;
+  const prezzoPrimoPeriodoCents = !parent.aggiuntiva && quote.offerApplied && [6, 12].includes(quote.months) && quote.serviceNetCents < quote.renewalBaseCents ? quote.serviceNetCents : null;
   const [client] = await db.insert(domClients).values({
     ragioneSociale: data.companyName.trim(), emailPosta: email, amministratore: data.representativeName, personaRif: data.representativeName,
     telefono: data.phone, emailPec: data.companyPec || null, inizioDom: inizio, scadenzaDom: addMonths(inizio, data.months), prezzoRinnovo: Math.round(snapshot.quote.renewalBaseCents / 100),
-    ...parentFields(snapshot),
+    prezzoPrimoPeriodoCents, ...parent,
     stato: 0, tipologia: 0, areaClientiEmail: email, areaClientiPasswordHash: passwordHash, mustChangePassword: true,
     note: `Creata automaticamente dall'ordine online ${order.publicId}${parentNote(snapshot)}`,
   }).returning();

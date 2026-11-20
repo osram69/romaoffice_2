@@ -11,7 +11,7 @@ type DomClient = typeof domClients.$inferSelect;
  * (start/end dates and the "prezzo rinnovo" used as the yearly fee) — the customer cannot edit them,
  * and a missing value blocks the online contract until reception fills it in.
  */
-export function conditionsFrom(client: DomClient): { ready: boolean; durataMesi: number; canoneEuro: number; dataInizio: string } {
+export function conditionsFrom(client: DomClient): { ready: boolean; durataMesi: number; canoneEuro: number; canonePrimoEuro: number; dataInizio: string } {
   const inizio = client.inizioDom || "";
   const fine = client.scadenzaDom || "";
   let mesi = 0;
@@ -21,7 +21,8 @@ export function conditionsFrom(client: DomClient): { ready: boolean; durataMesi:
     if (b.getUTCDate() - a.getUTCDate() > 15) mesi += 1;
   }
   const canoneEuro = client.prezzoRinnovo ?? 0;
-  return { ready: Boolean(inizio && mesi >= 1 && mesi <= 120 && canoneEuro > 0), durataMesi: mesi, canoneEuro, dataInizio: inizio };
+  const canonePrimoEuro = (client.prezzoPrimoPeriodoCents ?? 0) / 100;
+  return { ready: Boolean(inizio && mesi >= 1 && mesi <= 120 && canoneEuro > 0), durataMesi: mesi, canoneEuro, canonePrimoEuro, dataInizio: inizio };
 }
 
 /** Starting values taken from what reception (or the online order) already knows about the company. */
@@ -36,7 +37,7 @@ function prefillFrom(client: DomClient): Partial<ContractData> {
 
 function applyConditions(data: ContractData, client: DomClient): ContractData {
   const c = conditionsFrom(client);
-  return { ...data, durataMesi: c.durataMesi || data.durataMesi, canoneEuro: c.canoneEuro, dataInizio: c.dataInizio, aggiuntiva: Boolean(client.aggiuntiva) };
+  return { ...data, durataMesi: c.durataMesi || data.durataMesi, canoneEuro: c.canoneEuro, canonePrimoEuro: c.canonePrimoEuro, dataInizio: c.dataInizio, aggiuntiva: Boolean(client.aggiuntiva) };
 }
 
 export async function loadContractDraft(client: DomClient) {
