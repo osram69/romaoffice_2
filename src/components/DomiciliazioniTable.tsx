@@ -3,7 +3,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { Check, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import type { InferSelectModel } from "drizzle-orm";
 import type { domClients } from "@/db/schema";
-import { cleanText, docStatus, DOC_LABELS, PRESENZA_FILE_BITS, scadenzaRowClass } from "@/lib/dom-status";
+import { cleanText, docStatus, DOC_LABELS, isPostale, PRESENZA_FILE_BITS, scadenzaRowClass } from "@/lib/dom-status";
 import type { DocType } from "@/lib/dom-archive";
 import { DomForm, type CapofilaOption } from "./DomForm";
 import { DeleteIconButton } from "./DeleteIconButton";
@@ -233,7 +233,7 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds, capofile = []
                   ) : (
                     <tr className={index % 2 === 0 ? "row-even" : "row-odd"}>
                       <td style={{ color: "#999" }}>{index + 1}</td>
-                      <td><span className={`gestione-doc-dot ${docStatus(row)}`} title="Stato documenti" /></td>
+                      <td>{!isPostale(row) && <span className={`gestione-doc-dot ${docStatus(row)}`} title="Stato documenti" />}</td>
                       <td>{row.raccoglitore}</td>
                       <td style={{ maxWidth: 220 }}>
                         <button type="button" className={`gestione-ragione-link gestione-ragione-name${(row.presenzaFile & PRESENZA_FILE_BITS.rev) === PRESENZA_FILE_BITS.rev ? " revoca" : ""}${isOrfana(row) ? " orfana" : ""}`} title={isOrfana(row) ? `${nameTitle(row)} — da sistemare: evidenziata in giallo` : nameTitle(row)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit", textAlign: "left" }} onClick={() => openScheda(row)}>

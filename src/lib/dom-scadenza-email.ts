@@ -1,6 +1,7 @@
 import type { InferSelectModel } from "drizzle-orm";
 import type { domClients, domRinnovoPrezzi } from "@/db/schema";
 import { titleFor } from "./italian-title";
+import { isPostale } from "./dom-status";
 
 type DomClient = InferSelectModel<typeof domClients>;
 type RinnovoPrezzo = InferSelectModel<typeof domRinnovoPrezzi>;
@@ -68,7 +69,8 @@ export function contractMonths(client: Pick<DomClient, "inizioDom" | "scadenzaDo
  * (24/36/48-month contracts never had it); this is the automatic default for the checkbox staff
  * can still override per send, per the user's explicit correction to the earlier primoRinnovo
  * flag — a contract's own duration is more reliable than a hand-tracked "first renewal" flag. */
-export function defaultScontoApplicabile(client: Pick<DomClient, "inizioDom" | "scadenzaDom">): boolean {
+export function defaultScontoApplicabile(client: Pick<DomClient, "inizioDom" | "scadenzaDom"> & { tipologia?: number | null }): boolean {
+  if (isPostale(client)) return false; // the one-off activation discount never existed for the postal service
   const months = contractMonths(client);
   return months !== null && months >= 6 && months <= 12;
 }
@@ -85,15 +87,18 @@ function scontoClause(client: Pick<DomClient, "inizioDom">, includeSconto: boole
 
 /** Renewal durations that actually have a usable price on file, in order — used both to render the
  * offer rows and to let staff know, via checkboxes, which durations exist to toggle. */
-export function scadenzaOfferMonths(prezzi: RinnovoPrezzo[]): number[] {
-  return prezzi.filter(p => p.prezzoPieno !== null && p.prezzoOfferta !== null).map(p => p.mesi).sort((a, b) => a - b);
+/** The postal service is only sold for 6 and 12 months: its reminder never offers the longer legal-address terms. */
+export const POSTALE_OFFER_MONTHS = [6, 12];
+export function scadenzaOfferMonths(prezzi: RinnovoPrezzo[], postale = false): number[] {
+  return prezzi.filter(p => p.prezzoPieno !== null && p.prezzoOfferta !== null && (!postale || POSTALE_OFFER_MONTHS.includes(p.mesi))).map(p => p.mesi).sort((a, b) => a - b);
 }
 
 /** Which of those durations are on by default: only renewals *longer* than the client's current
  * contract (mirrors the legacy behavior — offering the same or a shorter term as an "upsell" makes
  * no sense) — staff can still override per-send via the checkboxes in the panel. */
-export function scadenzaDefaultMonths(prezzi: RinnovoPrezzo[], currentMonths: number | null): number[] {
-  return scadenzaOfferMonths(prezzi).filter(m => currentMonths === null || m > currentMonths);
+export function scadenzaDefaultMonths(prezzi: RinnovoPrezzo[], currentMonths: number | null, postale = false): number[] {
+  if (postale) return []; // postal: the offers are listed only when staff tick them
+  return scadenzaOfferMonths(prezzi, postale).filter(m => currentMonths === null || m > currentMonths);
 }
 
 function offerteRows(prezzi: RinnovoPrezzo[], includeMonths: number[]): string {
@@ -108,8 +113,8 @@ function offerteRows(prezzi: RinnovoPrezzo[], includeMonths: number[]): string {
   }).join("\n");
 }
 
-export function scadenzaEmailSubject(client: Pick<DomClient, "ragioneSociale">): string {
-  return `Scadenza contratto domiciliazione sede legale ${client.ragioneSociale} - Roma Office Sharing`;
+export function scadenzaEmailSubject(client: Pick<DomClient, "ragioneSociale"> & { tipologia?: number | null }): string {
+  return `Scadenza contratto domiciliazione ${isPostale(client) ? "postale" : "sede legale"} ${client.ragioneSociale} - Roma Office Sharing`;
 }
 
 /** Builds the draft scadenza reminder email exactly in the shape of the legacy templateScadenza,
@@ -120,12 +125,14 @@ export function buildScadenzaEmailHtml(client: DomClient, prezzi: RinnovoPrezzo[
   const months = contractMonths(client);
   const fee = renewalFeeFor(client.prezzoRinnovo, additionalDiscountBps);
   const prezzoRinnovo = fee !== null ? String(fee) : "[PREZZO]";
-  const offerMonths = includeMonths ?? scadenzaDefaultMonths(prezzi, months);
+  const postale = isPostale(client);
+  // Whatever the caller asks for, a postal reminder only ever lists the postal terms.
+  const offerMonths = (includeMonths ?? scadenzaDefaultMonths(prezzi, months, postale)).filter(m => !postale || POSTALE_OFFER_MONTHS.includes(m));
   // No offer row selected -> no "Abbiamo altresì attive le seguenti offerte:" intro either.
   const offerte = offerteRows(prezzi, offerMonths);
 
   return `<p>Buongiorno ${titleFor(personaDi(client))} ${cognomeDi(client)},</p>
-<p>con la presente volevamo informarLa che in data <strong>${fmtDateIT(client.scadenzaDom)}</strong>, scadrà il contratto di domiciliazione legale della società <strong>${client.ragioneSociale}</strong></p>
+<p>con la presente volevamo informarLa che in data <strong>${fmtDateIT(client.scadenzaDom)}</strong>, scadrà il contratto di domiciliazione ${postale ? "postale" : "legale"} della società <strong>${client.ragioneSociale}</strong></p>
 <p>Qualora desideri interrompere la domiciliazione, La preghiamo di inviarci richiesta scritta (raccomandata o PEC al nostro indirizzo <a href="mailto:cubeng@pec.it">cubeng@pec.it</a>) oppure di comunicarci l'intento al rinnovo rispondendo a questa email.</p>
 <p>Per il rinnovo possiamo mantenere le stesse condizioni precedenti con canone pari a <span data-prezzo="1">${prezzoRinnovo}</span>&nbsp;€ + IVA${additionalDiscountNote(additionalDiscountBps)}${scontoClause(client, includeSconto)}</p>
 <p><u>Nel caso di pagamento tardivo, non sarà possibile rinnovare alle stesse condizioni.</u></p>

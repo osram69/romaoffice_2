@@ -12,6 +12,11 @@ export function cleanText(value: string | null | undefined): string {
   return /^null$/i.test(value.trim()) ? "" : value;
 }
 
+/** Tipologia "Postale" (value 1 of the Tipologia field): a mailing address only, so none of the contract paperwork
+ * (and none of the legal-address wording and renewal terms) applies to it. */
+export const TIPOLOGIA_POSTALE = 1;
+export const isPostale = (client: { tipologia?: number | null }) => client.tipologia === TIPOLOGIA_POSTALE;
+
 // Bit order confirmed from the legacy ajax_upload_enc.php: ['con','mod','all','doc','avc','rev'].
 export const PRESENZA_FILE_BITS = { con: 1, mod: 2, all: 4, doc: 8, avc: 16, rev: 32 } as const;
 const COMPLETE_MASK = PRESENZA_FILE_BITS.con | PRESENZA_FILE_BITS.mod | PRESENZA_FILE_BITS.all | PRESENZA_FILE_BITS.doc | PRESENZA_FILE_BITS.avc; // 31 — everything but the revoca

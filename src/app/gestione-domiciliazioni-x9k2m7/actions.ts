@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { domClients, domCustomerChallenges, domCustomerSessions, domMailScans, domRinnovoPrezzi, serviceCatalog, siteConfig } from "@/db/schema";
 import { requireOperational } from "@/lib/staff-guards";
 import { decryptBytes, readMailScanDecrypted, removeEncrypted, removeMailScanEncrypted, saveEncrypted, type DocType, DOC_TYPES } from "@/lib/dom-archive";
-import { PRESENZA_FILE_BITS, cleanText } from "@/lib/dom-status";
+import { PRESENZA_FILE_BITS, cleanText, isPostale } from "@/lib/dom-status";
 import { buildScadenzaEmailHtml, contractMonths, defaultScontoApplicabile, scadenzaDefaultMonths, scadenzaEmailSubject, scadenzaOfferMonths } from "@/lib/dom-scadenza-email";
 import { buildRitiroEmailHtml, ritiroEmailSubject } from "@/lib/dom-ritiro-email";
 import { sendDomMail, type DomMailAccount } from "@/lib/mailer";
@@ -358,7 +358,8 @@ export async function getScadenzaDraftAction(id: number, regenerate = false, inc
   const prezzi = await db.select().from(domRinnovoPrezzi);
   const { bps: additionalDiscountBps, reason: discountReason } = await additionalRenewalDiscount(client);
   const scontoDefault = defaultScontoApplicabile(client);
-  const defaultMonths = scadenzaDefaultMonths(prezzi, contractMonths(client));
+  const postale = isPostale(client);
+  const defaultMonths = scadenzaDefaultMonths(prezzi, contractMonths(client), postale);
   const stored = !regenerate ? client.testoScadenza?.trim() : "";
   return {
     success: true,
@@ -370,7 +371,7 @@ export async function getScadenzaDraftAction(id: number, regenerate = false, inc
     // a saved draft written before the discount existed still quotes the full fee: staff must regenerate it
     staleDraft: Boolean(stored) && additionalDiscountBps > 0 && !(stored ?? "").includes("per domiciliazione aggiuntiva"),
     scontoDefault,
-    availableMonths: scadenzaOfferMonths(prezzi),
+    availableMonths: scadenzaOfferMonths(prezzi, postale),
     defaultMonths,
   };
 }
