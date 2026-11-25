@@ -85,6 +85,14 @@ function scontoClause(client: Pick<DomClient, "inizioDom">, includeSconto: boole
   return ` (lo sconto una-tantum attivazioni${year ? ` ${year}` : ""} non è più applicabile)`;
 }
 
+/** The postal reminder takes its offers from the postal service's own price table (Tariffe e Offerte > Domiciliazione Postale),
+ * not from the legal-address renewal prices: list price and offer price of each active tier, in euros, shaped like the
+ * renewal table so the same rows are rendered. Tiers without an offer, or all of them once the offer has expired, are left out. */
+export function postalRenewalPrices(tiers: { months: number; listCents: number; offerCents: number | null }[], offerActive: boolean): RinnovoPrezzo[] {
+  if (!offerActive) return [];
+  return tiers.filter(t => t.offerCents !== null).map(t => ({ mesi: t.months, prezzoPieno: t.listCents / 100, prezzoOfferta: (t.offerCents as number) / 100, notaMensile: null, updatedAt: new Date(0) }));
+}
+
 /** Renewal durations that actually have a usable price on file, in order — used both to render the
  * offer rows and to let staff know, via checkboxes, which durations exist to toggle. */
 /** The postal service is only sold for 6 and 12 months: its reminder never offers the longer legal-address terms. */

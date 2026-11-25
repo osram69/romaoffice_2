@@ -2,11 +2,11 @@
 import { revalidatePath } from "next/cache";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { domClients, domCustomerChallenges, domCustomerSessions, domMailScans, domRinnovoPrezzi, serviceCatalog, siteConfig } from "@/db/schema";
+import { domClients, domCustomerChallenges, domCustomerSessions, domMailScans, domRinnovoPrezzi, serviceCatalog, siteConfig, servicePrices } from "@/db/schema";
 import { requireOperational } from "@/lib/staff-guards";
 import { decryptBytes, readMailScanDecrypted, removeEncrypted, removeMailScanEncrypted, saveEncrypted, type DocType, DOC_TYPES } from "@/lib/dom-archive";
 import { PRESENZA_FILE_BITS, cleanText, isPostale } from "@/lib/dom-status";
-import { buildScadenzaEmailHtml, contractMonths, defaultScontoApplicabile, scadenzaDefaultMonths, scadenzaEmailSubject, scadenzaOfferMonths } from "@/lib/dom-scadenza-email";
+import { buildScadenzaEmailHtml, contractMonths, defaultScontoApplicabile, postalRenewalPrices, scadenzaDefaultMonths, scadenzaEmailSubject, scadenzaOfferMonths } from "@/lib/dom-scadenza-email";
 import { buildRitiroEmailHtml, ritiroEmailSubject } from "@/lib/dom-ritiro-email";
 import { sendDomMail, type DomMailAccount } from "@/lib/mailer";
 import { hashPassword } from "@/lib/customer-auth";
@@ -345,6 +345,14 @@ async function additionalRenewalDiscount(client: { aggiuntiva: boolean; capofila
   return { bps: catalog.bps, reason: `Aggiuntiva con capofila «${capofila.name}» attiva: sconto del ${catalog.bps / 100}% applicato al canone.` };
 }
 
+async function postalPrices() {
+  const [tiers, [catalog]] = await Promise.all([
+    db.select({ months: servicePrices.months, listCents: servicePrices.listCents, offerCents: servicePrices.offerCents }).from(servicePrices).where(and(eq(servicePrices.service, "postal"), eq(servicePrices.active, true))),
+    db.select({ validUntil: serviceCatalog.offerValidUntil }).from(serviceCatalog).where(eq(serviceCatalog.code, "postal")).limit(1),
+  ]);
+  return postalRenewalPrices(tiers, !catalog?.validUntil || Date.now() <= catalog.validUntil.getTime());
+}
+
 // Draft the scadenza reminder for staff to review/edit before sending — never sent unmodified.
 // Reuses a previously edited/sent draft (testoScadenza) unless `regenerate` asks for a fresh one;
 // `includeSconto`, when given, overrides the automatic (contract-duration-based) default for the
@@ -355,7 +363,8 @@ export async function getScadenzaDraftAction(id: number, regenerate = false, inc
   await requireOperational(BASE_PATH);
   const [client] = await db.select().from(domClients).where(eq(domClients.id, id)).limit(1);
   if (!client) return { success: false, message: "Domiciliazione non trovata" };
-  const prezzi = await db.select().from(domRinnovoPrezzi);
+  // Postal: the 6/12-month offers come from the postal price table; legal address: from the renewal prices table.
+  const prezzi = isPostale(client) ? await postalPrices() : await db.select().from(domRinnovoPrezzi);
   const { bps: additionalDiscountBps, reason: discountReason } = await additionalRenewalDiscount(client);
   const scontoDefault = defaultScontoApplicabile(client);
   const postale = isPostale(client);

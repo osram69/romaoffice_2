@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { additionalDiscountNote, buildScadenzaEmailHtml, defaultScontoApplicabile, renewalFeeFor, scadenzaDefaultMonths, scadenzaEmailSubject, scadenzaOfferMonths } from "../src/lib/dom-scadenza-email";
+import { additionalDiscountNote, buildScadenzaEmailHtml, defaultScontoApplicabile, postalRenewalPrices, renewalFeeFor, scadenzaDefaultMonths, scadenzaEmailSubject, scadenzaOfferMonths } from "../src/lib/dom-scadenza-email";
 
 const client = { ragioneSociale: "ACME SRL", amministratore: "Mario Rossi", personaRif: null, scadenzaDom: "2027-03-31", inizioDom: "2026-03-31", prezzoRinnovo: 550 } as never;
 
@@ -46,4 +46,14 @@ test("a legal-address reminder is unchanged", () => {
   assert.equal(scadenzaEmailSubject(legale), "Scadenza contratto domiciliazione sede legale ACME SRL - Roma Office Sharing");
   assert.equal(scadenzaOfferMonths(prezzi).join(), "6,12,24,36,48");
   assert.match(buildScadenzaEmailHtml(legale, prezzi, false, [12, 24]), /contratto di domiciliazione legale della società/);
+});
+
+test("postal offers come from the postal price table, not from the legal-address renewal prices", () => {
+  const postale = { ...(client as object), tipologia: 1, inizioDom: "2026-03-31", scadenzaDom: "2026-09-30" } as never;
+  const rows = postalRenewalPrices([{ months: 6, listCents: 18000, offerCents: 15000 }, { months: 12, listCents: 30000, offerCents: 24000 }, { months: 3, listCents: 9000, offerCents: null }], true);
+  assert.deepEqual(rows.map(r => r.mesi), [6, 12]);
+  const html = buildScadenzaEmailHtml(postale, rows, false, [12]);
+  assert.match(html, /12 mesi.*€ 300,00 \+ IVA.*€ 240,00 \+ IVA/);
+  assert.doesNotMatch(html, /€ (1000|800),00/); // the legal-address table values used above
+  assert.equal(postalRenewalPrices([{ months: 12, listCents: 30000, offerCents: 24000 }], false).length, 0);
 });
