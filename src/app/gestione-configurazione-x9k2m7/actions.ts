@@ -6,7 +6,7 @@ import { eq, notInArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { discountCodes, serviceCatalog, siteConfig } from "@/db/schema";
-import { normalizeCode, validCodeFormat } from "@/lib/discount-code";
+import { CODE_DURATIONS, normalizeCode, validCodeFormat } from "@/lib/discount-code";
 import { STAFF_SESSION_COOKIE, getStaffUser } from "@/lib/staff-auth";
 import { encryptBytes } from "@/lib/dom-archive";
 
@@ -136,6 +136,7 @@ const discountCodesSchema = z.array(z.object({
   services: z.enum(["all", "legal_unit", "postal"]),
   validFrom: dateOrNull, validTo: dateOrNull,
   enabled: z.boolean(), promoBanner: z.boolean(),
+  months: z.array(z.number().int()).refine(m => m.length > 0 && m.every(n => (CODE_DURATIONS as readonly number[]).includes(n)), "Ogni codice deve valere per almeno una durata."),
   bannerIt: z.string().trim().max(240).default(""), bannerEn: z.string().trim().max(240).default(""),
 })).max(50);
 
@@ -154,7 +155,7 @@ export async function saveDiscountCodesAction(payload: string): Promise<{ succes
   await db.transaction(async tx => {
     if (codes.length) await tx.delete(discountCodes).where(notInArray(discountCodes.code, codes)); else await tx.delete(discountCodes);
     for (const r of rows) {
-      const values = { label: r.label, percentBps: Math.round(r.percent * 100), services: r.services, validFrom: r.validFrom, validTo: r.validTo, enabled: r.enabled, promoBanner: r.promoBanner, bannerIt: r.bannerIt || null, bannerEn: r.bannerEn || null };
+      const values = { label: r.label, percentBps: Math.round(r.percent * 100), services: r.services, validFrom: r.validFrom, validTo: r.validTo, enabled: r.enabled, promoBanner: r.promoBanner, bannerIt: r.bannerIt || null, bannerEn: r.bannerEn || null, months: new Set(r.months).size >= CODE_DURATIONS.length ? null : [...new Set(r.months)].sort((a, b) => a - b).join(",") };
       await tx.insert(discountCodes).values({ code: r.code, ...values }).onConflictDoUpdate({ target: discountCodes.code, set: values });
     }
   });

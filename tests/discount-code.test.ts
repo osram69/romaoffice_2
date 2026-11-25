@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { quote, type ProductOffer } from "@/lib/pricing";
-import { codeRunning, codeUsable, normalizeCode, promoHref, promoText, toPromo, validCodeFormat, type DiscountCodeRow } from "@/lib/discount-code";
+import { codeFitsMonths, codeRunning, codeUsable, normalizeCode, parseMonths, promoHref, promoText, toPromo, validCodeFormat, type DiscountCodeRow } from "@/lib/discount-code";
 
 const product = {
   code: "legal_unit", vatBps: 2200, additionalDiscountBps: 1000, additionalDiscountEnabled: true,
@@ -74,4 +74,26 @@ test("promotion banner text and link", () => {
   assert.equal(promoText(row({ bannerIt: "  Testo mio " }), "it"), "Testo mio");
   assert.equal(promoHref(toPromo(row(), "it"), "it"), "/attiva.html?codice=BLACKWEEK");
   assert.equal(promoHref(toPromo(row({ services: "postal" }), "en"), "en"), "/en/activate.html?service=postal&codice=BLACKWEEK");
+});
+
+test("a code limited to some durations is not applied to the others", () => {
+  const multi = { ...product, tiers: [6, 12, 24].map(months => ({ months, listCents: months * 5000, offerCents: null, newActivation: true, additionalDomiciliation: true })) } as unknown as ProductOffer;
+  const code = { code: "BLACK50", bps: 5000, months: [6, 12] };
+  for (const months of [6, 12]) assert.ok(quote(multi, { months, discountCode: code })!.discountCodeCents > 0, `${months} months gets the discount`);
+  const q24 = quote(multi, { months: 24, discountCode: code })!;
+  assert.equal(q24.discountCodeCents, 0);
+  assert.equal(q24.discountCode, null);
+  assert.ok(quote(multi, { months: 24, discountCode: { code: "BLACK50", bps: 5000 } })!.discountCodeCents > 0, "no months = every duration");
+});
+
+test("durations stored as text are read back safely", () => {
+  assert.deepEqual(parseMonths("6,12"), [6, 12]);
+  assert.deepEqual(parseMonths(" 12 , 6 "), [12, 6]);
+  assert.equal(parseMonths(null), null);
+  assert.equal(parseMonths(""), null);
+  assert.equal(parseMonths("abc"), null);
+  assert.equal(parseMonths("3,6,12,24,36,48"), null, "all durations = no limit");
+  assert.equal(codeFitsMonths({ months: [6, 12] }, 12), true);
+  assert.equal(codeFitsMonths({ months: [6, 12] }, 3), false);
+  assert.equal(codeFitsMonths({}, 3), true);
 });

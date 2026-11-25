@@ -17,7 +17,7 @@ export type Quote = {
 export const flag = (v: boolean | string | undefined) => v === true || v === "true";
 export function offerActive(product: ProductOffer, now = new Date()) { return !product.offerValidUntil || now.getTime() <= new Date(product.offerValidUntil).getTime(); }
 export function tierFor(product: ProductOffer, months: number) { return product.tiers.find(t => t.months === months); }
-export function quote(product: ProductOffer, input: { months: number; newActivation?: boolean | string; additionalDomiciliation?: boolean | string; onlineActivation?: boolean | string; discountCode?: { code: string; bps: number } | null; addons?: SelectedAddon[]; now?: Date }): Quote | null {
+export function quote(product: ProductOffer, input: { months: number; newActivation?: boolean | string; additionalDomiciliation?: boolean | string; onlineActivation?: boolean | string; discountCode?: { code: string; bps: number; months?: number[] } | null; addons?: SelectedAddon[]; now?: Date }): Quote | null {
   const tier = tierFor(product, input.months); if (!tier) return null;
   const offerApplied = offerActive(product, input.now) && tier.offerCents !== null;
   const baseCents = offerApplied ? tier.offerCents! : tier.listCents;
@@ -33,7 +33,8 @@ export function quote(product: ProductOffer, input: { months: number; newActivat
   const onlineDiscountCents = onlineDiscountApplied ? Math.round((baseCents - newActivationDiscountCents - additionalDomiciliationDiscountCents) * product.onlineDiscountBps / 10000) : 0;
   // A discount code (already validated by the caller: enabled, in its dates, right service) comes last, so it stacks
   // on top of every other discount; like them it only lowers the first period — renewals stay at renewalBaseCents.
-  const code = input.discountCode && input.discountCode.bps > 0 && input.discountCode.bps <= 10000 ? input.discountCode : null;
+  // A code limited to some durations (e.g. BLACK50: 6 and 12 months) is simply not applied to the others.
+  const code = input.discountCode && input.discountCode.bps > 0 && input.discountCode.bps <= 10000 && (!input.discountCode.months || input.discountCode.months.includes(input.months)) ? input.discountCode : null;
   const discountCodeCents = code ? Math.round((baseCents - newActivationDiscountCents - additionalDomiciliationDiscountCents - onlineDiscountCents) * code.bps / 10000) : 0;
   const serviceNetCents = baseCents - newActivationDiscountCents - additionalDomiciliationDiscountCents - onlineDiscountCents - discountCodeCents;
   const seen = new Set<string>(); const addonLines: Quote["addonLines"] = [];

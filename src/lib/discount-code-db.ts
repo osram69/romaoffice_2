@@ -1,12 +1,12 @@
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { discountCodes } from "@/db/schema";
-import { codeRunning, codeUsable, normalizeCode, toPromo, type AppliedDiscount, type DiscountCodeRow, type DiscountScope, type Promo } from "./discount-code";
+import { codeRunning, codeUsable, normalizeCode, parseMonths, toPromo, type AppliedDiscount, type DiscountCodeRow, type DiscountScope, type Promo } from "./discount-code";
 import type { Lang, ServiceCode } from "./pricing";
 
 const toRow = (r: typeof discountCodes.$inferSelect): DiscountCodeRow => ({
   code: r.code, label: r.label, percentBps: r.percentBps, services: (["legal_unit", "postal"].includes(r.services) ? r.services : "all") as DiscountScope,
-  validFrom: r.validFrom, validTo: r.validTo, enabled: r.enabled, promoBanner: r.promoBanner, bannerIt: r.bannerIt, bannerEn: r.bannerEn,
+  validFrom: r.validFrom, validTo: r.validTo, enabled: r.enabled, promoBanner: r.promoBanner, bannerIt: r.bannerIt, bannerEn: r.bannerEn, months: parseMonths(r.months),
 });
 
 export async function listDiscountCodes(): Promise<DiscountCodeRow[]> {
@@ -17,7 +17,7 @@ export async function listDiscountCodes(): Promise<DiscountCodeRow[]> {
 export async function findUsableDiscount(input: string, service: ServiceCode): Promise<AppliedDiscount | null> {
   const wanted = normalizeCode(input); if (!wanted) return null;
   const [row] = await db.select().from(discountCodes).where(eq(discountCodes.code, wanted)).limit(1);
-  return row && codeUsable(toRow(row), service) ? { code: row.code, bps: row.percentBps } : null;
+  return row && codeUsable(toRow(row), service) ? { code: row.code, bps: row.percentBps, months: parseMonths(row.months) ?? undefined } : null;
 }
 
 /**

@@ -3,15 +3,16 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveDiscountCodesAction } from "@/app/gestione-configurazione-x9k2m7/actions";
 import { runWithFeedback } from "./Toaster";
-import { codeRunning, normalizeCode, type DiscountCodeRow, type DiscountScope } from "@/lib/discount-code";
+import { CODE_DURATIONS, codeRunning, normalizeCode, type DiscountCodeRow, type DiscountScope } from "@/lib/discount-code";
 
-type Draft = { code: string; label: string; percent: string; services: DiscountScope; validFrom: string; validTo: string; enabled: boolean; promoBanner: boolean; bannerIt: string; bannerEn: string };
-const toDraft = (r: DiscountCodeRow): Draft => ({ code: r.code, label: r.label, percent: String(r.percentBps / 100), services: r.services, validFrom: r.validFrom ?? "", validTo: r.validTo ?? "", enabled: r.enabled, promoBanner: r.promoBanner, bannerIt: r.bannerIt ?? "", bannerEn: r.bannerEn ?? "" });
-const EMPTY: Draft = { code: "", label: "", percent: "10", services: "all", validFrom: "", validTo: "", enabled: true, promoBanner: false, bannerIt: "", bannerEn: "" };
+type Draft = { code: string; label: string; percent: string; services: DiscountScope; validFrom: string; validTo: string; enabled: boolean; promoBanner: boolean; bannerIt: string; bannerEn: string; months: number[] };
+const ALL_MONTHS: number[] = [...CODE_DURATIONS];
+const toDraft = (r: DiscountCodeRow): Draft => ({ code: r.code, label: r.label, percent: String(r.percentBps / 100), services: r.services, validFrom: r.validFrom ?? "", validTo: r.validTo ?? "", enabled: r.enabled, promoBanner: r.promoBanner, bannerIt: r.bannerIt ?? "", bannerEn: r.bannerEn ?? "", months: r.months ?? ALL_MONTHS });
+const EMPTY: Draft = { code: "", label: "", percent: "10", services: "all", validFrom: "", validTo: "", enabled: true, promoBanner: false, bannerIt: "", bannerEn: "", months: ALL_MONTHS };
 const check = { display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "#232f3e" } as const;
 
 function stateOf(d: Draft): { text: string; color: string } {
-  const row: DiscountCodeRow = { code: d.code, label: d.label, percentBps: Math.round(Number(d.percent.replace(",", ".")) * 100) || 0, services: d.services, validFrom: d.validFrom || null, validTo: d.validTo || null, enabled: d.enabled, promoBanner: d.promoBanner, bannerIt: null, bannerEn: null };
+  const row: DiscountCodeRow = { code: d.code, label: d.label, percentBps: Math.round(Number(d.percent.replace(",", ".")) * 100) || 0, services: d.services, validFrom: d.validFrom || null, validTo: d.validTo || null, enabled: d.enabled, promoBanner: d.promoBanner, bannerIt: null, bannerEn: null, months: null };
   if (!d.enabled) return { text: "Spento", color: "#6c757d" };
   if (codeRunning(row)) return { text: "In corso ora", color: "#198754" };
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Rome" });
@@ -26,8 +27,9 @@ export function DiscountCodesAdmin({ initial }: { initial: DiscountCodeRow[] }) 
   const patch = (i: number, p: Partial<Draft>) => { setRows(rows.map((r, idx) => idx === i ? { ...r, ...p } : r)); setMessage(null); };
 
   async function save() {
-    const payload = rows.map(r => ({ code: normalizeCode(r.code), label: r.label, percent: Number(r.percent.replace(",", ".")), services: r.services, validFrom: r.validFrom, validTo: r.validTo, enabled: r.enabled, promoBanner: r.promoBanner, bannerIt: r.bannerIt, bannerEn: r.bannerEn }));
+    const payload = rows.map(r => ({ code: normalizeCode(r.code), label: r.label, percent: Number(r.percent.replace(",", ".")), services: r.services, validFrom: r.validFrom, validTo: r.validTo, enabled: r.enabled, promoBanner: r.promoBanner, bannerIt: r.bannerIt, bannerEn: r.bannerEn, months: r.months }));
     if (payload.some(p => !p.code || !(p.percent > 0 && p.percent <= 99))) { setMessage({ text: "Ogni codice deve avere un nome e una percentuale tra 0 e 99.", color: "red" }); return; }
+    if (payload.some(p => p.months.length === 0)) { setMessage({ text: "Ogni codice deve valere per almeno una durata.", color: "red" }); return; }
     setSaving(true); setMessage(null);
     try {
       let reason = "";
@@ -57,6 +59,12 @@ export function DiscountCodesAdmin({ initial }: { initial: DiscountCodeRow[] }) 
                 </div>
                 <div className="gestione-field" style={{ width: 150 }}><label>Valido dal</label><input type="date" value={r.validFrom} onChange={e => patch(i, { validFrom: e.target.value })} /></div>
                 <div className="gestione-field" style={{ width: 150 }}><label>Valido fino al (incluso)</label><input type="date" value={r.validTo} onChange={e => patch(i, { validTo: e.target.value })} /></div>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 14, alignItems: "center", marginTop: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#232f3e" }}>Durate valide:</span>
+                {CODE_DURATIONS.map(m => (
+                  <label key={m} style={check}><input type="checkbox" checked={r.months.includes(m)} onChange={e => patch(i, { months: e.target.checked ? [...r.months, m] : r.months.filter(x => x !== m) })} /> {m} mesi</label>
+                ))}
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 18, alignItems: "center", marginTop: 10 }}>
                 <label style={check}><input type="checkbox" checked={r.enabled} onChange={e => patch(i, { enabled: e.target.checked })} /> Attivo</label>

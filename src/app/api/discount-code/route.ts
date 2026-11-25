@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     protectMutation(req); const parsed = input.safeParse(await req.json()); if (!parsed.success) return json({ valid: false }, 400);
     await limit(`discount-code:${clientIp(req)}`, 40, 600);
     const found = await findUsableDiscount(parsed.data.code, parsed.data.service);
-    return json(found ? { valid: true, code: found.code, bps: found.bps } : { valid: false });
+    return json(found ? { valid: true, code: found.code, bps: found.bps, months: found.months } : { valid: false });
   } catch (error) {
     if (error instanceof CustomerError) return json({ error: error.code }, error.status);
     console.error("Discount code check failed", error instanceof Error ? error.name : "UnknownError");

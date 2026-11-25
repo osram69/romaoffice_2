@@ -386,5 +386,7 @@ export const discountCodes = pgTable("discount_codes", {
   promoBanner: boolean("promo_banner").notNull().default(false),
   bannerIt: text("banner_it"),
   bannerEn: text("banner_en"),
+  // Contract durations the code works on, comma separated ("6,12"); NULL = every duration (migration 0030).
+  months: varchar("months", { length: 40 }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, t => [uniqueIndex("discount_codes_code_uq").on(t.code)]);

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { copyFor, activationHref, validity, formatEur, quote, offerActive, type Catalog, type ServiceCode, type SelectedAddon, type Lang } from "@/lib/pricing";
 import { enabledPaymentMethodsList, type PaymentSettings } from "@/lib/payment-copy";
 import { isValidTaxCode } from "@/lib/codice-fiscale";
-import type { AppliedDiscount, Promo } from "@/lib/discount-code";
+import { codeFitsMonths, type AppliedDiscount, type Promo } from "@/lib/discount-code";
 import { track, trackOnce } from "@/lib/analytics";
 import { OfferTermsConsent } from "./OfferTerms";
 import { ManualRequestModal } from "./ManualRequestModal";
@@ -100,7 +100,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
     try {
       const res = await fetch("/api/discount-code", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: typed, service }) });
       const data = await res.json();
-      if (data.valid) { setDiscount({ code: data.code, bps: data.bps }); setCodeInput(""); setCodeOpen(false); setCodeMsg(""); track("discount_code_applied", { service, lang }); }
+      if (data.valid) { setDiscount({ code: data.code, bps: data.bps, months: Array.isArray(data.months) ? data.months : undefined }); setCodeInput(""); setCodeOpen(false); setCodeMsg(""); track("discount_code_applied", { service, lang }); }
       else { setDiscount(null); setCodeOpen(true); setCodeInput(typed); setCodeMsg(res.status === 429 ? (it ? "Troppi tentativi: riprova tra qualche minuto." : "Too many attempts: please try again in a few minutes.") : (it ? "Codice non valido, scaduto o non utilizzabile per questo servizio." : "This code is not valid, has expired or cannot be used for this service.")); }
     } catch { setCodeOpen(true); setCodeMsg(it ? "Impossibile verificare il codice ora. Riprova." : "Could not check the code right now. Please try again."); }
     finally { setCodeBusy(false); }
@@ -441,7 +441,8 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
             {priced.discountCodeCents > 0 && <p className="online-discount-line"><span className="price-label-compact"><Tag/>{it ? `Codice sconto ${priced.discountCode} (${priced.discountCodeBps / 100}%)` : `Discount code ${priced.discountCode} (${priced.discountCodeBps / 100}%)`}</span><b>-{formatEur(priced.discountCodeCents, lang)}</b></p>}
             {priced.addonLines.map(line => <p key={line.code}><span>{it ? line.titleIt : line.titleEn} × {line.quantity}</span><b>{formatEur(line.totalCents, lang)}</b></p>)}
             <div className="discount-code-box">
-              {discount ? <p className="discount-code-applied"><span><Tag/>{it ? `Codice ${discount.code} applicato` : `Code ${discount.code} applied`}</span><button type="button" className="link-button" onClick={() => { setDiscount(null); setCodeMsg(""); }}>{it ? "Rimuovi" : "Remove"}</button></p>
+              {discount ? <><p className="discount-code-applied"><span><Tag/>{it ? `Codice ${discount.code} applicato` : `Code ${discount.code} applied`}</span><button type="button" className="link-button" onClick={() => { setDiscount(null); setCodeMsg(""); }}>{it ? "Rimuovi" : "Remove"}</button></p>
+                {!codeFitsMonths(discount, form.months) && discount.months && <small className="field-error" role="status">{it ? `Il codice ${discount.code} vale solo per contratti di ${discount.months.join(" e ")} mesi: scegli una di queste durate per applicare lo sconto.` : `Code ${discount.code} is only valid for ${discount.months.join(" and ")}-month contracts: choose one of these durations to apply the discount.`}</small>}</>
                 : codeOpen ? <div>
                   <label htmlFor="discount-code">{it ? "Codice sconto" : "Discount code"}</label>
                   <div className="discount-code-row">

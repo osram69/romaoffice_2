@@ -5,9 +5,19 @@ export type DiscountScope = "all" | ServiceCode;
 export type DiscountCodeRow = {
   code: string; label: string; percentBps: number; services: DiscountScope; validFrom: string | null; validTo: string | null;
   enabled: boolean; promoBanner: boolean; bannerIt: string | null; bannerEn: string | null;
+  /** Contract durations the code works on; null = all of them. */
+  months?: number[] | null;
 };
-/** What the price calculation needs from a validated code. */
-export type AppliedDiscount = { code: string; bps: number };
+/** What the price calculation needs from a validated code. `months`, when present, limits the code to those contract durations. */
+export type AppliedDiscount = { code: string; bps: number; months?: number[] };
+/** Contract durations a code can be limited to (same as the price tiers). */
+export const CODE_DURATIONS = [3, 6, 12, 24, 36, 48] as const;
+/** discount_codes.months is "6,12" or NULL (= every duration); an empty or unreadable value also means every duration. */
+export const parseMonths = (value: string | null | undefined): number[] | null => {
+  const list = (value ?? "").split(",").map(s => Number(s.trim())).filter(n => (CODE_DURATIONS as readonly number[]).includes(n));
+  return list.length && list.length < CODE_DURATIONS.length ? list : null;
+};
+export const codeFitsMonths = (discount: Pick<AppliedDiscount, "months">, months: number) => !discount.months || discount.months.includes(months);
 /** What the public site needs to advertise a code. */
 export type Promo = { code: string; bps: number; services: DiscountScope; text: string };
 
