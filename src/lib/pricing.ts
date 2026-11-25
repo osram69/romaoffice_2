@@ -10,14 +10,14 @@ export type ProductOffer = { code: ServiceCode; vatBps: number; additionalDiscou
 export type Catalog = Record<ServiceCode, ProductOffer>;
 export type Quote = {
   service: ServiceCode; catalogVersion: string; months: number; listCents: number; baseCents: number; offerApplied: boolean;
-  newActivationDiscountCents: number; additionalDomiciliationDiscountCents: number; onlineDiscountCents: number; serviceNetCents: number;
+  newActivationDiscountCents: number; additionalDomiciliationDiscountCents: number; onlineDiscountCents: number; discountCodeCents: number; discountCode: string | null; discountCodeBps: number; serviceNetCents: number;
   addonLines: (SelectedAddon & { titleIt: string; titleEn: string; monthlyCents: number; annualCents: number; totalCents: number })[];
   addonsCents: number; netCents: number; vatBps: number; vatCents: number; totalCents: number; renewalBaseCents: number; newActivationEligible: boolean; additionalDomiciliationEligible: boolean; onlineDiscountApplied: boolean;
 };
 export const flag = (v: boolean | string | undefined) => v === true || v === "true";
 export function offerActive(product: ProductOffer, now = new Date()) { return !product.offerValidUntil || now.getTime() <= new Date(product.offerValidUntil).getTime(); }
 export function tierFor(product: ProductOffer, months: number) { return product.tiers.find(t => t.months === months); }
-export function quote(product: ProductOffer, input: { months: number; newActivation?: boolean | string; additionalDomiciliation?: boolean | string; onlineActivation?: boolean | string; addons?: SelectedAddon[]; now?: Date }): Quote | null {
+export function quote(product: ProductOffer, input: { months: number; newActivation?: boolean | string; additionalDomiciliation?: boolean | string; onlineActivation?: boolean | string; discountCode?: { code: string; bps: number } | null; addons?: SelectedAddon[]; now?: Date }): Quote | null {
   const tier = tierFor(product, input.months); if (!tier) return null;
   const offerApplied = offerActive(product, input.now) && tier.offerCents !== null;
   const baseCents = offerApplied ? tier.offerCents! : tier.listCents;
@@ -31,7 +31,11 @@ export function quote(product: ProductOffer, input: { months: number; newActivat
   // (ActivationFlow) — a manually-quoted or staff-processed request never gets it, by design.
   const onlineDiscountApplied = product.onlineDiscountEnabled && flag(input.onlineActivation);
   const onlineDiscountCents = onlineDiscountApplied ? Math.round((baseCents - newActivationDiscountCents - additionalDomiciliationDiscountCents) * product.onlineDiscountBps / 10000) : 0;
-  const serviceNetCents = baseCents - newActivationDiscountCents - additionalDomiciliationDiscountCents - onlineDiscountCents;
+  // A discount code (already validated by the caller: enabled, in its dates, right service) comes last, so it stacks
+  // on top of every other discount; like them it only lowers the first period — renewals stay at renewalBaseCents.
+  const code = input.discountCode && input.discountCode.bps > 0 && input.discountCode.bps <= 10000 ? input.discountCode : null;
+  const discountCodeCents = code ? Math.round((baseCents - newActivationDiscountCents - additionalDomiciliationDiscountCents - onlineDiscountCents) * code.bps / 10000) : 0;
+  const serviceNetCents = baseCents - newActivationDiscountCents - additionalDomiciliationDiscountCents - onlineDiscountCents - discountCodeCents;
   const seen = new Set<string>(); const addonLines: Quote["addonLines"] = [];
   for (const selection of input.addons || []) {
     const addon = product.addons.find(a => a.code === selection.code && a.selectable);
@@ -41,7 +45,7 @@ export function quote(product: ProductOffer, input: { months: number; newActivat
   }
   const addonsCents = addonLines.reduce((sum, line) => sum + line.totalCents, 0);
   const netCents = serviceNetCents + addonsCents; const vatCents = Math.round(netCents * product.vatBps / 10000);
-  return { service: product.code, catalogVersion: product.version, months: tier.months, listCents: tier.listCents, baseCents, offerApplied, newActivationDiscountCents, additionalDomiciliationDiscountCents, onlineDiscountCents, serviceNetCents, addonLines, addonsCents, netCents, vatBps: product.vatBps, vatCents, totalCents: netCents + vatCents, renewalBaseCents: baseCents, newActivationEligible, additionalDomiciliationEligible, onlineDiscountApplied };
+  return { service: product.code, catalogVersion: product.version, months: tier.months, listCents: tier.listCents, baseCents, offerApplied, newActivationDiscountCents, additionalDomiciliationDiscountCents, onlineDiscountCents, discountCodeCents, discountCode: code ? code.code : null, discountCodeBps: code ? code.bps : 0, serviceNetCents, addonLines, addonsCents, netCents, vatBps: product.vatBps, vatCents, totalCents: netCents + vatCents, renewalBaseCents: baseCents, newActivationEligible, additionalDomiciliationEligible, onlineDiscountApplied };
 }
 export function formatEur(cents: number, lang: Lang = "it") { return new Intl.NumberFormat(lang === "it" ? "it-IT" : "en-GB", { style: "currency", currency: "EUR" }).format(cents / 100); }
 export function monthlyEquivalent(cents: number, months: number, lang: Lang = "it") { return formatEur(Math.round(cents / months), lang); }

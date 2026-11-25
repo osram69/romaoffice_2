@@ -1,10 +1,11 @@
 "use client";
 import Link from "next/link";
-import { BadgePercent, Check, CheckCircle2, LoaderCircle, RefreshCw, ShieldCheck } from "lucide-react";
+import { BadgePercent, Check, CheckCircle2, LoaderCircle, RefreshCw, ShieldCheck, Tag } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { copyFor, activationHref, validity, formatEur, quote, offerActive, type Catalog, type ServiceCode, type SelectedAddon, type Lang } from "@/lib/pricing";
 import { enabledPaymentMethodsList, type PaymentSettings } from "@/lib/payment-copy";
 import { isValidTaxCode } from "@/lib/codice-fiscale";
+import type { AppliedDiscount, Promo } from "@/lib/discount-code";
 import { track, trackOnce } from "@/lib/analytics";
 import { OfferTermsConsent } from "./OfferTerms";
 import { ManualRequestModal } from "./ManualRequestModal";
@@ -19,7 +20,7 @@ type FormState = {
 type BankDetails = { holder: string; iban: string; bic: string; bank: string; causale: string; amount: string };
 type FinalizeResult = { paymentMethod: string; orderRef: string; shortRef?: string; emailSent: boolean; pdfBase64?: string; message?: string; totalCents?: number; bankTransferDetails?: BankDetails; paymentUnavailable?: boolean; paymentConfirmed?: boolean };
 
-export function ActivationFlow({ lang, catalog: initialCatalog, initialService, paymentSettings }: { lang: Lang; catalog: Catalog; initialService: ServiceCode; paymentSettings: PaymentSettings }) {
+export function ActivationFlow({ lang, catalog: initialCatalog, initialService, paymentSettings, promo = null }: { lang: Lang; catalog: Catalog; initialService: ServiceCode; paymentSettings: PaymentSettings; promo?: Promo | null }) {
   const it = lang === "it";
   const [catalog, setCatalog] = useState(initialCatalog);
   const service = initialService; const product = catalog[service]; const postal = service === "postal";
@@ -40,6 +41,9 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
   };
   const [payment, setPayment] = useState<"stripe" | "paypal" | "sumup" | "bank_transfer" | "on_site">(firstAvailablePayment);
   const [result, setResult] = useState<FinalizeResult | null>(null);
+  // Discount code: only a preview here; the server checks it again when the request is sent.
+  const [discount, setDiscount] = useState<AppliedDiscount | null>(null);
+  const [codeInput, setCodeInput] = useState(""); const [codeOpen, setCodeOpen] = useState(false); const [codeBusy, setCodeBusy] = useState(false); const [codeMsg, setCodeMsg] = useState("");
   const [form, setForm] = useState<FormState>({
     companyExists: postal, companyName: "", companyVat: "", companyTaxCode: "", companyAddress: "", companyCap: "", companyCity: "", companyCountry: it ? "Italia" : "Italy", companyRegister: "", companyPec: "", companySdi: "",
     representativeFirstName: "", representativeLastName: "", representativeRole: it ? "Legale rappresentante" : "Legal representative", representativeTaxCode: "", email: "", phone: "",
@@ -88,7 +92,27 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
     invalidPec: it ? "Indirizzo PEC non valido." : "Invalid PEC address.", invalidSdi: it ? "Il codice SDI è di 7 caratteri (lettere e numeri)." : "The SDI code has 7 characters (letters and digits).",
   };
 
-  const priced = useMemo(() => quote(product, { months: form.months, newActivation: form.newActivation, additionalDomiciliation: form.additionalDomiciliation, onlineActivation: true, addons: form.addons }), [product, form.months, form.newActivation, form.additionalDomiciliation, form.addons]);
+  const priced = useMemo(() => quote(product, { months: form.months, newActivation: form.newActivation, additionalDomiciliation: form.additionalDomiciliation, onlineActivation: true, discountCode: discount, addons: form.addons }), [product, form.months, form.newActivation, form.additionalDomiciliation, form.addons, discount]);
+
+  async function applyCode(raw: string) {
+    const typed = raw.trim(); if (!typed) return;
+    setCodeBusy(true); setCodeMsg("");
+    try {
+      const res = await fetch("/api/discount-code", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: typed, service }) });
+      const data = await res.json();
+      if (data.valid) { setDiscount({ code: data.code, bps: data.bps }); setCodeInput(""); setCodeOpen(false); setCodeMsg(""); track("discount_code_applied", { service, lang }); }
+      else { setDiscount(null); setCodeOpen(true); setCodeInput(typed); setCodeMsg(res.status === 429 ? (it ? "Troppi tentativi: riprova tra qualche minuto." : "Too many attempts: please try again in a few minutes.") : (it ? "Codice non valido, scaduto o non utilizzabile per questo servizio." : "This code is not valid, has expired or cannot be used for this service.")); }
+    } catch { setCodeOpen(true); setCodeMsg(it ? "Impossibile verificare il codice ora. Riprova." : "Could not check the code right now. Please try again."); }
+    finally { setCodeBusy(false); }
+  }
+  // Arriving from a promotion banner: /attiva.html?codice=XXXX applies the code straight away.
+  useEffect(() => {
+    const fromLink = new URLSearchParams(window.location.search).get("codice");
+    if (!fromLink) return;
+    const timer = setTimeout(() => applyCode(fromLink), 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -180,13 +204,17 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
     if (Object.keys(next).length) { requestAnimationFrame(() => document.getElementById(`err-${Object.keys(next)[0]}`)?.focus()); return; }
     setBusy(true); setStatus(it ? "Invio del codice in corso…" : "Sending your code…");
     try {
-      const res = await fetch("/api/domiciliation-request", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, lang, service, catalogVersion: product.version, termsVersion: product.version, orderId: orderId || undefined }) });
+      const res = await fetch("/api/domiciliation-request", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, lang, service, discountCode: discount?.code ?? "", catalogVersion: product.version, termsVersion: product.version, orderId: orderId || undefined }) });
       const data = await res.json();
       if (data.error === "company-name-taken") {
         setStatus("");
         setFieldError("companyName", it ? "Esiste già una società con questo nome domiciliata presso di noi. Se sei già nostro cliente contatta la reception, altrimenti scegli una denominazione diversa." : "A company with this name is already domiciled with us. If you are an existing client please contact reception, otherwise choose a different name.");
         requestAnimationFrame(() => document.getElementById("err-companyName")?.focus());
         return;
+      }
+      if (data.error === "discount-code-invalid") {
+        setDiscount(null); setCodeOpen(true); setCodeMsg(it ? "Il codice sconto non è più valido: il totale è stato aggiornato. Controlla il riepilogo e riprova." : "The discount code is no longer valid: the total has been updated. Please review the summary and try again.");
+        setStatus(""); return;
       }
       if (data.error === "parent-not-verified") {
         setStatus("");
@@ -256,6 +284,7 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
   return <div className="activation" data-service={service}>
     <div className="activation-service-selector" role="group" aria-label={it ? "Servizio da attivare" : "Service to activate"}>{(["legal_unit", "postal"] as ServiceCode[]).map(s => <Link key={s} href={activationHref(s, lang)} className={s === service ? "selected" : ""} aria-current={s === service ? "page" : undefined}>{copyFor(s, lang).nameShort}</Link>)}</div>
     {product.onlineDiscountEnabled && <div className="online-discount-banner"><BadgePercent/>{it ? `Sconto extra del ${product.onlineDiscountBps / 100}% attivando qui, online.` : `Extra ${product.onlineDiscountBps / 100}% discount for activating here, online.`}</div>}
+    {promo && <div className="online-discount-banner promo-banner"><BadgePercent/><span>{promo.text}</span>{discount?.code === promo.code ? <b className="promo-applied"><Check/>{it ? "Codice applicato" : "Code applied"}</b> : <button type="button" className="promo-apply" disabled={codeBusy} onClick={() => applyCode(promo.code)}>{it ? "APPLICA IL CODICE" : "APPLY THE CODE"}</button>}</div>}
     <ol className="activation-steps">
       {t.steps.map((label, index) => {
         const n = index + 1;
@@ -409,7 +438,21 @@ export function ActivationFlow({ lang, catalog: initialCatalog, initialService, 
             {priced.newActivationDiscountCents > 0 && <p><span className="price-label-compact">{it ? "Sconto una-tantum nuove attivazioni (10%)" : "One-off new activation discount (10%)"}</span><b>-{formatEur(priced.newActivationDiscountCents, lang)}</b></p>}
             {priced.additionalDomiciliationDiscountCents > 0 && <p><span>{it ? "Sconto domiciliazioni aggiuntive (10%)" : "Additional address service discount (10%)"}</span><b>-{formatEur(priced.additionalDomiciliationDiscountCents, lang)}</b></p>}
             {priced.onlineDiscountCents > 0 && <p className="online-discount-line"><span className="price-label-compact"><BadgePercent/>{it ? `Sconto una-tantum attivazione online (${product.onlineDiscountBps / 100}%)` : `One-off online activation discount (${product.onlineDiscountBps / 100}%)`}</span><b>-{formatEur(priced.onlineDiscountCents, lang)}</b></p>}
+            {priced.discountCodeCents > 0 && <p className="online-discount-line"><span className="price-label-compact"><Tag/>{it ? `Codice sconto ${priced.discountCode} (${priced.discountCodeBps / 100}%)` : `Discount code ${priced.discountCode} (${priced.discountCodeBps / 100}%)`}</span><b>-{formatEur(priced.discountCodeCents, lang)}</b></p>}
             {priced.addonLines.map(line => <p key={line.code}><span>{it ? line.titleIt : line.titleEn} × {line.quantity}</span><b>{formatEur(line.totalCents, lang)}</b></p>)}
+            <div className="discount-code-box">
+              {discount ? <p className="discount-code-applied"><span><Tag/>{it ? `Codice ${discount.code} applicato` : `Code ${discount.code} applied`}</span><button type="button" className="link-button" onClick={() => { setDiscount(null); setCodeMsg(""); }}>{it ? "Rimuovi" : "Remove"}</button></p>
+                : codeOpen ? <div>
+                  <label htmlFor="discount-code">{it ? "Codice sconto" : "Discount code"}</label>
+                  <div className="discount-code-row">
+                    <input id="discount-code" value={codeInput} maxLength={40} autoComplete="off" autoCapitalize="characters" spellCheck={false} onChange={e => { setCodeInput(e.target.value.toUpperCase()); setCodeMsg(""); }} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); applyCode(codeInput); } }} />
+                    <button type="button" className="button secondary" disabled={codeBusy || !codeInput.trim()} onClick={() => applyCode(codeInput)}>{codeBusy ? "…" : it ? "Applica" : "Apply"}</button>
+                  </div>
+                  {codeMsg && <small className="field-error" role="alert">{codeMsg}</small>}
+                </div>
+                : <button type="button" className="link-button discount-code-toggle" onClick={() => setCodeOpen(true)}><Tag/>{it ? "Hai un codice sconto?" : "Have a discount code?"}</button>}
+              {discount && codeMsg && <small className="field-error" role="alert">{codeMsg}</small>}
+            </div>
             <p><span>{it ? "Imponibile" : "Net amount"}</span><b>{formatEur(priced.netCents, lang)}</b></p>
             <p><span>{it ? "IVA" : "VAT"} {product.vatBps / 100}%</span><b>{formatEur(priced.vatCents, lang)}</b></p>
             <p className="total"><span>{it ? "Totale" : "Total"}</span><b>{formatEur(priced.totalCents, lang)}</b></p>

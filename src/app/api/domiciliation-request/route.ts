@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { orders, otpVerifications } from "@/db/schema";
 import { getCatalog } from "@/lib/catalog";
 import { quote } from "@/lib/pricing";
+import { findUsableDiscount } from "@/lib/discount-code-db";
 import { termsText } from "@/lib/offer-terms";
 import { requestSchema } from "@/lib/request";
 import { companyNameTaken } from "@/lib/company-name";
@@ -24,7 +25,10 @@ export async function POST(req: NextRequest) {
     if (data.catalogVersion !== product.version || data.termsVersion !== product.version) return json({ error: "prices-changed", catalog }, 409);
     // /api/domiciliation-request is only ever called from ActivationFlow's self-service online
     // flow, so the online-activation discount (if enabled) always applies here.
-    const priced = quote(product, { ...data, onlineActivation: true }); if (!priced) return json({ error: "invalid-duration-or-addons" }, 400);
+    // A discount code is checked again here (dates, switch, service): the price shown in the browser is only a preview.
+    const discountCode = data.discountCode ? await findUsableDiscount(data.discountCode, data.service) : null;
+    if (data.discountCode && !discountCode) return json({ error: "discount-code-invalid" }, 422);
+    const priced = quote(product, { ...data, onlineActivation: true, discountCode }); if (!priced) return json({ error: "invalid-duration-or-addons" }, 400);
     // A discount for an additional domiciliation needs a real capofila: the claim is checked against the companies
     // domiciled with us. A failed check never says which part was wrong (name, referente, or no such client), and
     // attempts are limited, so the form cannot be used to find out who our clients are.

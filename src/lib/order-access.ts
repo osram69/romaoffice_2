@@ -28,7 +28,10 @@ export async function readyOrder(req: NextRequest, orderId: string) {
   if (order.status !== "paid" && order.status !== "signed") {
     // Must mirror /api/domiciliation-request's quote() call exactly (including onlineActivation),
     // or a live online discount would make every order look like its price had changed.
-    const current = await getOffer(order.service as ServiceCode); const fresh = quote(current, { ...data, onlineActivation: true });
+    // The discount code was checked when the order was created: it keeps counting even if it expired or was switched
+    // off while the customer was verifying the SMS and paying (their session lasts a few hours at most).
+    const frozen = snapshot.quote.discountCode ? { code: snapshot.quote.discountCode, bps: snapshot.quote.discountCodeBps } : null;
+    const current = await getOffer(order.service as ServiceCode); const fresh = quote(current, { ...data, onlineActivation: true, discountCode: frozen });
     if (!fresh || current.version !== snapshot.product.version || fresh.totalCents !== order.amountCents) throw new CustomerError("prices-changed", 409);
   }
   return { order, snapshot, data };

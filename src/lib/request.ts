@@ -37,6 +37,8 @@ export const requestSchema = z.object({
   parentCompanyName: z.string().trim().max(200).default(""), parentContactSame: z.boolean().default(true), parentContactName: z.string().trim().max(200).transform(formatPersonName).default(""),
   parentContactFirstName: z.string().trim().max(100).transform(formatPersonName).default(""), parentContactLastName: z.string().trim().max(100).transform(formatPersonName).default(""),
   addons: z.array(z.object({ code: z.string().max(50), quantity: z.number().int().min(1).max(5) })).max(3).default([]),
+  // Optional discount code from the price summary: re-checked on the server, never trusted as typed.
+  discountCode: z.string().trim().max(60).transform(v => v.toUpperCase().replace(/\s+/g, "")).default(""),
   consent: z.literal(true), website: z.string().max(0).optional(),
 }).superRefine((v, ctx) => {
   if (fullName(v.representativeFirstName, v.representativeLastName, v.representativeName).length < 2) ctx.addIssue({ code: "custom", path: ["representativeName"], message: "name-required" });

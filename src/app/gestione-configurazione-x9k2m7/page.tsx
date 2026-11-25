@@ -11,6 +11,9 @@ import { RitiroTemplateEditor } from "@/components/RitiroTemplateEditor";
 import { FirmaDomiciliatarioUpload } from "@/components/FirmaDomiciliatarioUpload";
 import { ConfigForm } from "@/components/ConfigForm";
 import { decryptBytes } from "@/lib/dom-archive";
+import { DiscountCodesAdmin } from "@/components/DiscountCodesAdmin";
+import { listDiscountCodes } from "@/lib/discount-code-db";
+import type { DiscountCodeRow } from "@/lib/discount-code";
 
 const checkboxRow = { display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "#232f3e" } as const;
 
@@ -24,6 +27,9 @@ export default async function ConfigurazioneWebPage() {
     db.select().from(serviceCatalog).where(eq(serviceCatalog.code, "legal_unit")),
     db.select().from(siteConfig).where(eq(siteConfig.id, 1)),
   ]);
+  // Before migration 0029 is run the table is missing: the page still opens, with a reminder instead of the list.
+  let codes: DiscountCodeRow[] = []; let codesTableMissing = false;
+  try { codes = await listDiscountCodes(); } catch { codesTableMissing = true; }
   const bypassConfigured = Boolean(process.env.DEBUG_BYPASS_EMAIL?.trim() || process.env.DEBUG_BYPASS_PHONE?.trim());
   const firmaPreview = payments?.firmaDomiciliatarioPng ? `data:image/png;base64,${decryptBytes(payments.firmaDomiciliatarioPng).toString("base64")}` : null;
 
@@ -85,6 +91,16 @@ export default async function ConfigurazioneWebPage() {
             <input name="onlineDiscountBps" type="number" step="0.01" min="0" max="100" defaultValue={(payments?.onlineDiscountBps ?? 1000) / 100} />
           </div>
         </ConfigForm>
+      </section>
+
+      <section className="gestione-card" style={{ padding: 24, marginBottom: 24 }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: "#232f3e", marginTop: 0 }}>Codici sconto</h2>
+        <p style={{ fontSize: 12, color: "#666", marginTop: -6 }}>
+          Nella pagina di attivazione online il cliente può scrivere un codice sconto sopra il totale. La percentuale si toglie dal prezzo già scontato (si somma agli altri sconti) e vale solo per il primo periodo: il rinnovo resta quello di listino. Un solo codice per ordine. Il codice vale per i giorni indicati (compresi inizio e fine) e per il servizio scelto; con &quot;Attivo&quot; spento non funziona anche se è nel periodo. Con &quot;Mostra come promozione&quot; il sito pubblicizza il codice con un banner (home, tariffe, attivazione) che porta all&apos;attivazione con il codice già inserito; il banner sparisce da solo alla data di fine. Non si applica alle richieste manuali gestite dalla reception.
+        </p>
+        {codesTableMissing
+          ? <p style={{ fontSize: 13, color: "#b02a37", fontWeight: 600 }}>La tabella dei codici sconto non esiste ancora: esegui prima su Supabase lo script <code>drizzle/0029_discount_codes.sql</code>.</p>
+          : <DiscountCodesAdmin initial={codes} />}
       </section>
 
       <section className="gestione-card" style={{ padding: 24, marginBottom: 24 }}>

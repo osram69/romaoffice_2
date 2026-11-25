@@ -370,3 +370,21 @@ export const domRinnovoPrezzi = pgTable("dom_rinnovo_prezzi", {
   notaMensile: text("nota_mensile"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+// Discount codes typed by the customer in the online activation flow (Configurazione Web > Codici sconto). A percentage
+// (basis points) taken off after the other discounts, first period only. services: all | legal_unit | postal. Dates are
+// inclusive Rome calendar days; NULL = no limit. promoBanner: advertise the code with a banner on the public site.
+export const discountCodes = pgTable("discount_codes", {
+  id: serial("id").primaryKey(),
+  code: varchar("code", { length: 40 }).notNull(),
+  label: text("label").notNull().default(""),
+  percentBps: integer("percent_bps").notNull(),
+  services: varchar("services", { length: 12 }).notNull().default("all"),
+  validFrom: date("valid_from", { mode: "string" }),
+  validTo: date("valid_to", { mode: "string" }),
+  enabled: boolean("enabled").notNull().default(true),
+  promoBanner: boolean("promo_banner").notNull().default(false),
+  bannerIt: text("banner_it"),
+  bannerEn: text("banner_en"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, t => [uniqueIndex("discount_codes_code_uq").on(t.code)]);

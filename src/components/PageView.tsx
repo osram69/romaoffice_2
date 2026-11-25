@@ -14,6 +14,8 @@ import { CookiePolicyContent, PrivacyNoticeContent } from "./LegalContent";
 import { type ServiceCode } from "@/lib/pricing";
 import { getCatalog } from "@/lib/catalog";
 import { getPaymentSettings } from "@/lib/payment-settings";
+import { getActivePromo } from "@/lib/discount-code-db";
+import { PromoBanner } from "./PromoBanner";
 import { PricingOffer } from "./PricingOffers";
 import { alternateFor, contact, hrefFor, pages, services, ui, type Lang } from "@/lib/site";
 
@@ -22,6 +24,7 @@ export async function PageView({ pageKey, lang, initialService = "legal_unit" }:
   const page = pages[pageKey]; const t = ui[lang]; const it = lang === "it"; const home = lang === "it" ? "/" : "/en/index.html";
   return <main id="main">
     {page.kind === "home" ? <>
+      <PromoBanner lang={lang} />
       <section className="hero home-hero">
         <Image src="/images/office-hero.jpg" alt={it ? "Ufficio arredato moderno e luminoso" : "Bright modern furnished office"} fill priority sizes="100vw" />
         <div className="hero-shade" /><div className="hero-content shell"><h1>{page.title}</h1><p>{page.description}</p><div className="hero-actions"><Link href={it ? "/attiva.html" : "/en/activate.html"} className="button accent">{t.activateNow}<ArrowRight /></Link><Link href={it ? "/tariffe.html" : "/en/pricing.html"} className="hero-secondary">{it ? "VEDI TARIFFE E OFFERTE" : "SEE PRICING & OFFERS"}</Link><a href={`tel:${contact.phoneHref}`} className="call-link"><Phone />{t.call}</a></div></div>
@@ -58,6 +61,7 @@ async function PageBody({kind,lang,pageKey,initialService}:{kind:string;lang:Lan
 
  if(kind==="contact") return <section className="section shell contact-layout"><div><span className="eyebrow">{it?"SCRIVICI":"WRITE TO US"}</span><h2>{it?"Come possiamo aiutarti?":"How can we help?"}</h2><ContactForm lang={lang}/></div><aside className="contact-aside"><div className="contact-detail"><MapPin/><div><b>{it?"Indirizzo":"Address"}</b><p>{contact.address}</p><Link className="arrow-link" href={it?"/dove-siamo.html":"/en/where-we-are.html"}>{it?"Come arrivare":"How to get here"}<ArrowRight/></Link></div></div><div className="contact-detail"><Phone/><div><b>{it?"Telefono":"Phone"}</b><p><a href={`tel:${contact.phoneHref}`}>{contact.phone}</a><br/>Fax {contact.fax}</p></div></div><div className="contact-detail"><Mail/><div><b>Email</b><p><a href={`mailto:${contact.email}`}>{contact.email}</a></p></div></div><div className="contact-detail"><Clock3/><div><b>{ui[lang].hours}</b><p>{ui[lang].weekdays}<br/>{ui[lang].saturday}</p></div></div><Map lang={lang}/></aside></section>;
   if(kind==="pricing") return <>
+  <PromoBanner lang={lang}/>
   <section className="section shell">
     <span className="eyebrow">{it?"TARIFFE":"PRICING"}</span>
     <p className="pricing-intro">{it?"Scegli come procedere — attivazione online, richiesta del modulo o preventivo via email: nessun addebito avviene senza la tua conferma.":"Choose how to proceed — activate online, request the form, or ask for a quote by email: no charge is ever made without your confirmation."}</p>
@@ -80,7 +84,7 @@ async function PageBody({kind,lang,pageKey,initialService}:{kind:string;lang:Lan
   if(kind==="activation") return <>
   <section className="section shell">
     <div className="section-heading"><div><span className="eyebrow">{it?"MODULO DI RICHIESTA":"REQUEST FORM"}</span><h2>{it?"I tuoi dati":"Your details"}</h2></div><p>{it?"I campi contrassegnati con * sono obbligatori. Il numero di cellulare viene verificato con un codice SMS prima dell’invio.":"Fields marked * are mandatory. Your mobile number is verified with an SMS code before submission."}</p></div>
-    <ActivationFlow key={`${lang}-${initialService}`} lang={lang} catalog={catalog!} initialService={initialService} paymentSettings={await getPaymentSettings()}/>
+    <ActivationFlow key={`${lang}-${initialService}`} lang={lang} catalog={catalog!} initialService={initialService} paymentSettings={await getPaymentSettings()} promo={await getActivePromo(lang, initialService)}/>
   </section>
   <Cta lang={lang}/>
   </>;

@@ -153,7 +153,7 @@ export async function buildRequestPdf(opts: { data: RequestData; lang: Lang; sho
   if (priced) {
     // Keep the whole quotation block together: forcing a break here (rather than letting each
     // row's own ensure() trigger mid-list) avoids splitting the cost list across two pages.
-    const preventivoRows = 1 + (priced.offerApplied ? 1 : 0) + (priced.newActivationDiscountCents ? 1 : 0) + (priced.additionalDomiciliationDiscountCents ? 1 : 0) + (priced.onlineDiscountCents ? 1 : 0) + priced.addonLines.length + 4;
+    const preventivoRows = 1 + (priced.offerApplied ? 1 : 0) + (priced.newActivationDiscountCents ? 1 : 0) + (priced.additionalDomiciliationDiscountCents ? 1 : 0) + (priced.onlineDiscountCents ? 1 : 0) + (priced.discountCodeCents ? 1 : 0) + priced.addonLines.length + 4;
     writer.ensure(46 + preventivoRows * 18 + 12);
     writer.section(it ? "4. Preventivo" : "4. Quotation");
     writer.row(it ? "Tariffa di listino" : "Standard rate", `${formatEur(priced.listCents, lang)} ${it ? "+ IVA" : "+ VAT"}`);
@@ -161,6 +161,7 @@ export async function buildRequestPdf(opts: { data: RequestData; lang: Lang; sho
     if (priced.newActivationDiscountCents) writer.row(it ? "Sconto una-tantum nuove attivazioni (10%)" : "One-off new activation discount (10%)", `- ${formatEur(priced.newActivationDiscountCents, lang)}`);
     if (priced.additionalDomiciliationDiscountCents) writer.row(it ? "Sconto domiciliazioni aggiuntive (10%)" : "Additional address service discount (10%)", `- ${formatEur(priced.additionalDomiciliationDiscountCents, lang)}`);
     if (priced.onlineDiscountCents) writer.row(it ? `Sconto una-tantum attivazione online (${product.onlineDiscountBps / 100}%)` : `One-off online activation discount (${product.onlineDiscountBps / 100}%)`, `- ${formatEur(priced.onlineDiscountCents, lang)}`);
+    if (priced.discountCodeCents) writer.row(it ? `Codice sconto ${priced.discountCode} (${priced.discountCodeBps / 100}%)` : `Discount code ${priced.discountCode} (${priced.discountCodeBps / 100}%)`, `- ${formatEur(priced.discountCodeCents, lang)}`);
     for (const line of priced.addonLines) writer.row(`${it ? line.titleIt : line.titleEn} x ${line.quantity}`, formatEur(line.totalCents, lang));
     writer.row(it ? "Imponibile" : "Net amount", formatEur(priced.netCents, lang));
     writer.row(`${it ? "IVA" : "VAT"} ${product.vatBps / 100}%`, formatEur(priced.vatCents, lang));
