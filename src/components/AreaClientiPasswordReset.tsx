@@ -1,10 +1,11 @@
 "use client";
 import { useState } from "react";
-import { setAreaClientiPasswordAction } from "@/app/gestione-domiciliazioni-x9k2m7/actions";
+import { sendNewAreaClientiPasswordAction, setAreaClientiPasswordAction } from "@/app/gestione-domiciliazioni-x9k2m7/actions";
 import { passwordMeetsPolicy } from "@/lib/password-policy";
 import { PasswordRequirementsList } from "./PasswordRequirementsList";
+import { runWithFeedback } from "./Toaster";
 
-export function AreaClientiPasswordReset({ id, hasPassword }: { id: number; hasPassword: boolean }) {
+export function AreaClientiPasswordReset({ id, hasPassword, loginEmail }: { id: number; hasPassword: boolean; loginEmail?: string | null }) {
   const [open, setOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -23,11 +24,29 @@ export function AreaClientiPasswordReset({ id, hasPassword }: { id: number; hasP
     }
   }
 
+  async function sendNew() {
+    if (!loginEmail || !window.confirm(`Generare una nuova password provvisoria e inviarla a ${loginEmail}?\n\nLa password attuale smette di funzionare subito.`)) return;
+    setBusy(true);
+    setStatus(null);
+    try {
+      const result = await runWithFeedback(async () => { const r = await sendNewAreaClientiPasswordAction(id); setStatus({ text: r.message || (r.success ? "Inviata" : "Errore"), color: r.success ? "green" : "red" }); return r; }, "Nuova password inviata");
+      if (!result) setStatus(s => s ?? { text: "Errore", color: "red" });
+    } finally { setBusy(false); }
+  }
+
   if (!open) {
     return (
-      <button type="button" className="gestione-btn gestione-btn-outline" onClick={() => setOpen(true)}>
-        {hasPassword ? "Reset password area clienti" : "Imposta password area clienti"}
-      </button>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <button type="button" className="gestione-btn gestione-btn-outline" disabled={busy} onClick={() => setOpen(true)}>
+          {hasPassword ? "Reset password area clienti" : "Imposta password area clienti"}
+        </button>
+        {loginEmail && (
+          <button type="button" className="gestione-btn gestione-btn-blue" disabled={busy} onClick={sendNew} title={`Genera una nuova password e la invia a ${loginEmail}`}>
+            {busy ? "Invio..." : "Invia nuova password al cliente"}
+          </button>
+        )}
+        {status && <span style={{ fontSize: 12, color: status.color }}>{status.text}</span>}
+      </div>
     );
   }
 

@@ -6,9 +6,12 @@ import { domClients, domCustomerChallenges, domCustomerSessions, domMailScans, d
 import { requireOperational } from "@/lib/staff-guards";
 import { decryptBytes, readMailScanDecrypted, removeEncrypted, removeMailScanEncrypted, saveEncrypted, type DocType, DOC_TYPES } from "@/lib/dom-archive";
 import { PRESENZA_FILE_BITS, cleanText, isPostale } from "@/lib/dom-status";
-import { buildScadenzaEmailHtml, contractMonths, defaultScontoApplicabile, postalRenewalPrices, scadenzaDefaultMonths, scadenzaEmailSubject, scadenzaOfferMonths } from "@/lib/dom-scadenza-email";
+import { buildScadenzaEmailHtml, contractMonths, personalGreeting, defaultScontoApplicabile, postalRenewalPrices, scadenzaDefaultMonths, scadenzaEmailSubject, scadenzaOfferMonths } from "@/lib/dom-scadenza-email";
 import { buildRitiroEmailHtml, ritiroEmailSubject } from "@/lib/dom-ritiro-email";
-import { sendDomMail, type DomMailAccount } from "@/lib/mailer";
+import { sendDomMail, sendMail, type DomMailAccount } from "@/lib/mailer";
+import { generatePassword } from "@/lib/order-account";
+import { buildNewPasswordEmail, NEW_PASSWORD_SUBJECT } from "@/lib/customer-password-email";
+import { BASE_URL } from "@/lib/site";
 import { hashPassword } from "@/lib/customer-auth";
 import { passwordMeetsPolicy } from "@/lib/password-policy";
 
@@ -480,6 +483,30 @@ export async function inviaRitiroAction(formData: FormData): Promise<{ success: 
 // Staff sets or resets the Area Clienti password directly (no email-link dance): used both for
 // the very first password on a new client and later if the customer loses theirs. Either way the
 // customer is forced to change it on next login, and any live session/pending SMS code is revoked.
+// Staff generates a new temporary Area Clienti password and emails it to the customer's login address. The old
+// password stops working at once; the customer must pick a new one at the next login. If the email cannot be sent the
+// previous password is put back, so nobody is ever locked out by a failed send. The password is never logged.
+export async function sendNewAreaClientiPasswordAction(id: number): Promise<{ success: boolean; message?: string }> {
+  "use server";
+  await requireOperational(BASE_PATH);
+  const [client] = await db.select().from(domClients).where(eq(domClients.id, id)).limit(1);
+  if (!client) return { success: false, message: "Domiciliazione non trovata" };
+  const to = client.areaClientiEmail?.trim().toLowerCase();
+  if (!to) return { success: false, message: "Manca l'email area clienti: inseriscila nella scheda, salva e riprova." };
+  const password = generatePassword();
+  await db.update(domClients).set({ areaClientiPasswordHash: await hashPassword(password), mustChangePassword: true }).where(eq(domClients.id, id));
+  const mail = buildNewPasswordEmail({ greeting: personalGreeting(client), email: to, password, areaUrl: `${BASE_URL}/area-clienti.html` });
+  const result = await sendMail({ to, subject: NEW_PASSWORD_SUBJECT, text: mail.text, html: mail.html, replyTo: "info@romaofficesharing.it" });
+  if (!result.sent) {
+    await db.update(domClients).set({ areaClientiPasswordHash: client.areaClientiPasswordHash, mustChangePassword: client.mustChangePassword }).where(eq(domClients.id, id));
+    return { success: false, message: `Invio non riuscito (${result.reason ?? "errore"}): la password precedente è rimasta valida.` };
+  }
+  await db.delete(domCustomerSessions).where(eq(domCustomerSessions.domClientId, id));
+  await db.delete(domCustomerChallenges).where(eq(domCustomerChallenges.domClientId, id));
+  revalidatePath(BASE_PATH);
+  return { success: true, message: `Nuova password inviata a ${to}.` };
+}
+
 export async function setAreaClientiPasswordAction(id: number, newPassword: string): Promise<{ success: boolean; message?: string }> {
   "use server";
   await requireOperational(BASE_PATH);

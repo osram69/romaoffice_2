@@ -145,7 +145,7 @@ export function DomForm({ client, action, deleteAction, onClose, capofile = [] }
 
         {client && (
           <div style={{ marginTop: 10 }}>
-            <AreaClientiPasswordReset id={client.id} hasPassword={!!client.areaClientiPasswordHash} />
+            <AreaClientiPasswordReset id={client.id} hasPassword={!!client.areaClientiPasswordHash} loginEmail={client.areaClientiEmail} />
           </div>
         )}
 
