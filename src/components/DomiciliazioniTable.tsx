@@ -345,9 +345,13 @@ export function DomiciliazioniTable({ rows, stato, pendingScanIds, capofile = []
                             ? <a className="gestione-file-link" style={{ marginRight: 8, fontWeight: 700 }} href={`/api/dom-documents?id=${viewing.id}&type=clidoc`} target="_blank" rel="noopener noreferrer" title="Caricato dal cliente: aggiungilo al contratto con “Aggiungi PDF in coda”">Documento amministratore dal cliente ({fmtDate(new Date(viewing.docAmmClienteAt).toISOString().slice(0, 10))})</a>
                             : null;
                           if (present.length === 0 && !clientSigned && !clientDoc) return <span style={{ color: "#aaa" }}>Nessun allegato presente</span>;
-                          return <>{clientSigned}{clientDoc}{present.map(d => (
-                            <a key={d.key} className="gestione-file-link" style={{ marginRight: 8 }} href={`/api/dom-documents?id=${viewing.id}&type=${d.key}`} target="_blank" rel="noopener noreferrer">{d.label}</a>
-                          ))}</>;
+                          // First line: the documents of the file (contract, annexes, form...); below, the ones the customer uploaded.
+                          return <>
+                            {present.length > 0 && <div>{present.map(d => (
+                              <a key={d.key} className="gestione-file-link" style={{ marginRight: 8 }} href={`/api/dom-documents?id=${viewing.id}&type=${d.key}`} target="_blank" rel="noopener noreferrer">{d.label}</a>
+                            ))}</div>}
+                            {(clientSigned || clientDoc) && <div style={present.length > 0 ? { marginTop: 4 } : undefined}>{clientSigned}{clientDoc}</div>}
+                          </>;
                         })()}
                       </td>
                     </tr>

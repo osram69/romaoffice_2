@@ -40,7 +40,10 @@ const ZONES: { key: Zone; label: string }[] = [
 type Lane = "unassigned" | Zone;
 // widthPt/heightPt: the page's real size in PDF points, so the rebuilt page matches the original even when
 // pages come from several uploaded PDFs. sourceIndex: 0-based running number across all loaded PDFs.
-type ContractPage = { id: string; sourceIndex: number; thumbnailUrl: string; widthPt: number; heightPt: number };
+// srcIndex/srcPage: which loaded PDF the page came from and its 0-based position there, so the contract can be rebuilt
+// from the original pages (no recompression) instead of from the rasterized copy used for thumbnails and the others.
+type ContractPage = { id: string; sourceIndex: number; thumbnailUrl: string; widthPt: number; heightPt: number; srcIndex: number; srcPage: number };
+type SourcePdf = { bytes: ArrayBuffer; numPages: number };
 type Lanes = Record<Lane, ContractPage[]>;
 const EMPTY_LANES: Lanes = { unassigned: [], con: [], all: [], mod: [], avc: [], doc: [] };
 
@@ -61,14 +64,24 @@ const MAX_RENDER_SCALE = 2.78;
 const MIN_RENDER_SCALE = 1.6;
 const PIXEL_BUDGET = 60_000_000;
 const DEFAULT_QUALITY = 0.6;
+// The contract is stored from the original pages (nothing recompressed). Only if that file would be too big for one
+// upload (the server accepts 25 MB per action) or a page cannot be copied as is, it is rebuilt from the rendered pages
+// at this high JPEG quality instead.
+const CONTRACT_FALLBACK_QUALITY = 0.92;
+const MAX_UPLOAD_BYTES = 22 * 1024 * 1024;
 
 function clamp(v: number, min: number, max: number) { return Math.max(min, Math.min(max, v)); }
 function base64ToBytes(base64: string): Uint8Array {
   return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
 }
-function totalAssignedMb(lanes: Lanes): string {
+// Size of what will be uploaded. With the "contract as original" option the contract's pages count for their share of
+// the source file (an estimate: pages of a scan weigh about the same each), the others for their recompressed JPEG.
+function totalAssignedMb(lanes: Lanes, contractOriginal: boolean, sources: SourcePdf[]): string {
   const zones: Lane[] = ZONES.map(z => z.key);
-  const bytes = zones.reduce((sum, lane) => sum + lanes[lane].reduce((s, p) => s + p.thumbnailUrl.length * 0.75, 0), 0);
+  const bytes = zones.reduce((sum, lane) => sum + lanes[lane].reduce((s, p) => {
+    if (lane === "con" && contractOriginal) { const src = sources[p.srcIndex]; return s + (src ? src.bytes.byteLength / Math.max(src.numPages, 1) : p.thumbnailUrl.length * 0.75); }
+    return s + p.thumbnailUrl.length * 0.75;
+  }, 0), 0);
   return (bytes / (1024 * 1024)).toFixed(1);
 }
 
@@ -93,6 +106,9 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded, cl
   const [placementPageId, setPlacementPageId] = useState<string | null>(null);
   const [signature, setSignature] = useState<SignaturePlacement | null>(null);
   const [quality, setQuality] = useState(DEFAULT_QUALITY);
+  // Contract saved from the original PDF pages (no compression); the slider then only affects the other documents.
+  const [contractOriginal, setContractOriginal] = useState(true);
+  const sourcesRef = useRef<SourcePdf[]>([]);
   const [zoomedPageId, setZoomedPageId] = useState<string | null>(null);
   const [thumbWidth, setThumbWidth] = useState(76);
   // Pages the operator removed (a stack, so "Ripristina" brings back the most recent first).
@@ -121,7 +137,8 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded, cl
   async function renderPdfFile(f: File, jpegQuality: number, isCancelled: () => boolean): Promise<ContractPage[]> {
     const buffer = await f.arrayBuffer();
     const pdfjs = await loadPdfjs();
-    const doc = await pdfjs.getDocument({ data: buffer }).promise;
+    const doc = await pdfjs.getDocument({ data: new Uint8Array(buffer.slice(0)) }).promise;
+    const srcIndex = sourcesRef.current.push({ bytes: buffer, numPages: doc.numPages }) - 1;
     const firstSize = (await doc.getPage(1)).getViewport({ scale: 1 });
     const budget = Math.max(PIXEL_BUDGET - pixelsRef.current, PIXEL_BUDGET / 4);
     const renderScale = clamp(Math.sqrt(budget / (doc.numPages * firstSize.width * firstSize.height)), MIN_RENDER_SCALE, MAX_RENDER_SCALE);
@@ -140,7 +157,7 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded, cl
       pixelsRef.current += canvas.width * canvas.height;
       const id = `pg-${nextNumRef.current}-${Math.random().toString(36).slice(2)}`;
       canvasesRef.current.set(id, canvas);
-      pages.push({ id, sourceIndex: nextNumRef.current++, thumbnailUrl: canvas.toDataURL("image/jpeg", jpegQuality), widthPt: size.width, heightPt: size.height });
+      pages.push({ id, sourceIndex: nextNumRef.current++, thumbnailUrl: canvas.toDataURL("image/jpeg", jpegQuality), widthPt: size.width, heightPt: size.height, srcIndex, srcPage: i - 1 });
     }
     return pages;
   }
@@ -154,6 +171,7 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded, cl
         canvasesRef.current.clear();
         nextNumRef.current = 0;
         pixelsRef.current = 0;
+        sourcesRef.current = [];
         const pages = await renderPdfFile(file, DEFAULT_QUALITY, () => cancelled);
         if (!cancelled) setLanes({ ...EMPTY_LANES, unassigned: pages });
       } catch (error) {
@@ -360,6 +378,51 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded, cl
     onClose();
   }
 
+  // Rebuilds a document from the rendered pages as JPEG (the page keeps its real size in points).
+  async function rebuildFromRenders(zonePages: ContractPage[], jpegQuality: number): Promise<PDFDocument> {
+    const outDoc = await PDFDocument.create();
+    for (const p of zonePages) {
+      const { widthPt: width, heightPt: height } = p;
+      const canvas = canvasesRef.current.get(p.id);
+      if (!canvas) throw new Error("Pagina non renderizzata correttamente, riprova a caricare il PDF");
+      const image = await outDoc.embedJpg(base64ToBytes(canvas.toDataURL("image/jpeg", jpegQuality).split(",")[1]));
+      const page = outDoc.addPage([width, height]);
+      page.drawImage(image, { x: 0, y: 0, width, height });
+    }
+    return outDoc;
+  }
+
+  // Copies the pages as they are in the source PDFs, in the order they were assigned: no rendering, no recompression,
+  // text stays vector and scans keep their own image. Returns null when a page cannot be copied faithfully (rotated,
+  // or a crop box different from the media box: the signature position would no longer match), so the caller falls back.
+  async function copyOriginalPages(zonePages: ContractPage[]): Promise<PDFDocument | null> {
+    try {
+      const loaded = new Map<number, PDFDocument>();
+      const docFor = async (index: number) => {
+        let doc = loaded.get(index);
+        if (!doc) { doc = await PDFDocument.load(sourcesRef.current[index].bytes, { ignoreEncryption: true }); loaded.set(index, doc); }
+        return doc;
+      };
+      for (const p of zonePages) {
+        const page = (await docFor(p.srcIndex)).getPage(p.srcPage);
+        const media = page.getMediaBox(); const crop = page.getCropBox();
+        if (page.getRotation().angle % 360 !== 0 || media.x !== 0 || media.y !== 0 || crop.x !== media.x || crop.y !== media.y || crop.width !== media.width || crop.height !== media.height) return null;
+      }
+      const outDoc = await PDFDocument.create();
+      let i = 0;
+      while (i < zonePages.length) {
+        let j = i; // a run of consecutive pages of the same source is copied in one go
+        while (j + 1 < zonePages.length && zonePages[j + 1].srcIndex === zonePages[i].srcIndex) j++;
+        const copied = await outDoc.copyPages(await docFor(zonePages[i].srcIndex), zonePages.slice(i, j + 1).map(p => p.srcPage));
+        copied.forEach(pg => outDoc.addPage(pg));
+        i = j + 1;
+      }
+      return outDoc;
+    } catch {
+      return null;
+    }
+  }
+
   async function processAndUpload() {
     const nonEmptyZones = ZONES.filter(z => lanes[z.key].length > 0);
     if (!nonEmptyZones.length) { setStatus({ text: "Assegna almeno una pagina a un tipo di documento.", color: "red" }); return; }
@@ -367,20 +430,19 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded, cl
     setStatus({ text: "Elaborazione...", color: "#555" });
     try {
       const firmaBytes = signature && firmaDataUrl ? base64ToBytes(firmaDataUrl.split(",")[1]) : null;
+      const notes: string[] = [];
       for (const zone of nonEmptyZones) {
         const zonePages = lanes[zone.key];
-        const outDoc = await PDFDocument.create();
-        for (const p of zonePages) {
-          // Real (point-space) size of the source page, so the recompressed JPEG lands on a page the same
-          // physical size as the original — the render scale is pixels, not points.
-          const { widthPt: width, heightPt: height } = p;
-          const canvas = canvasesRef.current.get(p.id);
-          if (!canvas) throw new Error("Pagina non renderizzata correttamente, riprova a caricare il PDF");
-          const jpegBytes = base64ToBytes(canvas.toDataURL("image/jpeg", quality).split(",")[1]);
-          const image = await outDoc.embedJpg(jpegBytes);
-          const page = outDoc.addPage([width, height]);
-          page.drawImage(image, { x: 0, y: 0, width, height });
+        // The contract keeps its original pages (no recompression); everything else is rebuilt from the rendered
+        // pages at the slider's quality. Without the option, or when the original cannot be used, the contract is
+        // rebuilt like the others but at a high fixed quality.
+        let outDoc: PDFDocument | null = null;
+        if (zone.key === "con" && contractOriginal) {
+          outDoc = await copyOriginalPages(zonePages);
+          if (outDoc && (await outDoc.save()).byteLength > MAX_UPLOAD_BYTES) { outDoc = null; notes.push("Il contratto originale supera il limite di caricamento: salvato a qualità alta (92%)."); }
+          else if (!outDoc) notes.push("Alcune pagine del contratto non si possono copiare così come sono: salvato a qualità alta (92%).");
         }
+        if (!outDoc) outDoc = await rebuildFromRenders(zonePages, zone.key === "con" ? CONTRACT_FALLBACK_QUALITY : quality);
         const sigIndex = signature ? zonePages.findIndex(p => p.id === signature.pageId) : -1;
         if (sigIndex !== -1 && signature && firmaBytes) {
           const page = outDoc.getPage(sigIndex);
@@ -394,13 +456,14 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded, cl
         }
         setStatus({ text: `Caricamento ${zone.label}...`, color: "#555" });
         const bytes = await outDoc.save();
+        if (bytes.byteLength > MAX_UPLOAD_BYTES) throw new Error(`${zone.label}: il file è troppo grande (${(bytes.byteLength / 1048576).toFixed(1)} MB, massimo ${Math.round(MAX_UPLOAD_BYTES / 1048576)} MB): alza la compressione.`);
         const blob = new File([new Uint8Array(bytes)], `${zone.key}.pdf`, { type: "application/pdf" });
         const result = await uploadDomDocumentAction(clientId, zone.key, blob);
         if (!result.success) throw new Error(`${zone.label}: ${result.message || "errore durante il caricamento"}`);
         if (result.presenzaFile !== undefined) onUploaded(result.presenzaFile);
       }
-      setStatus({ text: "Tutti i documenti sono stati caricati.", color: "green" });
-      setTimeout(onClose, 1200);
+      setStatus({ text: `Tutti i documenti sono stati caricati.${notes.length ? ` ${notes.join(" ")}` : ""}`, color: "green" });
+      setTimeout(onClose, notes.length ? 6000 : 1200);
     } catch (error) {
       setStatus({ text: error instanceof Error ? error.message : "Errore durante l'elaborazione", color: "red" });
     } finally {
@@ -459,8 +522,12 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded, cl
 
               <div style={{ display: "flex", flexWrap: "wrap", gap: 24, alignItems: "flex-end", marginBottom: 12 }}>
                 <div className="gestione-field" style={{ maxWidth: 340, marginBottom: 0 }}>
-                  <label>Compressione {Math.round(quality * 100)}% · {totalAssignedMb(lanes)} MB assegnati</label>
+                  <label>{contractOriginal ? "Compressione altri documenti" : "Compressione"} {Math.round(quality * 100)}% · {totalAssignedMb(lanes, contractOriginal, sourcesRef.current)} MB assegnati</label>
                   <input type="range" min={0.3} max={0.95} step={0.05} value={quality} onChange={e => applyQuality(Number(e.target.value))} />
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "#232f3e", margin: "6px 0 0" }} title="Il contratto viene salvato con le pagine originali del PDF, senza ricompressione; la compressione si applica solo agli altri documenti. Se il file supera il limite di caricamento viene salvato a qualità alta.">
+                    <input type="checkbox" checked={contractOriginal} onChange={e => setContractOriginal(e.target.checked)} style={{ width: "auto" }} />
+                    Contratto senza compressione
+                  </label>
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#232f3e", marginBottom: 4 }}>Dimensione miniature</label>
