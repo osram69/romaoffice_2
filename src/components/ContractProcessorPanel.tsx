@@ -1,4 +1,5 @@
 "use client";
+import { fetchClientUpload } from "@/lib/client-upload-fetch";
 import { useEffect, useRef, useState } from "react";
 import { PenLine, Trash2, Undo2 } from "lucide-react";
 import { PDFDocument } from "pdf-lib";
@@ -79,7 +80,7 @@ function findPage(lanes: Lanes, id: string): { page: ContractPage; lane: Lane } 
   return null;
 }
 
-export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: { clientId: number; file: File; onClose: () => void; onUploaded: (presenzaFile: number) => void }) {
+export function ContractProcessorPanel({ clientId, file, onClose, onUploaded, clientDocAvailable = false }: { clientId: number; file: File; onClose: () => void; onUploaded: (presenzaFile: number) => void; clientDocAvailable?: boolean }) {
   const [lanes, setLanes] = useState<Lanes>(EMPTY_LANES);
   const [dragId, setDragId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -166,7 +167,7 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
 
   // Appends further PDFs (e.g. the administrator's ID sent as a second file) after the pages already loaded,
   // so everything can be sorted, signed and uploaded in one go.
-  async function addPdfs(files: FileList | null) {
+  async function addPdfs(files: FileList | File[] | null) {
     if (!files || files.length === 0) return;
     setAdding(true);
     try {
@@ -184,6 +185,13 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
       setAdding(false);
       if (addInputRef.current) addInputRef.current.value = "";
     }
+  }
+
+  // The administrator's document the customer uploaded from the Area Clienti, appended like any other PDF.
+  async function addClientDoc() {
+    setStatus({ text: "Recupero del documento caricato dal cliente...", color: "#555" });
+    try { await addPdfs([await fetchClientUpload(clientId, "clidoc")]); }
+    catch (error) { setStatus({ text: `Documento del cliente non disponibile: ${error instanceof Error ? error.message : String(error)}`, color: "red" }); }
   }
 
   // The placement preview sits below all the lanes: bring it into view when a page is picked for the signature.
@@ -466,6 +474,11 @@ export function ContractProcessorPanel({ clientId, file, onClose, onUploaded }: 
                   <button type="button" className="gestione-btn gestione-btn-outline" disabled={adding || processing} onClick={() => addInputRef.current?.click()}>
                     {adding ? "Lettura in corso..." : "Aggiungi PDF in coda"}
                   </button>
+                  {clientDocAvailable && (
+                    <button type="button" className="gestione-btn gestione-btn-outline" style={{ marginLeft: 6 }} disabled={adding || processing || loading} onClick={addClientDoc} title="Documento dell'amministratore caricato dal cliente nell'Area Clienti">
+                      Aggiungi il documento amministratore del cliente
+                    </button>
+                  )}
                 </div>
                 {deleted.length > 0 && (
                   <button type="button" className="gestione-btn gestione-btn-outline" style={{ display: "inline-flex", alignItems: "center", gap: 6 }} onClick={restoreDeleted}>

@@ -141,7 +141,7 @@ export function DomForm({ client, action, deleteAction, onClose, capofile = [] }
           </tbody>
         </table>
 
-        {client && <DomDocumentUploads id={client.id} presenzaFile={client.presenzaFile} onUploadingChange={setUploading} />}
+        {client && <DomDocumentUploads id={client.id} presenzaFile={client.presenzaFile} onUploadingChange={setUploading} hasClientSigned={!!client.contrattoClienteAt} hasClientDoc={!!client.docAmmClienteAt} />}
 
         {client && (
           <div style={{ marginTop: 10 }}>

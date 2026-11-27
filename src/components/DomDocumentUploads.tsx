@@ -1,4 +1,5 @@
 "use client";
+import { fetchClientUpload } from "@/lib/client-upload-fetch";
 import { useEffect, useRef, useState } from "react";
 import { uploadDomDocumentAction, removeDomDocumentAction } from "@/app/gestione-domiciliazioni-x9k2m7/actions";
 import { PRESENZA_FILE_BITS } from "@/lib/dom-status";
@@ -73,10 +74,11 @@ function UploadRow({ id, docType, label, present, onChange, onBusyChange }: { id
   );
 }
 
-export function DomDocumentUploads({ id, presenzaFile: initialPresenzaFile, onUploadingChange }: { id: number; presenzaFile: number; onUploadingChange?: (uploading: boolean) => void }) {
+export function DomDocumentUploads({ id, presenzaFile: initialPresenzaFile, onUploadingChange, hasClientSigned = false, hasClientDoc = false }: { id: number; presenzaFile: number; onUploadingChange?: (uploading: boolean) => void; hasClientSigned?: boolean; hasClientDoc?: boolean }) {
   const [presenzaFile, setPresenzaFile] = useState(initialPresenzaFile);
   const [contractFile, setContractFile] = useState<File | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [fromClient, setFromClient] = useState<{ busy: boolean; error: string }>({ busy: false, error: "" });
   const busyRows = useRef(new Set<DocType>());
 
   function reportBusy(docType: DocType, busy: boolean) {
@@ -84,6 +86,13 @@ export function DomDocumentUploads({ id, presenzaFile: initialPresenzaFile, onUp
     onUploadingChange?.(busyRows.current.size > 0);
   }
   useEffect(() => () => onUploadingChange?.(false), [onUploadingChange]);
+
+  // The contract the customer printed, signed and uploaded from the Area Clienti goes straight into the processor.
+  async function useClientContract() {
+    setFromClient({ busy: true, error: "" });
+    try { setContractFile(await fetchClientUpload(id, "cli")); setProcessing(true); setFromClient({ busy: false, error: "" }); }
+    catch (error) { setFromClient({ busy: false, error: `Impossibile recuperare il contratto del cliente: ${error instanceof Error ? error.message : String(error)}` }); }
+  }
 
   return (
     <div style={{ marginTop: 10 }}>
@@ -96,6 +105,13 @@ export function DomDocumentUploads({ id, presenzaFile: initialPresenzaFile, onUp
               <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                 <input type="file" accept="application/pdf" style={{ width: "auto", maxWidth: 200 }} onChange={e => setContractFile(e.target.files?.[0] ?? null)} />
                 <button type="button" className="gestione-upload-btn" title="Carica e processa" disabled={!contractFile} onClick={() => setProcessing(true)}>💾 Carica e Processa</button>
+                {hasClientSigned && (
+                  <button type="button" className="gestione-btn gestione-btn-blue" style={{ fontSize: 12, padding: "5px 10px" }} disabled={fromClient.busy} onClick={useClientContract} title="Apre Carica e Processa con il contratto firmato che il cliente ha caricato dall'Area Clienti">
+                    {fromClient.busy ? "Recupero..." : "Usa il contratto firmato dal cliente"}
+                  </button>
+                )}
+                {contractFile && <span style={{ fontSize: 11, color: "#555" }}>{contractFile.name}</span>}
+                {fromClient.error && <span style={{ fontSize: 11, color: "red" }}>{fromClient.error}</span>}
               </div>
             </td>
           </tr>
@@ -114,6 +130,7 @@ export function DomDocumentUploads({ id, presenzaFile: initialPresenzaFile, onUp
           file={contractFile}
           onClose={() => setProcessing(false)}
           onUploaded={setPresenzaFile}
+          clientDocAvailable={hasClientDoc}
         />
       )}
     </div>
