@@ -70,7 +70,9 @@ romaoffice_2/
 | `POST /api/verify-payment` | Conferma lo stato di pagamento interrogando il provider (mai fidarsi del solo redirect) |
 | `POST /api/webhook/{stripe,paypal,esign}` | Webhook dei provider di pagamento/firma elettronica |
 | `POST /api/standard-offer` | Popup "offerta standard": invia email con listino e modulo PDF allegato |
-| `POST /api/manual-request` | Popup "compila il modulo online": invia email con i dati del richiedente, nessun salvataggio su DB |
+| `POST /api/manual-request` | Modulo online di richiesta domiciliazione (popup e pagina `/richiesta-domiciliazione.html`): salva la bozza in `domiciliation_requests` e imposta il cookie `ros_request_access` |
+| `POST /api/manual-request/send-otp` | Invia il codice SMS al cellulare del referente (max 3 invii, 60 s tra uno e l'altro) |
+| `POST /api/manual-request/verify` | Verifica il codice (vale come firma), segna la richiesta `submitted` e invia l'email di conferma a cliente e admin; senza codice riprova solo l'email |
 | `POST /api/customer/login,verify,resend,password,logout` + `GET /api/customer/me,contract` | Autenticazione e area clienti (vedi `docs/customer-area.md`) |
 | `GET /api/health` | Health check per il monitoraggio/deploy |
 
@@ -101,6 +103,7 @@ Tabelle principali, tutte in PostgreSQL via Drizzle:
 - **`contacts`** — messaggi dal form di contatto.
 - **`orders`** — ordini di domiciliazione (stato `pending → paid/filled/signed/cancelled`, importo, provider, snapshot del preventivo accettato).
 - **`otp_verifications`** — codici SMS per il flusso di attivazione.
+- **`domiciliation_requests`** — richieste del modulo online di domiciliazione: dati, cellulare, stato (`draft` → `verified` → `submitted`) e data/ora della verifica SMS. Creata da `drizzle/0031_domiciliation_requests.sql`: **eseguire lo script su Supabase prima del deploy**.
 - **`customers`, `customer_challenges`, `customer_sessions`, `customer_password_tokens`, `customer_contracts`, `customer_audit`** — area clienti (account, login a due fattori, sessioni, contratti cifrati, log di audit).
 - **`auth_limits`** — rate limiting su login/OTP.
 - **`service_catalog`, `service_prices`, `service_addons`** — listino ufficiale (IVA, sconti, scadenze offerte, prezzi per durata, servizi opzionali). È l'unica fonte dei prezzi mostrati e addebitati.

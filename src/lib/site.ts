@@ -1,5 +1,5 @@
 export type Lang = "it" | "en";
-export type PageKind = "home" | "contact" | "legal" | "pricing" | "privacy" | "cookies" | "location" | "about" | "testimonials" | "guide" | "service" | "rooms" | "secretary" | "activation" | "gallery" | "customer";
+export type PageKind = "home" | "contact" | "legal" | "pricing" | "privacy" | "cookies" | "location" | "about" | "testimonials" | "guide" | "service" | "rooms" | "secretary" | "activation" | "request" | "gallery" | "customer";
 
 // Every caller appends its own leading "/" (or "#"), so a trailing slash left in the env var here
 // — e.g. NEXT_PUBLIC_SITE_URL="https://example.com/" — would double up into "https://example.com//path",
@@ -34,6 +34,7 @@ export const routeMap: Record<string, string> = {
   "segreteria-virtuale.html": "en/virtual-secretary.html",
   "tariffe.html": "en/pricing.html",
   "attiva.html": "en/activate.html",
+  "richiesta-domiciliazione.html": "en/domiciliation-request.html",
   "gallery.html": "en/gallery.html",
   "area-clienti.html": "en/customer-area.html",
   "contatti.html": "en/contact.html",
@@ -108,6 +109,7 @@ const itPages: Record<string, PageDef> = {
   "segreteria-virtuale.html": { title: "Segreteria virtuale a Roma", eyebrow: "SEMPRE PRESENTI", description: "Segreteria virtuale a Roma: numero dedicato, risposta a nome della tua società e inoltro dei messaggi. Servizio flessibile per imprese e professionisti.", kind: "secretary", bullets: ["Risposta personalizzata", "Inoltro messaggi", "Supporto flessibile"] },
   "tariffe.html": { title: "Tariffe domiciliazione sede legale a Roma", eyebrow: "TARIFFE", description: "Tutte le offerte: domiciliazione sede legale e unità locale, uffici e servizi. Attivazione online con pagamento PayPal, Stripe, SumUp o bonifico.", kind: "pricing" },
   "attiva.html": { title: "Attiva la domiciliazione", eyebrow: "ATTIVAZIONE ONLINE", description: "Compila il modulo di richiesta, verifica il tuo numero di telefono con il codice SMS e paga con PayPal, Stripe, SumUp o bonifico bancario.", kind: "activation" },
+  "richiesta-domiciliazione.html": { title: "Richiesta di domiciliazione", eyebrow: "MODULO ONLINE", description: "Compila il modulo di richiesta di domiciliazione e conferma il tuo cellulare con il codice SMS.", kind: "request", noIndex: true },
   "contatti.html": { title: "Parliamo del tuo prossimo ufficio", eyebrow: "CONTATTI", description: "Contatta Roma Office Sharing: scrivici o chiamaci per uffici, sale e domiciliazione a Roma vicino a Termini. Via Venti Settembre 118, tel. 06 2111 6268.", kind: "contact" },
   "dove-siamo.html": { title: "Dove siamo: Via Venti Settembre 118, Roma", eyebrow: "DOVE SIAMO", description: "Roma Office Sharing si trova in Via Venti Settembre 118, 00187 Roma, al primo piano di Palazzo Gentiloni, a pochi minuti da Termini.", kind: "location" },
   "chi-siamo.html": { title: "Lo spazio dove le imprese crescono", eyebrow: "CHI SIAMO", description: "Roma Office Sharing è gestito da Cube Engineering s.r.l. dal 2014: uffici, domiciliazione e servizi per imprese e professionisti a Roma, vicino a Termini.", kind: "about" },
@@ -137,6 +139,7 @@ const translations: Record<string, PageDef> = {
   "en/virtual-secretary.html": { title: "Virtual secretary in Rome", eyebrow: "ALWAYS AVAILABLE", description: "Virtual secretary in Rome: a dedicated number, calls answered in your company’s name and message forwarding, for businesses and professionals.", kind: "secretary", bullets: ["Personalised answering", "Message forwarding", "Flexible support"] },
   "en/pricing.html": { title: "Registered office Rome: pricing and offers", eyebrow: "PRICING", description: "All our offers: registered office and local unit addresses, offices and services. Online activation with PayPal, Stripe, SumUp or bank transfer.", kind: "pricing" },
   "en/activate.html": { title: "Activate your business address service", eyebrow: "ONLINE ACTIVATION", description: "Complete the request form, verify your phone number with an SMS code and pay by PayPal, Stripe, SumUp or bank transfer.", kind: "activation" },
+  "en/domiciliation-request.html": { title: "Domiciliation request", eyebrow: "ONLINE FORM", description: "Complete the domiciliation request form and confirm your mobile number with the SMS code.", kind: "request", noIndex: true },
   "en/contact.html": { title: "Let’s discuss your next office", eyebrow: "CONTACT", description: "Contact Roma Office Sharing for offices, rooms and registered office services in Rome near Termini. Via Venti Settembre 118, tel. +39 06 2111 6268.", kind: "contact" },
   "en/where-we-are.html": { title: "Where we are: Via Venti Settembre 118, Rome", eyebrow: "FIND US", description: "Roma Office Sharing is at Via Venti Settembre 118, 00187 Rome, on the first floor of Palazzo Gentiloni, minutes from Termini.", kind: "location" },
   "en/about.html": { title: "The place where businesses grow", eyebrow: "ABOUT US", description: "Cube Engineering s.r.l., the company behind Roma Office Sharing's offices, registered addresses and services.", kind: "about" },
