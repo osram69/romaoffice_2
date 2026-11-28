@@ -76,3 +76,13 @@ test("the confirmation email lists the data and the SMS verification time", () =
   assert.equal(mail.to, "mario@example.com");
   for (const piece of ["Acme Srl", "+393331234567", "RSSMRA85T10A562S", "acme@pec.it", "SMS", "28/11/2026"]) assert.ok(mail.text.includes(piece), piece);
 });
+
+test("the standard offer email points to the online request form", async () => {
+  const { buildStandardOfferEmail } = await import("@/lib/standard-offer");
+  const product = { code: "legal_unit", vatBps: 2200, tiers: [], newActivationDiscountEnabled: false, additionalDiscountEnabled: false, offerValidUntil: null, termsRevision: "x", version: "x".repeat(64), addons: ["legal_office_hours", "legal_secretary", "legal_archive", "legal_forwarding", "legal_extra_opening", "extra_opening", "registered_mail", "mail_forwarding"].map(code => ({ code, titleIt: code, titleEn: code, priceCents: 1000, annualCents: 0, billing: "monthly", maxQuantity: 1, selectable: true })), smart3x24Active: false, smart6x24Active: false, onlineDiscountEnabled: false, onlineDiscountBps: 0, includedOpenings: 0, additionalDiscountBps: 0, newActivationDiscountBps: 0, paymentSettings: {} } as unknown as ProductOffer;
+  const base = { requestId: "00000000-0000-4000-8000-000000000000", service: "legal_unit" as const, title: "Mr" as const, firstName: "Mario", lastName: "Rossi", email: "m@example.com", notes: "", consent: true as const };
+  const it = buildStandardOfferEmail({ ...base, lang: "it" }, product, Buffer.from("%PDF-"));
+  assert.ok(it.text.includes("/richiesta-domiciliazione.html?service=legal_unit"));
+  const en = buildStandardOfferEmail({ ...base, lang: "en" }, product, Buffer.from("%PDF-"));
+  assert.ok(en.text.includes("/en/domiciliation-request.html?service=legal_unit"));
+});

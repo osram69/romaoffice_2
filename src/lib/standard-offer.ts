@@ -5,6 +5,9 @@ import { copyFor, formatEur, offerActive, validity, type ProductOffer, type Serv
 import { additionalNote, termsText } from "./offer-terms";
 import { adminEmail, type MailPayload } from "./mailer";
 import { requestModuleFilename } from "./request-module";
+import { BASE_URL } from "./site";
+// Same form as the PDF, filled in online; the mobile number is verified by SMS, which acts as the signature.
+export const requestFormUrl = (service: ServiceCode, lang: "it" | "en") => `${BASE_URL}${lang === "it" ? "/richiesta-domiciliazione.html" : "/en/domiciliation-request.html"}?service=${service}`;
 
 export const standardOfferSchema = z.object({
   requestId: z.string().uuid(), service: z.enum(["legal_unit", "postal"]), lang: z.enum(["it", "en"]),
@@ -30,7 +33,7 @@ export function buildStandardOfferEmail(input: StandardOfferInput, product: Prod
     ...(input.notes ? [it ? "RICHIESTE DEL CLIENTE:" : "CUSTOMER REQUEST NOTES:", input.notes, ""] : []),
     copy.name, copy.description, "", rows, validity(product, lang),
     ...(product.code === "legal_unit" && product.additionalDiscountEnabled ? [additionalNote(product, lang)] : []),
-    it ? `Ove non indicato, i costi si intendono IVA ${product.vatBps / 100}% esclusa.` : `Unless stated otherwise, prices exclude ${product.vatBps / 100}% VAT.`, "", termsText(product, lang), "", it ? `In allegato trova ${requestModuleFilename(product.code)}, il modulo originale da restituire compilato a info@romaofficesharing.it. Ricevuto il modulo, Le invieremo il contratto e i dati per il pagamento.` : `Attached is ${requestModuleFilename(product.code)}, the original form to complete and return to info@romaofficesharing.it. Once we receive it, we will send the agreement and payment details.`, "", "ROMA OFFICESHARING", "Cube Engineering s.r.l.", "Via Venti Settembre, 118 int.1 — 00187 Roma", "+39 06 21.11.6268 · info@romaofficesharing.it", it ? "Privacy e revoca del consenso: cubeng@pec.it — +39 06 21116268" : "Privacy and consent withdrawal: cubeng@pec.it — +39 06 21116268"].join("\n");
+    it ? `Ove non indicato, i costi si intendono IVA ${product.vatBps / 100}% esclusa.` : `Unless stated otherwise, prices exclude ${product.vatBps / 100}% VAT.`, "", termsText(product, lang), "", it ? `In allegato trova ${requestModuleFilename(product.code)}, il modulo originale da restituire compilato a info@romaofficesharing.it. Ricevuto il modulo, Le invieremo il contratto e i dati per il pagamento.\n\nIn alternativa può compilare il modulo online, con conferma del cellulare tramite codice SMS (vale come firma): ${requestFormUrl(product.code, "it")}` : `Attached is ${requestModuleFilename(product.code)}, the original form to complete and return to info@romaofficesharing.it. Once we receive it, we will send the agreement and payment details.\n\nAlternatively you can fill in the form online, confirming your mobile number with an SMS code (it acts as your signature): ${requestFormUrl(product.code, "en")}`, "", "ROMA OFFICESHARING", "Cube Engineering s.r.l.", "Via Venti Settembre, 118 int.1 — 00187 Roma", "+39 06 21.11.6268 · info@romaofficesharing.it", it ? "Privacy e revoca del consenso: cubeng@pec.it — +39 06 21116268" : "Privacy and consent withdrawal: cubeng@pec.it — +39 06 21116268"].join("\n");
   return {
     to: input.email, bcc: adminEmail(), subject: `${it ? "Offerta standard" : "Standard offer"} — ${copy.name} | Roma Office Sharing`, text,
     html: `<div style="font-family:Arial,sans-serif;max-width:700px;color:#183229;line-height:1.65"><p style="font-size:21px"><strong style="color:#7f7f7f">ROMA</strong> <strong style="color:#f97300">OFFICESHARING</strong></p><h1 style="font-size:23px">${escapeHtml(copy.name)}</h1><div style="white-space:pre-wrap">${escapeHtml(text)}</div></div>`,

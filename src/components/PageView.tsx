@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight, BadgeCheck, Building2, Check, Clock3, Mail, MapPin, MonitorSmartphone, Phone, Plane, Quote, TrainFront, TramFront } from "lucide-react";
 import { ContactForm } from "./Interactive";
 import { ActivationFlow } from "./ActivationFlow";
+import { ManualRequestForm } from "./ManualRequestForm";
 import { Gallery, GalleryPreview } from "./Gallery";
 import { CustomerArea } from "./CustomerArea";
 import { AddressServiceDetails, hasAddressDetail } from "./AddressServices";
@@ -50,7 +51,7 @@ function Cta({lang}:{lang:Lang}) {const it=lang==="it";return <section className
 async function PageBody({kind,lang,pageKey,initialService}:{kind:string;lang:Lang;pageKey:string;initialService:ServiceCode}) {
   const flags = await getSiteFlags();
  const it=lang==="it"; const p=pages[pageKey]; const t=ui[lang];
- const catalog = kind === "pricing" || kind === "activation" || kind === "guide" || hasAddressDetail(pageKey) ? await getCatalog() : null;
+ const catalog = kind === "pricing" || kind === "activation" || kind === "request" || kind === "guide" || hasAddressDetail(pageKey) ? await getCatalog() : null;
  if(kind==="gallery") return <Gallery lang={lang}/>;
  if(kind==="customer") return <section className="customer-shell shell"><CustomerArea lang={lang}/></section>;
  if(kind==="guide") return <><GuidePage pageKey={pageKey} lang={lang} catalog={catalog!}/><GuideLinks lang={lang} exclude={pageKey}/><Cta lang={lang}/></>;
@@ -78,6 +79,13 @@ async function PageBody({kind,lang,pageKey,initialService}:{kind:string;lang:Lan
       <div><span>04</span><h3>{it?"Pagamento":"Payment"}</h3><p>{it?"Paga con PayPal, Stripe o SumUp oppure scegli il bonifico bancario.":"Pay by PayPal, Stripe or SumUp, or choose a bank transfer."}</p></div>
     </div>
     <Link className="button primary" href={it?"/attiva.html":"/en/activate.html"}>{ui[lang].activateNow}<ArrowRight/></Link>
+  </section>
+  <Cta lang={lang}/>
+  </>;
+  if(kind==="request") return <>
+  <section className="section shell">
+    <div className="section-heading"><div><span className="eyebrow">{it?"MODULO DI RICHIESTA":"REQUEST FORM"}</span><h2>{it?"Richiesta di domiciliazione":"Domiciliation request"}</h2></div><p>{it?"I campi contrassegnati con * sono obbligatori. Il cellulare viene verificato con un codice SMS, che vale come firma della richiesta.":"Fields marked * are mandatory. Your mobile number is verified with an SMS code, which acts as the signature of the request."}</p></div>
+    <ManualRequestForm key={`${lang}-${initialService}`} lang={lang} product={catalog![initialService]}/>
   </section>
   <Cta lang={lang}/>
   </>;
