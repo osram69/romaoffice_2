@@ -34,6 +34,19 @@ export const otpVerifications = pgTable("otp_verifications", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Online domiciliation requests (popup / request page): the SMS code verified on the mobile number acts as the signature.
+export const domiciliationRequests = pgTable("domiciliation_requests", {
+  id: serial("id").primaryKey(), publicId: varchar("public_id", { length: 64 }).notNull().unique(), tokenHash: text("token_hash").notNull(),
+  service: text("service").notNull(), lang: varchar("lang", { length: 2 }).notNull().default("it"),
+  email: text("email").notNull(), phone: text("phone").notNull(), formData: jsonb("form_data").notNull(),
+  status: text("status").notNull().default("draft"), codeHash: text("code_hash"),
+  sends: integer("sends").notNull().default(0), attempts: integer("attempts").notNull().default(0),
+  sentAt: timestamp("sent_at", { withTimezone: true }), expiresAt: timestamp("expires_at", { withTimezone: true }),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }), submittedAt: timestamp("submitted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Customer accounts are provisioned by staff, never inferred from a public email address.
 export const customers = pgTable("customers", {
   id: uuid("id").defaultRandom().primaryKey(), email: text("email").notNull().unique(),
